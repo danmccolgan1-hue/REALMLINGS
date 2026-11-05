@@ -1,0 +1,962 @@
+[
+ {
+  "id": "roads",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Dirt Roads",
+  "cost": 40,
+  "req": "",
+  "blurb": "Masons can build a dirt road across an open border (75 wood, 25 gold). Units move 25% faster along it.",
+  "school": ""
+ },
+ {
+  "id": "walls",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Wooden Walls",
+  "cost": 60,
+  "req": "",
+  "blurb": "Masons can close an open border with a wooden palisade (150 wood, 100 gold). Both provinces must keep at least one other way in and out.",
+  "school": ""
+ },
+ {
+  "id": "stable",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Building: Stable",
+  "cost": 30,
+  "req": "",
+  "blurb": "Unlocks the Stable, which lets a Barracks in the same province train Cavalry.",
+  "school": ""
+ },
+ {
+  "id": "market",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Building: Marketplace",
+  "cost": 30,
+  "req": "",
+  "blurb": "Unlocks the Marketplace: +3 gold every payout, buildable in any province.",
+  "school": ""
+ },
+ {
+  "id": "granary",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Building: Granary",
+  "cost": 30,
+  "req": "",
+  "blurb": "Unlocks the Granary: +1000 food storage each (the nation starts able to hold 2000).",
+  "school": ""
+ },
+ {
+  "id": "storehouse",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Building: Storehouse",
+  "cost": 30,
+  "req": "",
+  "blurb": "Unlocks the Storehouse: +1000 wood storage each (the nation starts able to hold 2000).",
+  "school": ""
+ },
+ {
+  "id": "bank",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Building: Bank",
+  "cost": 40,
+  "req": "",
+  "blurb": "Unlocks the Bank: +1000 gold storage each (the nation starts able to hold 2000).",
+  "school": ""
+ },
+ {
+  "id": "forts",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Fort Charters I",
+  "cost": 60,
+  "req": "",
+  "blurb": "Raises the Fort limit from 3 to 5.",
+  "school": ""
+ },
+ {
+  "id": "autoscout",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Automating Wayfinders",
+  "cost": 40,
+  "req": "",
+  "blurb": "Idle Wayfinders survey explored, unsurveyed provinces on their own. Toggle it on a Wayfinder\u2019s command card.",
+  "school": ""
+ },
+ {
+  "id": "arrowslits",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Arrowslits",
+  "cost": 50,
+  "req": "",
+  "blurb": "Forts and capitals slowly shoot at enemy armies standing in their province, wearing them down while they try to capture it.",
+  "school": ""
+ },
+ {
+  "id": "advfarms",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Advanced Farms",
+  "cost": 40,
+  "req": "",
+  "blurb": "Every Farm gives +1 food.",
+  "school": ""
+ },
+ {
+  "id": "advmills",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Advanced Lumber Mills",
+  "cost": 40,
+  "req": "",
+  "blurb": "Every Lumber Mill gives +1 wood.",
+  "school": ""
+ },
+ {
+  "id": "advmines",
+  "tree": "gov",
+  "tier": 1,
+  "name": "Advanced Gold Mines",
+  "cost": 50,
+  "req": "",
+  "blurb": "Every Gold Mine gives +2 gold.",
+  "school": ""
+ },
+ {
+  "id": "magetower",
+  "tree": "gov",
+  "tier": 2,
+  "name": "Building: Mage Tower",
+  "cost": 100,
+  "req": "",
+  "blurb": "Unlocks the Mage Tower, which trains Mages and opens Magic research. Your first tower lets you choose a school of magic.",
+  "school": ""
+ },
+ {
+  "id": "roads2",
+  "tree": "gov",
+  "tier": 2,
+  "name": "Gravel Roads",
+  "cost": 100,
+  "req": "roads",
+  "blurb": "Every road is relaid in gravel: units move 35% faster along roads.",
+  "school": ""
+ },
+ {
+  "id": "walls2",
+  "tree": "gov",
+  "tier": 2,
+  "name": "Stone Walls",
+  "cost": 120,
+  "req": "walls",
+  "blurb": "Walls are built of stone, and existing palisades are rebuilt in stone: three times as strong.",
+  "school": ""
+ },
+ {
+  "id": "forts2",
+  "tree": "gov",
+  "tier": 2,
+  "name": "Fort Charters II",
+  "cost": 100,
+  "req": "forts",
+  "blurb": "Raises the Fort limit from 5 to 7.",
+  "school": ""
+ },
+ {
+  "id": "stealth",
+  "tree": "gov",
+  "tier": 2,
+  "name": "Wayfinder Stealth",
+  "cost": 100,
+  "req": "autoscout",
+  "blurb": "Wayfinders can sneak: three times slower, but enemy armies can\u2019t see them. Without it, an enemy army that finds a Wayfinder kills him.",
+  "school": ""
+ },
+ {
+  "id": "reffarms",
+  "tree": "gov",
+  "tier": 2,
+  "name": "Refined Farms",
+  "cost": 100,
+  "req": "advfarms",
+  "blurb": "Every Farm gives another +1 food.",
+  "school": ""
+ },
+ {
+  "id": "refmills",
+  "tree": "gov",
+  "tier": 2,
+  "name": "Refined Lumber Mills",
+  "cost": 100,
+  "req": "advmills",
+  "blurb": "Every Lumber Mill gives another +1 wood.",
+  "school": ""
+ },
+ {
+  "id": "refmines",
+  "tree": "gov",
+  "tier": 2,
+  "name": "Refined Gold Mines",
+  "cost": 110,
+  "req": "advmines",
+  "blurb": "Every Gold Mine gives another +2 gold.",
+  "school": ""
+ },
+ {
+  "id": "roads3",
+  "tree": "gov",
+  "tier": 3,
+  "name": "Cobblestone Roads",
+  "cost": 200,
+  "req": "roads2",
+  "blurb": "Every road is paved with cobbles: units move 50% faster along roads.",
+  "school": ""
+ },
+ {
+  "id": "gates",
+  "tree": "gov",
+  "tier": 3,
+  "name": "Wall Gates",
+  "cost": 200,
+  "req": "walls2",
+  "blurb": "Masons can build a gate into a wall between two of your provinces. Only your units can pass; enemies must break the wall.",
+  "school": ""
+ },
+ {
+  "id": "forts3",
+  "tree": "gov",
+  "tier": 3,
+  "name": "Fort Charters III",
+  "cost": 200,
+  "req": "forts2",
+  "blurb": "Raises the Fort limit from 7 to 9.",
+  "school": ""
+ },
+ {
+  "id": "farsight",
+  "tree": "gov",
+  "tier": 3,
+  "name": "Far-Seeing Wayfinders",
+  "cost": 200,
+  "req": "stealth",
+  "blurb": "Wayfinders see into every province next to the one they stand in.",
+  "school": ""
+ },
+ {
+  "id": "sophfarms",
+  "tree": "gov",
+  "tier": 3,
+  "name": "Sophisticated Farms",
+  "cost": 200,
+  "req": "reffarms",
+  "blurb": "Every Farm gives another +1 food.",
+  "school": ""
+ },
+ {
+  "id": "sophmills",
+  "tree": "gov",
+  "tier": 3,
+  "name": "Sophisticated Lumber Mills",
+  "cost": 200,
+  "req": "refmills",
+  "blurb": "Every Lumber Mill gives another +1 wood.",
+  "school": ""
+ },
+ {
+  "id": "sophmines",
+  "tree": "gov",
+  "tier": 3,
+  "name": "Sophisticated Gold Mines",
+  "cost": 220,
+  "req": "refmines",
+  "blurb": "Every Gold Mine gives another +2 gold.",
+  "school": ""
+ },
+ {
+  "id": "w-pike",
+  "tree": "mil",
+  "tier": 1,
+  "name": "Pikes",
+  "cost": 40,
+  "req": "",
+  "blurb": "Pike for the Armory: attack 7, two-handed. +50% damage against cavalry.",
+  "school": ""
+ },
+ {
+  "id": "w-bastard",
+  "tree": "mil",
+  "tier": 1,
+  "name": "Bastard Swords",
+  "cost": 40,
+  "req": "",
+  "blurb": "Bastard Sword for the Armory: attack 8, one-handed. Parry: take 10% less damage.",
+  "school": ""
+ },
+ {
+  "id": "w-mace",
+  "tree": "mil",
+  "tier": 1,
+  "name": "Maces",
+  "cost": 40,
+  "req": "",
+  "blurb": "Mace for the Armory: attack 7, two-handed. Crushing: ignores half of enemy armor.",
+  "school": ""
+ },
+ {
+  "id": "s-round",
+  "tree": "mil",
+  "tier": 1,
+  "name": "Round Shields",
+  "cost": 40,
+  "req": "",
+  "blurb": "Round Shield for one-handed designs: +2 armor.",
+  "school": ""
+ },
+ {
+  "id": "a-leather2",
+  "tree": "mil",
+  "tier": 1,
+  "name": "Leather II Armor",
+  "cost": 40,
+  "req": "",
+  "blurb": "Leather II armor for the Armory: 2 armor, +10% speed.",
+  "school": ""
+ },
+ {
+  "id": "a-chain1",
+  "tree": "mil",
+  "tier": 1,
+  "name": "Chain I Armor",
+  "cost": 40,
+  "req": "",
+  "blurb": "Chain I armor for the Armory: 3 armor, no speed change.",
+  "school": ""
+ },
+ {
+  "id": "horse-breeding",
+  "tree": "mil",
+  "tier": 1,
+  "name": "Horse Breeding",
+  "cost": 60,
+  "req": "",
+  "blurb": "Cavalry can ride Arabians (fastest, fragile) or Mongolian horses (cheap to feed, at home in forest and swamp, weak charge).",
+  "school": ""
+ },
+ {
+  "id": "w-polearm",
+  "tree": "mil",
+  "tier": 2,
+  "name": "Polearms",
+  "cost": 100,
+  "req": "w-pike",
+  "blurb": "Polearm for the Armory: attack 9, two-handed. +50% damage against cavalry.",
+  "school": ""
+ },
+ {
+  "id": "w-longsword",
+  "tree": "mil",
+  "tier": 2,
+  "name": "Long Swords",
+  "cost": 100,
+  "req": "w-bastard",
+  "blurb": "Long Sword for the Armory: attack 10, one-handed. Parry: take 10% less damage.",
+  "school": ""
+ },
+ {
+  "id": "w-morningstar",
+  "tree": "mil",
+  "tier": 2,
+  "name": "Morning Stars",
+  "cost": 100,
+  "req": "w-mace",
+  "blurb": "Morning Star for the Armory: attack 9, two-handed. Crushing: ignores half of enemy armor.",
+  "school": ""
+ },
+ {
+  "id": "s-kite",
+  "tree": "mil",
+  "tier": 2,
+  "name": "Kite Shields",
+  "cost": 100,
+  "req": "s-round",
+  "blurb": "Kite Shield for one-handed designs: +4 armor.",
+  "school": ""
+ },
+ {
+  "id": "a-leather3",
+  "tree": "mil",
+  "tier": 2,
+  "name": "Leather III Armor",
+  "cost": 100,
+  "req": "a-leather2",
+  "blurb": "Leather III armor for the Armory: 3 armor, +10% speed.",
+  "school": ""
+ },
+ {
+  "id": "a-chain2",
+  "tree": "mil",
+  "tier": 2,
+  "name": "Chain II Armor",
+  "cost": 100,
+  "req": "a-chain1",
+  "blurb": "Chain II armor for the Armory: 5 armor, no speed change.",
+  "school": ""
+ },
+ {
+  "id": "a-plate1",
+  "tree": "mil",
+  "tier": 2,
+  "name": "Plate I Armor",
+  "cost": 100,
+  "req": "a-chain1",
+  "blurb": "Plate I armor for the Armory: 6 armor, \u221215% speed.",
+  "school": ""
+ },
+ {
+  "id": "a-plate2",
+  "tree": "mil",
+  "tier": 2,
+  "name": "Plate II Armor",
+  "cost": 100,
+  "req": "a-plate1",
+  "blurb": "Plate II armor for the Armory: 9 armor, \u221215% speed.",
+  "school": ""
+ },
+ {
+  "id": "horse-training",
+  "tree": "mil",
+  "tier": 2,
+  "name": "Horse Training",
+  "cost": 100,
+  "req": "horse-breeding",
+  "blurb": "Unlocks Friesians (the hardest charge) and armored Percherons (toughest, but slow and hungry).",
+  "school": ""
+ },
+ {
+  "id": "w-halberd",
+  "tree": "mil",
+  "tier": 3,
+  "name": "Halberds",
+  "cost": 200,
+  "req": "w-polearm",
+  "blurb": "Halberd for the Armory: attack 12, two-handed. +50% damage against cavalry.",
+  "school": ""
+ },
+ {
+  "id": "w-greatsword",
+  "tree": "mil",
+  "tier": 3,
+  "name": "Great Swords",
+  "cost": 200,
+  "req": "w-longsword",
+  "blurb": "Great Sword for the Armory: attack 14, two-handed. Parry: take 10% less damage.",
+  "school": ""
+ },
+ {
+  "id": "w-warhammer",
+  "tree": "mil",
+  "tier": 3,
+  "name": "War Hammers",
+  "cost": 200,
+  "req": "w-morningstar",
+  "blurb": "War Hammer for the Armory: attack 12, two-handed. Crushing: ignores half of enemy armor.",
+  "school": ""
+ },
+ {
+  "id": "s-tower",
+  "tree": "mil",
+  "tier": 3,
+  "name": "Tower Shields",
+  "cost": 200,
+  "req": "s-kite",
+  "blurb": "Tower Shield for one-handed designs: +7 armor, but 8% slower.",
+  "school": ""
+ },
+ {
+  "id": "s-aegis",
+  "tree": "mil",
+  "tier": 3,
+  "name": "Aegiss",
+  "cost": 200,
+  "req": "s-tower",
+  "blurb": "Aegis for one-handed designs: +10 armor.",
+  "school": ""
+ },
+ {
+  "id": "a-leather4",
+  "tree": "mil",
+  "tier": 3,
+  "name": "Leather IV Armor",
+  "cost": 200,
+  "req": "a-leather3",
+  "blurb": "Leather IV armor for the Armory: 4 armor, +10% speed.",
+  "school": ""
+ },
+ {
+  "id": "a-chain3",
+  "tree": "mil",
+  "tier": 3,
+  "name": "Chain III Armor",
+  "cost": 200,
+  "req": "a-chain2",
+  "blurb": "Chain III armor for the Armory: 7 armor, no speed change.",
+  "school": ""
+ },
+ {
+  "id": "a-chain4",
+  "tree": "mil",
+  "tier": 3,
+  "name": "Chain IV Armor",
+  "cost": 200,
+  "req": "a-chain3",
+  "blurb": "Chain IV armor for the Armory: 9 armor, no speed change.",
+  "school": ""
+ },
+ {
+  "id": "a-plate3",
+  "tree": "mil",
+  "tier": 3,
+  "name": "Plate III Armor",
+  "cost": 200,
+  "req": "a-plate2",
+  "blurb": "Plate III armor for the Armory: 12 armor, \u221215% speed.",
+  "school": ""
+ },
+ {
+  "id": "a-plate4",
+  "tree": "mil",
+  "tier": 3,
+  "name": "Plate IV Armor",
+  "cost": 200,
+  "req": "a-plate3",
+  "blurb": "Plate IV armor for the Armory: 15 armor, \u221215% speed.",
+  "school": ""
+ },
+ {
+  "id": "school-life",
+  "tree": "mag",
+  "tier": 1,
+  "name": "School of Life",
+  "cost": 40,
+  "req": "",
+  "blurb": "Commit to Life magic: harvests, protective skins, healing and the forest.",
+  "school": ""
+ },
+ {
+  "id": "school-death",
+  "tree": "mag",
+  "tier": 1,
+  "name": "School of Death",
+  "cost": 40,
+  "req": "",
+  "blurb": "Commit to Death magic: cursed weapons, mountain passages, the risen dead and grave riches.",
+  "school": ""
+ },
+ {
+  "id": "school-arcane",
+  "tree": "mag",
+  "tier": 1,
+  "name": "School of the Arcane",
+  "cost": 40,
+  "req": "",
+  "blurb": "Commit to Arcane magic: far sight from towers, mind reading, trading across worlds, traps and rifts.",
+  "school": ""
+ },
+ {
+  "id": "harvest",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Harvest",
+  "cost": 40,
+  "req": "school-life",
+  "blurb": "Mages can cast Harvest: +10% food from all Farms while the Mage keeps casting, up to 3 minutes. 6-minute nationwide cooldown.",
+  "school": "life"
+ },
+ {
+  "id": "bountiful",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Bountiful Harvest",
+  "cost": 100,
+  "req": "harvest",
+  "blurb": "Harvest gives +20% farm food and 200 food when cast. Cooldown drops to 4 minutes.",
+  "school": "life"
+ },
+ {
+  "id": "magnificent",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Magnificent Harvest",
+  "cost": 200,
+  "req": "bountiful",
+  "blurb": "Harvest gives +30% farm food for as long as the Mage casts, and 400 food for every full 3 minutes of casting. No cooldown.",
+  "school": "life"
+ },
+ {
+  "id": "skin",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Hardened Skin",
+  "cost": 40,
+  "req": "school-life",
+  "blurb": "Autocast: when an army with a Mage starts a battle, its soldiers get +5% health. 5-minute cooldown per army.",
+  "school": "life"
+ },
+ {
+  "id": "stoneskin",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Stone Skin",
+  "cost": 100,
+  "req": "skin",
+  "blurb": "Skin spell gives +10% health; cooldown 3 minutes.",
+  "school": "life"
+ },
+ {
+  "id": "diamondskin",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Diamond Skin",
+  "cost": 200,
+  "req": "stoneskin",
+  "blurb": "Skin spell gives +15% health; cooldown 90 seconds.",
+  "school": "life"
+ },
+ {
+  "id": "mending",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Mending",
+  "cost": 40,
+  "req": "school-life",
+  "blurb": "Mages heal an army\u2019s wounds back to full over 1 minute. 3-minute cooldown.",
+  "school": "life"
+ },
+ {
+  "id": "rejuvenation",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Rejuvenation",
+  "cost": 100,
+  "req": "mending",
+  "blurb": "Healing takes 30 seconds; cooldown 2 minutes.",
+  "school": "life"
+ },
+ {
+  "id": "restoration",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Restoration",
+  "cost": 200,
+  "req": "rejuvenation",
+  "blurb": "Healing is instant and has no cooldown.",
+  "school": "life"
+ },
+ {
+  "id": "forest",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Speak with the Forest",
+  "cost": 40,
+  "req": "school-life",
+  "blurb": "A Mage can open a path through a border of trees after 2 minutes of casting. Lumber Mills are unaffected.",
+  "school": "life"
+ },
+ {
+  "id": "commune",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Commune with Nature",
+  "cost": 100,
+  "req": "forest",
+  "blurb": "Opening a forest path takes 1 minute.",
+  "school": "life"
+ },
+ {
+  "id": "arboreal",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Arboreal Restoration",
+  "cost": 200,
+  "req": "commune",
+  "blurb": "A Mage can close a forest path again with 1 minute of casting.",
+  "school": "life"
+ },
+ {
+  "id": "curse1",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Cursed Weapons I",
+  "cost": 40,
+  "req": "school-death",
+  "blurb": "Autocast: when an army with a Mage starts a battle, its weapons deal +5% damage. 5-minute cooldown per army.",
+  "school": "death"
+ },
+ {
+  "id": "curse2",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Cursed Weapons II",
+  "cost": 100,
+  "req": "curse1",
+  "blurb": "Cursed Weapons deal +10% damage; cooldown 3 minutes.",
+  "school": "death"
+ },
+ {
+  "id": "curse3",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Cursed Weapons III",
+  "cost": 200,
+  "req": "curse2",
+  "blurb": "Cursed Weapons deal +15% damage; cooldown 90 seconds.",
+  "school": "death"
+ },
+ {
+  "id": "underworld",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Underworld Passage",
+  "cost": 40,
+  "req": "school-death",
+  "blurb": "A Mage can open a tunnel through a mountain border after 2 minutes of casting.",
+  "school": "death"
+ },
+ {
+  "id": "hallways",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Hallways of Pain",
+  "cost": 100,
+  "req": "underworld",
+  "blurb": "Opening a mountain tunnel takes 1 minute.",
+  "school": "death"
+ },
+ {
+  "id": "sealed",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Sealed Gates",
+  "cost": 200,
+  "req": "hallways",
+  "blurb": "A Mage can seal a mountain tunnel again with 1 minute of casting.",
+  "school": "death"
+ },
+ {
+  "id": "risen",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Risen Dead",
+  "cost": 40,
+  "req": "school-death",
+  "blurb": "Autocast: an army with a Mage that isn\u2019t using Cursed Weapons raises 1 fallen soldier every 15 seconds in battle. 2-minute cooldown after the battle.",
+  "school": "death"
+ },
+ {
+  "id": "necro",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Necromantic Energies",
+  "cost": 100,
+  "req": "risen",
+  "blurb": "Raises 2 fallen soldiers every 15 seconds.",
+  "school": "death"
+ },
+ {
+  "id": "armyofdeath",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Army of Death",
+  "cost": 200,
+  "req": "necro",
+  "blurb": "Raises 3 fallen soldiers every 15 seconds.",
+  "school": "death"
+ },
+ {
+  "id": "graverob",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Grave Robbing",
+  "cost": 40,
+  "req": "school-death",
+  "blurb": "A 5-minute cast that yields 500 gold.",
+  "school": "death"
+ },
+ {
+  "id": "deathtax",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Death Taxes",
+  "cost": 100,
+  "req": "graverob",
+  "blurb": "The 5-minute cast yields 1000 gold.",
+  "school": "death"
+ },
+ {
+  "id": "charon",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Charon\u2019s Riches",
+  "cost": 200,
+  "req": "deathtax",
+  "blurb": "The 5-minute cast yields 2000 gold.",
+  "school": "death"
+ },
+ {
+  "id": "arcscouts",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Arcane Scouts",
+  "cost": 40,
+  "req": "school-arcane",
+  "blurb": "Every Mage Tower (and its upgrades) sees all neighboring provinces, permanently.",
+  "school": "arcane"
+ },
+ {
+  "id": "arcvision",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Arcane Vision",
+  "cost": 100,
+  "req": "arcscouts",
+  "blurb": "Mage Towers reveal stealthed units within their sight.",
+  "school": "arcane"
+ },
+ {
+  "id": "clearthoughts",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Clear Thoughts",
+  "cost": 40,
+  "req": "school-arcane",
+  "blurb": "While a Mage casts, every army within 3 provinces of him is revealed. No cooldown.",
+  "school": "arcane"
+ },
+ {
+  "id": "mindread",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Mind Reading",
+  "cost": 100,
+  "req": "clearthoughts",
+  "blurb": "While a Mage casts, every army on the map is revealed. No cooldown.",
+  "school": "arcane"
+ },
+ {
+  "id": "trading",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Interdimensional Trading",
+  "cost": 40,
+  "req": "school-arcane",
+  "blurb": "A 2-minute cast that yields 100 food, 100 gold and 100 wood.",
+  "school": "arcane"
+ },
+ {
+  "id": "stockmarket",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Interdimensional Stockmarket",
+  "cost": 100,
+  "req": "trading",
+  "blurb": "The 2-minute cast yields 200 of each resource.",
+  "school": "arcane"
+ },
+ {
+  "id": "stasis",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Stasis Trap",
+  "cost": 40,
+  "req": "school-arcane",
+  "blurb": "A Mage sets a trap in his province; the next enemy army there can\u2019t leave for 10 seconds (it can still fight). One trap at a time; 1-minute cooldown after it springs.",
+  "school": "arcane"
+ },
+ {
+  "id": "prison",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Stasis Prison",
+  "cost": 100,
+  "req": "stasis",
+  "blurb": "The trap holds for 20 seconds.",
+  "school": "arcane"
+ },
+ {
+  "id": "rift",
+  "tree": "mag",
+  "tier": 1,
+  "name": "Teleportation Rift",
+  "cost": 40,
+  "req": "school-arcane",
+  "blurb": "A Mage opens a rift where he stands. Later, a casting Mage anywhere can send one army through it to the rift. Single use.",
+  "school": "arcane"
+ },
+ {
+  "id": "portal",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Teleportation Portal",
+  "cost": 100,
+  "req": "rift",
+  "blurb": "Rifts can be used 3 times.",
+  "school": "arcane"
+ },
+ {
+  "id": "grandstave",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Grand Staves",
+  "cost": 100,
+  "req": "",
+  "blurb": "Mages can carry a Grand Stave: attack 6 (Stave 4).",
+  "school": "*"
+ },
+ {
+  "id": "mythicstave",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Mythic Staves",
+  "cost": 200,
+  "req": "grandstave",
+  "blurb": "Mages can carry a Mythic Stave: attack 9.",
+  "school": "*"
+ },
+ {
+  "id": "crypticwand",
+  "tree": "mag",
+  "tier": 2,
+  "name": "Cryptic Wands",
+  "cost": 100,
+  "req": "",
+  "blurb": "Mages can carry a Cryptic Wand: attack 3 (Wand 2), leaving a hand free for a shield.",
+  "school": "*"
+ },
+ {
+  "id": "enigmaticwand",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Enigmatic Wands",
+  "cost": 200,
+  "req": "crypticwand",
+  "blurb": "Mages can carry an Enigmatic Wand: attack 5, with a shield.",
+  "school": "*"
+ },
+ {
+  "id": "abandon",
+  "tree": "mag",
+  "tier": 3,
+  "name": "Abandon Magic School",
+  "cost": 300,
+  "req": "",
+  "blurb": "Costs 1000 gold to begin. When finished, your school and all of its spells are forgotten, and you can choose a new school.",
+  "school": "*"
+ }
+]
