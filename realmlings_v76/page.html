@@ -1,0 +1,690 @@
+<title>Realmlings World Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Baloo+2:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: one full-bleed map canvas; chunky comic-style control chips float over the sea at the corners. */
+:root {
+  --sea: #2b7fc4;
+  --sea-deep: #1d5f9e;
+  --ink: #1d1a22;
+  --chip: #fbfdff;
+  --chip-text: #1d1a22;
+  --muted: #5a6475;
+  --sun: #ffc93c;
+  --sun-dark: #e8a817;
+  --good: #3e9b4f;
+  --bad: #d64545;
+  --font-display: "Lilita One", "Arial Rounded MT Bold", "Trebuchet MS", sans-serif;
+  --font-ui: "Baloo 2", "Trebuchet MS", system-ui, sans-serif;
+  color-scheme: light;
+}
+html, body { height: 100%; }
+[hidden] { display: none !important; }
+body { background: var(--sea); color: var(--chip-text); font-family: var(--font-ui); overflow: hidden; }
+#map { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; }
+#map.dragging { cursor: grabbing; }
+
+.chip {
+  background: var(--chip); color: var(--chip-text);
+  border: 3px solid var(--ink); border-radius: 14px;
+  box-shadow: 0 4px 0 var(--ink);
+}
+.hud { position: fixed; z-index: 5; display: flex; gap: 10px; pointer-events: none; }
+.hud > * { pointer-events: auto; }
+.top { top: calc(env(safe-area-inset-top, 0px) + 12px); left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); flex-wrap: wrap; align-items: flex-start; justify-content: space-between; }
+.brand { padding: 6px 14px 8px; display: flex; flex-direction: column; line-height: 1; }
+.brand h1 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 30px; letter-spacing: 0.5px; color: var(--sun); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); }
+.brand span { font-size: 12px; font-weight: 700; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin-top: 4px; }
+
+.controls { padding: 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.controls label.seed { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; }
+.controls input[type=text] { font: 600 14px var(--font-ui); width: 140px; padding: 4px 8px; border: 2px solid var(--ink); border-radius: 9px; background: #fff; color: var(--chip-text); }
+button { font: 800 14px var(--font-ui); border: 2.5px solid var(--ink); border-radius: 10px; padding: 4px 12px; background: #fff; color: var(--chip-text); cursor: pointer; box-shadow: 0 3px 0 var(--ink); transition: transform .08s, box-shadow .08s; }
+button:active { transform: translateY(3px); box-shadow: 0 0 0 var(--ink); }
+button.primary { background: var(--sun); }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--sun-dark); outline-offset: 2px; }
+.toggle { display: flex; align-items: center; gap: 5px; font-weight: 700; font-size: 13px; cursor: pointer; user-select: none; }
+.toggle input { width: 16px; height: 16px; accent-color: var(--sun-dark); }
+
+.bottom { bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); left: max(16px, env(safe-area-inset-left, 0px)); right: max(16px, env(safe-area-inset-right, 0px)); justify-content: space-between; align-items: flex-end; flex-wrap: wrap-reverse; }
+details.chip { padding: 6px 12px 8px; max-width: min(340px, 100%); min-width: 0; max-height: calc(100vh - 220px); overflow-y: auto; }
+details.chip summary { font-family: var(--font-display); font-size: 17px; cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px; }
+details.chip summary::-webkit-details-marker { display: none; }
+details.chip summary::after { content: "▾"; font-family: var(--font-ui); font-size: 14px; margin-left: auto; transition: transform .15s; }
+details.chip:not([open]) summary::after { transform: rotate(-90deg); }
+.badge { font: 800 12px var(--font-ui); background: var(--good); color: #fff; border: 2px solid var(--ink); border-radius: 999px; padding: 0 8px; }
+.badge.bad { background: var(--bad); }
+
+.legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 14px; margin-top: 6px; font-size: 13px; font-weight: 600; }
+.legend h3 { grid-column: 1 / -1; margin: 6px 0 0; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+.legend div { display: flex; align-items: center; gap: 7px; }
+.sw { width: 18px; height: 14px; border: 2px solid var(--ink); border-radius: 4px; flex: none; }
+.legend img { width: 22px; height: 22px; flex: none; }
+
+.rules { list-style: none; padding: 0; margin: 6px 0 0; display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.rules li { display: grid; grid-template-columns: 20px 1fr; gap: 4px; align-items: start; }
+.rules li b { font-weight: 700; }
+.rules li small { display: block; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.mark { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--ink); display: grid; place-items: center; font-size: 11px; font-weight: 800; color: #fff; background: var(--good); margin-top: 2px; }
+.mark.bad { background: var(--bad); }
+
+.zoom { position: fixed; z-index: 4; right: max(16px, env(safe-area-inset-right, 0px)); top: calc(env(safe-area-inset-top, 0px) + 92px); display: flex; flex-direction: column; gap: 8px; }
+.zoom button { width: 40px; height: 40px; padding: 0; font-size: 20px; line-height: 1; }
+
+#tip { position: fixed; z-index: 6; pointer-events: none; padding: 6px 10px 7px; font-size: 13px; line-height: 1.25; max-width: 240px; transform: translate(14px, 14px); }
+#tip strong { font-family: var(--font-display); font-weight: 400; font-size: 16px; display: block; }
+#tip .terr { display: inline-block; padding: 0 7px; border-radius: 999px; border: 2px solid var(--ink); font-weight: 800; font-size: 12px; margin: 2px 0 3px; }
+#tip .row { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+#busy { position: fixed; inset: 0; z-index: 8; display: grid; place-items: center; pointer-events: none; }
+#busy div { font-family: var(--font-display); font-size: 22px; padding: 10px 18px; }
+
+@media (max-width: 640px) {
+  .brand h1 { font-size: 24px; }
+  .controls input[type=text] { width: 110px; }
+  .zoom { top: auto; bottom: calc(env(safe-area-inset-bottom, 0px) + 74px); }
+}
+</style>
+
+<canvas id="map" aria-label="Generated island map of 200 provinces"></canvas>
+
+<div class="hud top">
+  <div class="brand chip"><h1>Realmlings</h1><span>World generator · 200 provinces</span></div>
+  <div class="controls chip">
+    <label class="seed" for="seed">Seed <input id="seed" type="text" value="realmlings" spellcheck="false" autocomplete="off"></label>
+    <button id="build" type="button">Build</button>
+    <button id="reroll" class="primary" type="button">New world</button>
+    <label class="toggle" for="optPass"><input id="optPass" type="checkbox"> Passages</label>
+    <label class="toggle" for="optIds"><input id="optIds" type="checkbox"> Numbers</label>
+  </div>
+</div>
+
+<div class="hud bottom">
+  <details class="chip" id="legendBox" open>
+    <summary>Legend</summary>
+    <div class="legend" id="legend"></div>
+  </details>
+  <details class="chip" id="rulesBox" open>
+    <summary>World rules <span class="badge" id="rulesBadge">…</span></summary>
+    <ul class="rules" id="rules"></ul>
+  </details>
+</div>
+
+<div class="zoom">
+  <button id="zin" type="button" aria-label="Zoom in">+</button>
+  <button id="zout" type="button" aria-label="Zoom out">−</button>
+  <button id="zfit" type="button" aria-label="Fit island" style="font-size:15px">⤢</button>
+</div>
+
+<div id="tip" class="chip" hidden></div>
+<div id="busy" hidden><div class="chip">Raising the island…</div></div>
+
+<script>
+/*GEN*/
+</script>
+<script>
+(function () {
+'use strict';
+const $ = s => document.querySelector(s);
+const cv = $('#map'), ctx = cv.getContext('2d');
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+// ---------- palette (canvas) ----------
+const OL = '#1d1a22';
+const TER = {
+  grassland: { base: '#9bd95f', shade: '#76b744', label: 'Grassland' },
+  forest:    { base: '#4ba557', shade: '#378243', label: 'Forest' },
+  desert:    { base: '#f4cd72', shade: '#d9a94c', label: 'Desert' },
+  swamp:     { base: '#7b9c86', shade: '#5d7d69', label: 'Swamp' }
+};
+const WILDS = '#4b5a30', SAND = '#f2dfa2', SEA = '#2b7fc4', SHALLOW = '#55a6dc', FOAM = '#d8f1ff';
+
+// ---------- seeded random for decoration ----------
+function rngFrom(str) {
+  let h = 2166136261 >>> 0; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  return function () { h |= 0; h = (h + 0x6D2B79F5) | 0; let t = Math.imul(h ^ (h >>> 15), 1 | h); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+// ---------- sprites (vector art baked to small canvases) ----------
+const SPR = {};
+function def(name, w, h, ax, ay, fn) { SPR[name] = { w, h, ax, ay, fn, cv: null }; }
+function blobUnion(g, circles, fill, lw) {
+  g.lineWidth = lw; g.strokeStyle = OL;
+  for (const [x, y, r] of circles) { g.beginPath(); g.arc(x, y, r, 0, 7); g.stroke(); }
+  g.fillStyle = fill;
+  for (const [x, y, r] of circles) { g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+}
+function polyPath(g, pts) { g.beginPath(); pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); }
+function outlined(g, pts, fill, lw = 1.8) { polyPath(g, pts); g.fillStyle = fill; g.fill(); g.lineWidth = lw; g.strokeStyle = OL; g.lineJoin = 'round'; g.stroke(); }
+
+const treeShapes = [
+  { c: [[0, -15, 8.5], [-6.5, -10, 6], [6.5, -10.5, 6]], col: '#3f9a3c', hi: '#72c85b' },
+  { c: [[0, -16, 9], [-5, -9, 6.5], [5.5, -9, 6.5], [0, -22, 5]], col: '#2f8a3f', hi: '#5fbf5a' },
+  { c: [[0, -14, 9.5], [-5, -18, 5]], col: '#4aa23f', hi: '#86d36a' }
+];
+treeShapes.forEach((t, i) => def('tree' + i, 30, 34, 15, 31, g => {
+  g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(1, 0, 9, 3, 0, 0, 7); g.fill();
+  outlined(g, [[-2.2, 0], [-2.2, -7], [2.2, -7], [2.2, 0]], '#7a4a2a', 1.6);
+  blobUnion(g, t.c, t.col, 3.4);
+  g.fillStyle = t.hi; g.beginPath(); g.arc(t.c[0][0] - 3, t.c[0][1] - 3, 3.2, 0, 7); g.fill();
+  g.fillStyle = 'rgba(0,0,0,0.13)'; g.beginPath(); g.arc(t.c[0][0] + 2, t.c[0][1] + 4, t.c[0][2] * 0.7, 0, Math.PI); g.fill();
+}));
+[0, 1].forEach(i => def('pine' + i, 24, 36, 12, 33, g => {
+  const s = i ? 1.1 : 1;
+  g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(1, 0, 8, 3, 0, 0, 7); g.fill();
+  outlined(g, [[-2, 0], [-2, -5], [2, -5], [2, 0]], '#6b3f22', 1.6);
+  const layers = [[-9 * s, -4, 9 * s, -4, 0, -16 * s], [-7.5 * s, -11, 7.5 * s, -11, 0, -23 * s], [-5.5 * s, -18, 5.5 * s, -18, 0, -29 * s]];
+  g.lineWidth = 3.4; g.strokeStyle = OL; g.lineJoin = 'round';
+  layers.forEach(([a, b, c, d, e, f]) => { polyPath(g, [[a, b], [c, d], [e, f]]); g.stroke(); });
+  layers.forEach(([a, b, c, d, e, f]) => { polyPath(g, [[a, b], [c, d], [e, f]]); g.fillStyle = '#2b7a45'; g.fill(); polyPath(g, [[a, b], [e, f], [e * 0.5 + a * 0.5 + 2, b]]); g.fillStyle = '#3f9c58'; g.fill(); });
+}));
+[0, 1, 2].forEach(i => def('mtn' + i, 40, 36, 20, 33, g => {
+  const s = [1, 0.85, 1.12][i], h = 25 * s, w = 15 * s;
+  g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(2, 0, w + 2, 3.5, 0, 0, 7); g.fill();
+  const peak = [i === 1 ? 2 : -1, -h];
+  outlined(g, [[-w, 0], peak, [w, 0]], '#9097a6', 2);
+  polyPath(g, [peak, [w, 0], [peak[0] + 2, 0]]); g.fillStyle = '#6d7383'; g.fill();
+  const sn = 0.36;
+  outlined(g, [[peak[0] - w * sn, -h * (1 - sn)], peak, [peak[0] + w * sn, -h * (1 - sn)], [peak[0] + w * 0.15, -h * (1 - sn) + 3], [peak[0], -h * (1 - sn) - 1], [peak[0] - w * 0.17, -h * (1 - sn) + 3]], '#f4f7ff', 1.6);
+  g.lineWidth = 2; g.strokeStyle = OL; polyPath(g, [[-w, 0], peak, [w, 0]]); g.stroke();
+}));
+def('pillar', 18, 30, 9, 27, g => {
+  g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(1, 0, 7, 2.5, 0, 0, 7); g.fill();
+  outlined(g, [[-6, 0], [-6, -2.5], [6, -2.5], [6, 0]], '#b5ad9b');
+  outlined(g, [[-4, -2.5], [-4, -20], [-1.5, -23], [0.5, -19], [2.5, -22], [4, -18], [4, -2.5]], '#d8d1bf');
+  g.fillStyle = '#b8b09e'; g.fillRect(1.6, -18, 2.4, 15.5);
+  blobUnion(g, [[-3.5, -9, 2.6], [-1.5, -12.5, 2.1], [3.5, -5, 2.4]], '#4fae4b', 1.6);
+});
+def('arch', 30, 30, 15, 27, g => {
+  g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(0, 0, 13, 3, 0, 0, 7); g.fill();
+  outlined(g, [[-12, 0], [-12, -16], [-10, -20], [-5, -23], [-1, -22], [-3, -19], [-6, -16], [-7, -12], [-7, 0]], '#d8d1bf');
+  outlined(g, [[7, 0], [7, -11], [9, -14], [12, -12], [12, 0]], '#d8d1bf');
+  blobUnion(g, [[-9, -18, 3], [-5, -21, 2.4], [10, -11, 2.6], [-10, -6, 2.4]], '#4fae4b', 1.6);
+});
+[0, 1].forEach(i => def('rock' + i, 18, 14, 9, 11, g => {
+  g.fillStyle = 'rgba(0,0,0,0.2)'; g.beginPath(); g.ellipse(1, 0, 7, 2.5, 0, 0, 7); g.fill();
+  outlined(g, i ? [[-6, 0], [-7, -4], [-3, -8], [3, -8], [6, -3], [5, 0]] : [[-5, 0], [-6, -5], [-1, -7], [5, -5], [6, 0]], '#a7a9b3');
+  g.fillStyle = '#d0d2da'; g.beginPath(); g.ellipse(-2, -5, 2, 1.2, 0, 0, 7); g.fill();
+}));
+def('tuft', 12, 9, 6, 8, g => { g.strokeStyle = '#5c9c38'; g.lineWidth = 1.6; g.lineCap = 'round'; for (const [a, b] of [[-4, -5], [0, -7], [4, -5]]) { g.beginPath(); g.moveTo(0, 0); g.lineTo(a, b); g.stroke(); } });
+['#fff3f9', '#ffe066', '#ff8fb1'].forEach((c, i) => def('flower' + i, 8, 8, 4, 4, g => { g.fillStyle = c; g.strokeStyle = OL; g.lineWidth = 1; for (let k = 0; k < 5; k++) { g.beginPath(); g.arc(Math.cos(k * 1.256) * 1.8, Math.sin(k * 1.256) * 1.8, 1.4, 0, 7); g.fill(); } g.fillStyle = '#e58c1a'; g.beginPath(); g.arc(0, 0, 1, 0, 7); g.fill(); }));
+def('dune', 28, 10, 14, 7, g => { g.lineCap = 'round'; g.strokeStyle = '#d29a3e'; g.lineWidth = 2.4; g.beginPath(); g.moveTo(-12, 2); g.quadraticCurveTo(-2, -7, 12, 2); g.stroke(); g.strokeStyle = '#fbe3a6'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(-9, -0.5); g.quadraticCurveTo(-3, -5, 3, -3.2); g.stroke(); });
+def('cactus', 16, 22, 8, 19, g => {
+  g.fillStyle = 'rgba(0,0,0,0.2)'; g.beginPath(); g.ellipse(1, 0, 5, 2, 0, 0, 7); g.fill();
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  const path = () => { g.beginPath(); g.moveTo(0, 0); g.lineTo(0, -15); g.moveTo(0, -7); g.lineTo(-4.5, -7); g.lineTo(-4.5, -11); g.moveTo(0, -9); g.lineTo(4.5, -9); g.lineTo(4.5, -13); };
+  path(); g.strokeStyle = OL; g.lineWidth = 5.6; g.stroke(); path(); g.strokeStyle = '#5bb24c'; g.lineWidth = 3; g.stroke();
+});
+def('puddle', 26, 14, 13, 7, g => { g.beginPath(); g.ellipse(0, 0, 11, 5.5, 0, 0, 7); g.fillStyle = '#3e6f73'; g.fill(); g.lineWidth = 1.8; g.strokeStyle = OL; g.stroke(); g.fillStyle = 'rgba(200,240,240,0.5)'; g.beginPath(); g.ellipse(-4, -2, 3.5, 1.2, 0, 0, 7); g.fill(); });
+def('reeds', 12, 18, 6, 16, g => { g.lineCap = 'round'; for (const [x, h] of [[-3, 12], [0, 15], [3, 11]]) { g.strokeStyle = '#4d7a3a'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(x * 0.6, 0); g.lineTo(x, -h); g.stroke(); g.fillStyle = '#7a4a2a'; g.beginPath(); g.ellipse(x, -h + 2, 1.4, 2.8, 0, 0, 7); g.fill(); } });
+def('lily', 12, 9, 6, 4.5, g => { g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 4, 0.5, 6); g.closePath(); g.fillStyle = '#5fbf5a'; g.fill(); g.lineWidth = 1.2; g.strokeStyle = OL; g.stroke(); });
+def('shroom', 12, 12, 6, 10, g => { outlined(g, [[-1.5, 0], [-1.5, -4], [1.5, -4], [1.5, 0]], '#fff3df', 1.2); g.beginPath(); g.arc(0, -4, 4.5, Math.PI, 0); g.closePath(); g.fillStyle = '#e04a3f'; g.fill(); g.lineWidth = 1.4; g.strokeStyle = OL; g.stroke(); g.fillStyle = '#fff'; g.beginPath(); g.arc(-1.6, -6, 0.9, 0, 7); g.arc(1.8, -5.2, 0.8, 0, 7); g.fill(); });
+
+[0, 1].forEach(i => def('cypress' + i, 34, 54, 17, 50, g => {
+  const s = i ? 1.12 : 1;
+  g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(1, 0, 11, 3.5, 0, 0, 7); g.fill();
+  outlined(g, [[-12, 0], [-10.5, -5], [-9, 0]], '#8a6a4a', 1.3); outlined(g, [[9, 0], [10.3, -4], [11.6, 0]], '#8a6a4a', 1.3);
+  outlined(g, [[-7, 0], [-4, -4], [-2.4, -12], [-2, -32 * s], [2, -32 * s], [2.4, -12], [4, -4], [7, 0]], '#8f6b48', 1.7);
+  g.strokeStyle = 'rgba(0,0,0,0.25)'; g.lineWidth = 1; g.beginPath(); g.moveTo(0.6, -3); g.lineTo(0.8, -26 * s); g.stroke();
+  const L = [[0, -42 * s, 9, 3.6], [-6, -36 * s, 8.5, 3.4], [6.5, -37 * s, 8, 3.2], [-1, -31 * s, 10, 3.4], [3, -46 * s, 6, 3]];
+  g.lineWidth = 3.2; g.strokeStyle = OL;
+  L.forEach(([x, y, rx, ry]) => { g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.stroke(); });
+  g.fillStyle = '#7c9450'; L.forEach(([x, y, rx, ry]) => { g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill(); });
+  g.fillStyle = '#a2b96a'; L.forEach(([x, y, rx, ry]) => { g.beginPath(); g.ellipse(x - 1.5, y - 1.2, rx * 0.55, ry * 0.45, 0, 0, 7); g.fill(); });
+  g.strokeStyle = '#c3c9a6'; g.lineWidth = 1.2; g.lineCap = 'round';
+  [[-9, -35 * s, 6], [-3, -29 * s, 5], [5, -29 * s, 7], [11, -36 * s, 5]].forEach(([x, y, l]) => { g.beginPath(); g.moveTo(x, y); g.quadraticCurveTo(x + 1, y + l / 2, x - 0.5, y + l); g.stroke(); });
+}));
+
+let bakedScale = 0;
+function bake(scale) {
+  if (scale === bakedScale) return;
+  bakedScale = scale;
+  for (const s of Object.values(SPR)) {
+    const c = document.createElement('canvas');
+    c.width = Math.ceil(s.w * scale); c.height = Math.ceil(s.h * scale);
+    const g = c.getContext('2d'); g.scale(scale, scale); g.translate(s.ax, s.ay); s.fn(g);
+    s.cv = c;
+  }
+  cacheDirty = true;
+}
+function spriteURL(name, size) {
+  const s = SPR[name], c = document.createElement('canvas'), k = 3;
+  c.width = c.height = size * k; const g = c.getContext('2d');
+  const f = Math.min(size / s.w, size / s.h) * k; g.translate(c.width / 2 - (s.w / 2 - s.ax) * f, c.height / 2 + (s.ay - s.h / 2) * f); g.scale(f, f); s.fn(g);
+  return c.toDataURL();
+}
+
+// ---------- geometry ----------
+function centroid(pts) {
+  let a = 0, x = 0, y = 0;
+  for (let i = 0; i < pts.length; i++) { const [x0, y0] = pts[i], [x1, y1] = pts[(i + 1) % pts.length]; const f = x0 * y1 - x1 * y0; a += f; x += (x0 + x1) * f; y += (y0 + y1) * f; }
+  return [x / (3 * a), y / (3 * a)];
+}
+function insetPoly(pts, d, c) {
+  const n = pts.length, L = [];
+  for (let k = 0; k < n; k++) {
+    const a = pts[k], b = pts[(k + 1) % n]; let dx = b[0] - a[0], dy = b[1] - a[1]; const l = Math.hypot(dx, dy); dx /= l; dy /= l;
+    let nx = -dy, ny = dx; const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+    if ((c[0] - mx) * nx + (c[1] - my) * ny < 0) { nx = -nx; ny = -ny; }
+    L.push({ px: a[0] + nx * d[k], py: a[1] + ny * d[k], dx, dy });
+  }
+  return pts.map((o, k) => {
+    const A = L[(k - 1 + n) % n], B = L[k], den = A.dx * B.dy - A.dy * B.dx; let x, y;
+    if (Math.abs(den) < 1e-6) { x = B.px; y = B.py; }
+    else { const t = ((B.px - A.px) * B.dy - (B.py - A.py) * B.dx) / den; x = A.px + A.dx * t; y = A.py + A.dy * t; }
+    if (Math.hypot(x - o[0], y - o[1]) > Math.max(d[k], d[(k - 1 + n) % n]) * 3) { x = o[0] + (c[0] - o[0]) * 0.25; y = o[1] + (c[1] - o[1]) * 0.25; }
+    return [x, y];
+  });
+}
+function inPoly(x, y, pts) {
+  let inside = false;
+  for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+    const [xi, yi] = pts[i], [xj, yj] = pts[j];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+function distToEdges(x, y, pts) {
+  let d = Infinity;
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i], b = pts[(i + 1) % pts.length], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+    const t = Math.max(0, Math.min(1, ((x - a[0]) * dx + (y - a[1]) * dy) / l2));
+    d = Math.min(d, Math.hypot(x - a[0] - t * dx, y - a[1] - t * dy));
+  }
+  return d;
+}
+function roundedPath(g, pts, r) {
+  const n = pts.length; g.beginPath();
+  const m = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+  const s = m(pts[n - 1], pts[0]); g.moveTo(s[0], s[1]);
+  for (let i = 0; i < n; i++) { const p = pts[i], q = pts[(i + 1) % n], mq = m(p, q); g.arcTo(p[0], p[1], mq[0], mq[1], r); }
+  g.closePath();
+}
+
+// ---------- world prep ----------
+let world, G;
+function prep(w) {
+  const V = w.vertices, rnd = rngFrom(w.seed + ':decor');
+  const ek = (a, b) => a < b ? a + '_' + b : b + '_' + a;
+  const edgeBy = new Map(); w.edges.forEach(e => edgeBy.set(ek(e.v[0], e.v[1]), e));
+  const provs = w.provinces.map((p, i) => {
+    const pts = p.verts.map(v => V[v]);
+    const c = centroid(pts);
+    const kinds = pts.map((_, k) => { const e = edgeBy.get(ek(p.verts[k], p.verts[(k + 1) % pts.length])); return e ? (e.open ? 'open' : 'bar') : 'coast'; });
+    const inner = insetPoly(pts, kinds.map(k => k === 'open' ? 4 : k === 'bar' ? 16 : 10), c);
+    const ic = centroid(inner);
+    // interior details hug the edges and leave the middle open for units and buildings
+    const items = [];
+    const recipe = {
+      grassland: [['tuft', 9], ['flower0', 2], ['flower1', 2], ['flower2', 2], ['rock0', 1]],
+      forest: [['grove', 3], ['shroom', 2], ['tuft', 3]],
+      desert: [['dune', 5], ['cactus', 2], ['rock0', 1], ['rock1', 1]],
+      swamp: [['puddle', 4], ['reeds', 6], ['lily', 4], ['swampgrove', 2]]
+    }[p.terrain];
+    const xs = inner.map(q => q[0]), ys = inner.map(q => q[1]);
+    const bx0 = Math.min(...xs), bx1 = Math.max(...xs), by0 = Math.min(...ys), by1 = Math.max(...ys);
+    const clearR = inner.reduce((s, q) => s + Math.hypot(q[0] - ic[0], q[1] - ic[1]), 0) / inner.length * 0.5;
+    const spot = (minGap, edgeGap) => {
+      for (let t = 0; t < 40; t++) {
+        const x = bx0 + rnd() * (bx1 - bx0), y = by0 + rnd() * (by1 - by0);
+        if (!inPoly(x, y, inner) || distToEdges(x, y, inner) < edgeGap) continue;
+        if (Math.hypot(x - ic[0], y - ic[1]) < clearR) continue;
+        if (items.some(it => Math.hypot(it.x - x, it.y - y) < minGap)) continue;
+        return [x, y];
+      }
+      return null;
+    };
+    for (const [name, count] of recipe) {
+      for (let k = 0; k < count; k++) {
+        if (name === 'grove' || name === 'swampgrove') {
+          const at = spot(34, 30); if (!at) continue;
+          const m = name === 'grove' ? 3 + Math.floor(rnd() * 2) : 2;
+          for (let j = 0; j < m; j++) {
+            const a = j * 2.1 + rnd(), r = j ? 11 + rnd() * 4 : 0;
+            items.push({ x: at[0] + Math.cos(a) * r, y: at[1] + Math.sin(a) * r * 0.7, s: name === 'grove' ? ['tree0', 'tree1', 'pine0', 'pine1'][Math.floor(rnd() * 4)] : 'cypress' + (j % 2) });
+          }
+        } else {
+          const at = spot(16, 16); if (at) items.push({ x: at[0], y: at[1], s: name });
+        }
+      }
+    }
+    items.sort((a, b) => a.y - b.y);
+    const bars = p.edges.filter(id => !w.edges[id].open).length;
+    return { id: p.id, terrain: p.terrain, pts, c, inner, ic, items, sides: pts.length, borders: p.edges.length, bars, coastal: p.coast.some(q => !q[2]), lakeside: p.coast.some(q => q[2]), kinds };
+  });
+  // barrier decorations on edges, fillers at junctions
+  const sway = [], still = [];
+  const isSwamp = i => w.provinces[i].terrain === 'swamp';
+  const treeFor = swampy => swampy ? 'cypress' + (rnd() < 0.5 ? 0 : 1) : rnd() < 0.45 ? 'pine' + (rnd() < 0.5 ? 0 : 1) : 'tree' + Math.floor(rnd() * 3);
+  w.edges.forEach(e => {
+    if (e.open || e.style === 'river') return;
+    const a = V[e.v[0]], b = V[e.v[1]], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy), nx = -dy / len, ny = dx / len;
+    const swampy = isSwamp(e.a) || isSwamp(e.b);
+    const gap = e.style === 'mountains' ? 17 : e.style === 'ruins' ? 20 : 10;
+    const n = Math.max(1, Math.round(len / gap));
+    for (let j = 0; j < n; j++) {
+      const t = (j + 0.5) / n;
+      const off = e.style === 'trees' ? (j % 2 ? 6 : -6) + (rnd() - 0.5) * 3 : (rnd() - 0.5) * 5;
+      const x = a[0] + dx * t + nx * off, y = a[1] + dy * t + ny * off + 5;
+      if (e.style === 'trees') sway.push({ x, y, s: treeFor(swampy), ph: rnd() * 6.28 });
+      else if (e.style === 'mountains') { still.push({ x, y: y + 3, s: 'mtn' + Math.floor(rnd() * 3) }); if (rnd() < 0.35) still.push({ x: x + nx * 9, y: y + ny * 9 + 6, s: 'mtn1' }); }
+      else { still.push({ x, y, s: rnd() < 0.4 ? 'pillar' : 'arch' }); if (rnd() < 0.6) sway.push({ x: x + (rnd() - 0.5) * 14, y: y + 6, s: treeFor(swampy), ph: rnd() * 6.28 }); else still.push({ x: x + 8, y: y + 5, s: 'rock' + (rnd() < 0.5 ? 0 : 1) }); }
+    }
+  });
+  const vSwamp = new Map(); w.provinces.forEach(p => p.verts.forEach(v => { if (p.terrain === 'swamp') vSwamp.set(v, true); }));
+  w.junctions.forEach(j => {
+    const [x, y] = V[j.v];
+    if (j.kind === 'river') return;
+    const swampy = vSwamp.has(j.v);
+    if (j.kind === 'trees') { for (const [ox, oy] of [[-6, 2], [6, 4], [0, 10]]) sway.push({ x: x + ox, y: y + oy, s: treeFor(swampy), ph: rnd() * 6.28 }); }
+    else if (j.kind === 'mountains') { still.push({ x: x - 5, y: y + 6, s: 'mtn2' }); still.push({ x: x + 8, y: y + 11, s: 'mtn1' }); }
+    else if (j.kind === 'ruins') { still.push({ x: x - 4, y: y + 4, s: 'pillar' }); still.push({ x: x + 6, y: y + 8, s: 'rock0' }); }
+    else still.push({ x, y: y + 4, s: 'rock' + (rnd() < 0.5 ? 0 : 1) });
+  });
+  sway.sort((a, b) => a.y - b.y); still.sort((a, b) => a.y - b.y);
+  // open-border stepping stones
+  const crossings = w.edges.filter(e => e.open).map(e => {
+    const a = V[e.v[0]], b = V[e.v[1]];
+    return { x: (a[0] + b[0]) / 2, y: (a[1] + b[1]) / 2, ang: Math.atan2(b[1] - a[1], b[0] - a[0]), len: Math.hypot(b[0] - a[0], b[1] - a[1]) };
+  });
+  // island outline, coast segments
+  const island = new Path2D();
+  provs.forEach(p => { p.pts.forEach(([x, y], i) => i ? island.lineTo(x, y) : island.moveTo(x, y)); island.closePath(); });
+  const coast = new Path2D();
+  w.provinces.forEach(p => p.coast.forEach(([a, b]) => { coast.moveTo(V[a][0], V[a][1]); coast.lineTo(V[b][0], V[b][1]); }));
+  const lakes = new Path2D(), lakeShore = new Path2D(), lakeMarks = [];
+  w.provinces.forEach(p => p.coast.forEach(([a, b, lk]) => { if (lk) { lakeShore.moveTo(V[a][0], V[a][1]); lakeShore.lineTo(V[b][0], V[b][1]); } }));
+  (w.lakes || []).forEach(l => l.polys.forEach(poly => {
+    poly.forEach((v, i) => i ? lakes.lineTo(V[v][0], V[v][1]) : lakes.moveTo(V[v][0], V[v][1])); lakes.closePath();
+    const c = centroid(poly.map(v => V[v]));
+    for (let k = 0; k < 3; k++) lakeMarks.push({ x: c[0] + (rnd() - 0.5) * 130, y: c[1] + (rnd() - 0.5) * 100 });
+  }));
+  // rivers as smooth paths
+  const rivers = w.rivers.map(r => {
+    const pts = r.verts.map(v => V[v]);
+    // run the mouth out past the beach into the sea, and the source into its lake
+    const ext = (a, b, d) => { const dx = a[0] - b[0], dy = a[1] - b[1], l = Math.hypot(dx, dy); return [a[0] + dx / l * d, a[1] + dy / l * d]; };
+    pts.unshift(ext(pts[0], pts[1], 70));
+    if (r.lake !== null) pts.push(ext(pts[pts.length - 1], pts[pts.length - 2], 40));
+    const p = new Path2D();
+    p.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length - 1; i++) { const m = [(pts[i][0] + pts[i + 1][0]) / 2, (pts[i][1] + pts[i + 1][1]) / 2]; p.quadraticCurveTo(pts[i][0], pts[i][1], m[0], m[1]); }
+    p.lineTo(pts[pts.length - 1][0], pts[pts.length - 1][1]);
+    return p;
+  });
+  // bounds
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  provs.forEach(p => p.pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }));
+  // waves and clouds
+  const waves = [];
+  for (let k = 0; waves.length < 560 && k < 8000; k++) {
+    const x = x0 - 1100 + rnd() * (x1 - x0 + 2200), y = y0 - 900 + rnd() * (y1 - y0 + 1800);
+    if (provs.some(p => Math.hypot(p.c[0] - x, p.c[1] - y) < 340)) continue;
+    waves.push({ x, y, ph: rnd() * 6.28, s: 2 + rnd() * 1.4 });
+  }
+  const clouds = [];
+  for (let k = 0; k < 5; k++) clouds.push({ x: x0 + rnd() * (x1 - x0), y: y0 + rnd() * (y1 - y0), v: 6 + rnd() * 8, s: 0.8 + rnd() * 0.7 });
+  return { provs, sway, still, crossings, island, coast, lakes, lakeShore, lakeMarks, rivers, bounds: [x0, y0, x1, y1], waves, clouds };
+}
+
+// ---------- camera ----------
+let cam = { x: 0, y: 0, z: 1 }, fitZ = 1, dpr = 1, cw = 0, ch = 0, cacheDirty = true;
+const cache = document.createElement('canvas'), cctx = cache.getContext('2d');
+function resize() {
+  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  cw = cv.clientWidth; ch = cv.clientHeight;
+  cv.width = cache.width = Math.round(cw * dpr); cv.height = cache.height = Math.round(ch * dpr);
+  cacheDirty = true; kick();
+}
+function fit() {
+  const [x0, y0, x1, y1] = G.bounds;
+  const padTop = cw < 640 ? 130 : 90, padBot = cw < 640 ? 70 : 60;
+  const z = Math.min((cw - 40) / (x1 - x0 + 60), (ch - padTop - padBot) / (y1 - y0 + 60));
+  fitZ = z;
+  cam = { x: (x0 + x1) / 2, y: (y0 + y1) / 2 - (padTop - padBot) / 2 / z, z };
+  cacheDirty = true; kick();
+}
+const worldTx = g => g.setTransform(dpr * cam.z, 0, 0, dpr * cam.z, dpr * (cw / 2 - cam.x * cam.z), dpr * (ch / 2 - cam.y * cam.z));
+const toWorld = (sx, sy) => [(sx - cw / 2) / cam.z + cam.x, (sy - ch / 2) / cam.z + cam.y];
+function viewRect(m = 40) { const [ax, ay] = toWorld(0, 0), [bx, by] = toWorld(cw, ch); return [ax - m, ay - m, bx + m, by + m]; }
+const lowDetail = () => dpr * cam.z < 0.55;
+function bucket() { const s = dpr * cam.z; return Math.min(8, Math.max(0.25, Math.pow(2, Math.ceil(Math.log2(s))))); }
+
+// ---------- drawing ----------
+function drawSprite(g, it) { const s = SPR[it.s]; g.drawImage(s.cv, it.x - s.ax, it.y - s.ay, s.w, s.h); }
+function drawProvince(g, p, lift) {
+  const t = TER[p.terrain], px = 1 / cam.z;
+  roundedPath(g, p.inner, 12);
+  if (lift) { g.save(); g.fillStyle = 'rgba(0,0,0,0.28)'; g.translate(0, 7); g.fill(); g.restore(); roundedPath(g, p.inner, 12); }
+  g.save(); g.clip();
+  g.fillStyle = t.shade; g.fill();
+  g.translate(0, -8); roundedPath(g, p.inner, 12); g.fillStyle = t.base; g.fill();
+  g.restore();
+  roundedPath(g, p.inner, 12);
+  g.lineWidth = Math.max(lift ? 4 : 3, (lift ? 2.6 : 1.8) * px); g.strokeStyle = OL; g.lineJoin = 'round'; g.stroke();
+  for (const it of p.items) drawSprite(g, it);
+}
+function renderCache() {
+  const g = cctx;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, cache.width, cache.height);
+  worldTx(g);
+  const [vx0, vy0, vx1, vy1] = viewRect(60), [px0, py0, px1, py1] = viewRect(420);   // provinces are big: keep any whose center is within reach of the screen
+  const vis = p => p.c[0] > px0 && p.c[0] < px1 && p.c[1] > py0 && p.c[1] < py1;
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  const px = 1 / cam.z;
+  g.lineWidth = Math.max(8, 3 * px); g.strokeStyle = OL; g.stroke(G.island);
+  g.fillStyle = WILDS; g.fill(G.island);
+  g.lineWidth = 24; g.strokeStyle = SAND; g.stroke(G.coast);
+  // lakes: shallow rim inside, deep middle, ink outline
+  g.fillStyle = '#3d97d4'; g.fill(G.lakes);
+  g.save(); g.clip(G.lakes); g.lineWidth = 40; g.strokeStyle = '#6cbbe8'; g.stroke(G.lakeShore); g.lineWidth = 14; g.strokeStyle = FOAM; g.stroke(G.lakeShore); g.restore();
+  g.lineWidth = Math.max(4, 2 * px); g.strokeStyle = OL; g.stroke(G.lakeShore);
+  g.lineWidth = 2.5; g.strokeStyle = 'rgba(220,242,255,0.7)'; g.lineCap = 'round';
+  for (const m of G.lakeMarks) { g.beginPath(); g.arc(m.x - 6, m.y, 6, Math.PI * 1.15, Math.PI * 1.85); g.arc(m.x + 6, m.y, 6, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); }
+  for (const p of G.provs) if (vis(p)) drawProvince(g, p, false);
+  // stepping stones on open borders
+  for (const c of G.crossings) {
+    if (c.x < vx0 || c.x > vx1 || c.y < vy0 || c.y > vy1) continue;
+    g.save(); g.translate(c.x, c.y); g.rotate(c.ang);
+    g.beginPath(); g.ellipse(0, 0, 10, 15, 0, 0, 7); g.fillStyle = '#d9b77a'; g.fill(); g.lineWidth = 1.6; g.strokeStyle = OL; g.stroke();
+    g.fillStyle = '#b08a55';
+    for (const dy of [-6, 6]) { g.beginPath(); g.ellipse(dy * 0.3, dy, 3.6, 2.6, 0, 0, 7); g.fill(); g.lineWidth = 1.1; g.stroke(); }
+    g.restore();
+  }
+  for (const it of G.still) if (it.x > vx0 && it.x < vx1 && it.y > vy0 && it.y < vy1) drawSprite(g, it);
+  if (lowDetail()) for (const it of G.sway) if (it.x > vx0 && it.x < vx1 && it.y > vy0 && it.y < vy1) drawSprite(g, it);
+  if (opts.passages) {
+    for (const c of G.crossings) {
+      g.save(); g.translate(c.x, c.y); g.rotate(c.ang + Math.PI / 2); g.scale(1.8, 1.8);
+      g.strokeStyle = OL; g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round';
+      const arrow = () => { g.beginPath(); g.moveTo(0, -9); g.lineTo(0, 9); g.moveTo(-4, -5); g.lineTo(0, -9); g.lineTo(4, -5); g.moveTo(-4, 5); g.lineTo(0, 9); g.lineTo(4, 5); };
+      arrow(); g.stroke(); g.strokeStyle = '#ffd54a'; g.lineWidth = 2.4; arrow(); g.stroke();
+      g.restore();
+    }
+  }
+  cacheDirty = false;
+}
+let hover = null, hoverT = 0;
+function frame(now) {
+  const t = now / 1000;
+  const b = bucket(); bake(b);
+  if (cacheDirty) renderCache();
+  const g = ctx;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = SEA; g.fillRect(0, 0, cv.width, cv.height);
+  worldTx(g);
+  const [vx0, vy0, vx1, vy1] = viewRect(60);
+  // waves
+  g.lineCap = 'round'; g.lineWidth = Math.max(3, 1.4 / cam.z);
+  for (const wv of G.waves) {
+    if (wv.x < vx0 || wv.x > vx1 || wv.y < vy0 || wv.y > vy1) continue;
+    const bob = reduceMotion ? 0 : Math.sin(t * 1.4 + wv.ph) * 5;
+    g.strokeStyle = 'rgba(220,242,255,' + (0.35 + 0.25 * Math.sin(t * 0.9 + wv.ph * 2)).toFixed(2) + ')';
+    g.beginPath(); g.arc(wv.x - 5 * wv.s, wv.y + bob, 5 * wv.s, Math.PI * 1.15, Math.PI * 1.85); g.arc(wv.x + 5 * wv.s, wv.y + bob, 5 * wv.s, Math.PI * 1.15, Math.PI * 1.85); g.stroke();
+  }
+  // shallows and surf
+  g.lineJoin = 'round';
+  g.lineWidth = 130; g.strokeStyle = 'rgba(85,166,220,0.55)'; g.stroke(G.island);
+  g.lineWidth = 66; g.strokeStyle = SHALLOW; g.stroke(G.island);
+  g.lineWidth = 36 + (reduceMotion ? 0 : Math.sin(t * 1.8) * 5); g.strokeStyle = FOAM; g.stroke(G.island);
+  // static land layer
+  g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(cache, 0, 0);
+  worldTx(g);
+  // hovered province bounces
+  if (hover) {
+    const dt = reduceMotion ? 5 : t - hoverT;
+    const s = 1.03 + 0.06 * Math.exp(-dt * 5) * Math.cos(dt * 16);
+    const [cx, cy] = hover.ic;
+    g.save(); g.translate(cx, cy - 2); g.scale(s, 2 - s); g.translate(-cx, -cy);
+    drawProvince(g, hover, true); g.restore();
+  }
+  // rivers
+  g.lineCap = 'round'; g.lineJoin = 'round';
+  for (const r of G.rivers) { g.lineWidth = Math.max(24, 18 + 3 / cam.z); g.strokeStyle = OL; g.stroke(r); }
+  for (const r of G.rivers) { g.lineWidth = 17; g.strokeStyle = '#45a8e4'; g.stroke(r); }
+  g.setLineDash([10, 26]); g.lineDashOffset = reduceMotion ? 0 : -t * 30;
+  for (const r of G.rivers) { g.lineWidth = 3.5; g.strokeStyle = '#c7ecff'; g.stroke(r); }
+  g.setLineDash([]);
+  // swaying trees
+  const k = dpr * cam.z, ox = dpr * (cw / 2 - cam.x * cam.z), oy = dpr * (ch / 2 - cam.y * cam.z);
+  if (!lowDetail()) for (const it of G.sway) {
+    if (it.x < vx0 || it.x > vx1 || it.y < vy0 || it.y > vy1) continue;
+    const a = reduceMotion ? 0 : Math.sin(t * 1.7 + it.ph) * 0.07, c = Math.cos(a), s = Math.sin(a), sp = SPR[it.s];
+    g.setTransform(k * c, k * s, -k * s, k * c, ox + k * it.x, oy + k * it.y);
+    g.drawImage(sp.cv, -sp.ax, -sp.ay, sp.w, sp.h);
+  }
+  worldTx(g);
+  // numbers
+  if (opts.labels) {
+    g.font = Math.round(Math.max(20, 13 / cam.z)) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-display');
+    g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = Math.max(5, 3 / cam.z); g.strokeStyle = OL; g.fillStyle = '#fff';
+    for (const p of G.provs) { if (p.ic[0] < vx0 || p.ic[0] > vx1 || p.ic[1] < vy0 || p.ic[1] > vy1) continue; g.strokeText(p.id, p.ic[0], p.ic[1]); g.fillText(p.id, p.ic[0], p.ic[1]); }
+  }
+  // clouds fade out as you zoom in
+  const ca = Math.max(0, Math.min(0.8, 0.8 - (cam.z / fitZ - 1) * 0.45));
+  if (ca > 0.02) {
+    const [bx0, , bx1] = G.bounds, span = bx1 - bx0 + 2400;
+    for (const cl of G.clouds) {
+      const x = bx0 - 1200 + ((cl.x - bx0 + 1200 + (reduceMotion ? 0 : t * cl.v * 5)) % span + span) % span, y = cl.y, s = cl.s * 5.6;
+      const puffs = [[0, 0, 22], [-24, 6, 15], [24, 6, 16], [-10, -10, 15], [12, -12, 17]].map(([a, b, r]) => [x + a * s, y + b * s, r * s]);
+      g.globalAlpha = ca * 0.18; g.fillStyle = '#0d3050';
+      g.beginPath(); g.ellipse(x + 14 * s, y + 52 * s, 38 * s, 11 * s, 0, 0, 7); g.fill();
+      g.globalAlpha = ca; blobUnion(g, puffs, '#ffffff', 5 * s);
+      g.globalAlpha = 1;
+    }
+  }
+  if (!reduceMotion) requestAnimationFrame(frame);
+}
+let pending = false;
+function kick() { if (reduceMotion && G && !pending) { pending = true; requestAnimationFrame(n => { pending = false; frame(n); }); } }
+
+// ---------- interaction ----------
+const opts = { passages: false, labels: false };
+const pointers = new Map(); let dragMoved = 0, pinch = null;
+cv.addEventListener('pointerdown', e => { cv.setPointerCapture(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]); dragMoved = 0; if (pointers.size === 2) { const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: cam.z }; } cv.classList.add('dragging'); });
+cv.addEventListener('pointermove', e => {
+  if (pointers.has(e.pointerId)) {
+    const prev = pointers.get(e.pointerId); pointers.set(e.pointerId, [e.clientX, e.clientY]);
+    if (pointers.size === 1) { cam.x -= (e.clientX - prev[0]) / cam.z; cam.y -= (e.clientY - prev[1]) / cam.z; dragMoved += Math.abs(e.clientX - prev[0]) + Math.abs(e.clientY - prev[1]); }
+    else if (pinch) { const [a, b] = [...pointers.values()]; const d = Math.hypot(a[0] - b[0], a[1] - b[1]); zoomAt((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, pinch.z * d / pinch.d / cam.z); dragMoved = 99; }
+    cacheDirty = true; clampCam(); kick();
+    if (dragMoved > 4) setHover(null);
+  } else if (e.pointerType === 'mouse') pickAt(e.clientX, e.clientY);
+});
+const endPtr = e => {
+  if (pointers.has(e.pointerId) && dragMoved < 5 && pointers.size === 1) pickAt(e.clientX, e.clientY, true);
+  pointers.delete(e.pointerId); if (pointers.size < 2) pinch = null; if (!pointers.size) cv.classList.remove('dragging');
+};
+cv.addEventListener('pointerup', endPtr); cv.addEventListener('pointercancel', endPtr);
+cv.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse' && !pointers.size) setHover(null); });
+cv.addEventListener('wheel', e => { e.preventDefault(); zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * 0.0015)); }, { passive: false });
+function zoomAt(sx, sy, f) {
+  const [wx, wy] = toWorld(sx, sy);
+  cam.z = Math.max(fitZ * 0.6, Math.min(3, cam.z * f));
+  cam.x = wx - (sx - cw / 2) / cam.z; cam.y = wy - (sy - ch / 2) / cam.z;
+  clampCam(); cacheDirty = true; kick();
+}
+function clampCam() { const [x0, y0, x1, y1] = G.bounds; cam.x = Math.max(x0 - 850, Math.min(x1 + 850, cam.x)); cam.y = Math.max(y0 - 850, Math.min(y1 + 850, cam.y)); }
+$('#zin').onclick = () => zoomAt(cw / 2, ch / 2, 1.4);
+$('#zout').onclick = () => zoomAt(cw / 2, ch / 2, 1 / 1.4);
+$('#zfit').onclick = () => fit();
+
+const tip = $('#tip');
+function pickAt(sx, sy, tap) {
+  const [x, y] = toWorld(sx, sy);
+  const p = G.provs.find(q => inPoly(x, y, q.pts)) || null;
+  setHover(p);
+  if (p) {
+    const t = TER[p.terrain];
+    tip.innerHTML = `<strong>Province ${p.id}</strong><span class="terr" style="background:${t.base}">${t.label}</span>` +
+      `<div class="row">${p.sides} sides · ${p.borders} borders</div>` +
+      `<div class="row">${p.borders - p.bars} open · ${p.bars} blocked${p.coastal ? ' · coastal' : ''}${p.lakeside ? ' · lakeside' : ''}</div>`;
+    tip.hidden = false;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    tip.style.left = Math.min(sx, cw - tw - 30) + 'px'; tip.style.top = Math.min(sy, ch - th - 30) + 'px';
+  } else tip.hidden = true;
+}
+function setHover(p) { if (p !== hover) { hover = p; hoverT = performance.now() / 1000; kick(); } if (!p) tip.hidden = true; }
+
+$('#optPass').onchange = e => { opts.passages = e.target.checked; cacheDirty = true; kick(); };
+$('#optIds').onchange = e => { opts.labels = e.target.checked; kick(); };
+
+// ---------- panels ----------
+function renderPanels(w) {
+  const counts = {}; w.provinces.forEach(p => counts[p.terrain] = (counts[p.terrain] || 0) + 1);
+  const bc = { trees: 0, mountains: 0, river: 0, ruins: 0 }; w.edges.forEach(e => { if (!e.open) bc[e.style]++; });
+  const leg = $('#legend');
+  leg.innerHTML = '<h3>Provinces</h3>' + Object.entries(TER).map(([k, t]) => `<div><span class="sw" style="background:${t.base}"></span>${t.label} <span style="color:var(--muted)">${counts[k] || 0}</span></div>`).join('') +
+    '<h3>Impassable borders</h3>' +
+    [['tree1', 'Trees', bc.trees], ['cypress0', 'Cypress (by swamps)', null], ['mtn0', 'Mountains', bc.mountains], ['river', 'Rivers', bc.river], ['arch', 'Ancient ruins', bc.ruins]].map(([s, l, n]) =>
+      `<div>${s === 'river' ? '<span class="sw" style="background:#45a8e4;height:8px;border-radius:6px"></span>' : `<img alt="" src="${spriteURL(s, 22)}">`}${l} <span style="color:var(--muted)">${n === null ? '' : n}</span></div>`).join('') +
+    `<div><span class="sw" style="background:#3d97d4"></span>Lakes <span style="color:var(--muted)">${(w.lakes || []).length}</span></div>` +
+    `<div><img alt="" src="${stoneURL()}">Open border <span style="color:var(--muted)">${w.edges.filter(e => e.open).length}</span></div>`;
+  const ok = w.report.every(r => r.pass);
+  $('#rulesBadge').textContent = ok ? 'all ' + w.report.length + ' pass' : w.report.filter(r => !r.pass).length + ' failing';
+  $('#rulesBadge').classList.toggle('bad', !ok);
+  $('#rules').innerHTML = w.report.map(r => `<li><span class="mark${r.pass ? '' : ' bad'}">${r.pass ? '✓' : '✗'}</span><div><b>${r.label}</b><small>${r.detail}</small></div></li>`).join('');
+}
+function stoneURL() {
+  const c = document.createElement('canvas'); c.width = c.height = 66; const g = c.getContext('2d'); g.scale(3, 3);
+  g.fillStyle = WILDS; g.fillRect(9, 0, 4, 22); g.fillStyle = TER.grassland.base; g.fillRect(0, 2, 9, 18); g.fillStyle = TER.forest.base; g.fillRect(13, 2, 9, 18);
+  g.fillStyle = '#c9a46a'; g.strokeStyle = OL; g.lineWidth = 1;
+  for (const y of [7, 15]) { g.beginPath(); g.ellipse(11, y, 2.4, 3.2, 0, 0, 7); g.fill(); g.stroke(); }
+  return c.toDataURL();
+}
+
+// ---------- build ----------
+const words1 = ['mossy', 'grumpy', 'sunny', 'crooked', 'sleepy', 'golden', 'misty', 'rowdy', 'tiny', 'brave', 'soggy', 'lucky'];
+const words2 = ['otter', 'goblin', 'teapot', 'turnip', 'griffin', 'badger', 'wizard', 'acorn', 'kobold', 'beetle', 'troll', 'pixie'];
+function build(seed) {
+  $('#busy').hidden = false;
+  setTimeout(() => {
+    try {
+      world = RealmGen.generateWorld(seed);
+      G = prep(world);
+      hover = null; tip.hidden = true;
+      bakedScale = 0;
+      renderPanels(world);
+      fit();
+    } catch (err) {
+      $('#rulesBadge').textContent = 'error'; $('#rules').innerHTML = `<li><span class="mark bad">✗</span><div><b>That seed did not produce a world</b><small>${err.message}. Try another seed.</small></div></li>`;
+    }
+    $('#busy').hidden = true;
+  }, 30);
+}
+$('#build').onclick = () => build($('#seed').value.trim() || 'realmlings');
+$('#seed').addEventListener('keydown', e => { if (e.key === 'Enter') $('#build').click(); });
+$('#reroll').onclick = () => {
+  const s = words1[Math.floor(Math.random() * 12)] + '-' + words2[Math.floor(Math.random() * 12)] + '-' + Math.floor(Math.random() * 90 + 10);
+  $('#seed').value = s; build(s);
+};
+if (window.innerWidth < 640) { $('#legendBox').open = false; $('#rulesBox').open = false; }
+window.addEventListener('resize', () => { resize(); if (G) clampCam(); });
+resize();
+world = RealmGen.generateWorld('realmlings'); G = prep(world); renderPanels(world); fit();
+if (document.fonts) document.fonts.ready.then(() => { cacheDirty = true; kick(); });
+requestAnimationFrame(frame);
+})();
+</script>
