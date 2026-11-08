@@ -121,6 +121,7 @@ const REP_ICONS = {
   'rep-sword': g => itemIcon(g, 'longsword'), 'rep-blunt': g => itemIcon(g, 'morningstar'), 'rep-pole': g => itemIcon(g, 'polearm'),
   'rep-armor': g => armorIcon(g, 'plate', 2), 'rep-shield': g => shieldIcon(g, 'kite'),
   'rep-horsespeed': g => horseIcon(g, HORSES.arabian), 'rep-cavhp': g => horseIcon(g, HORSES.percheron),
+  'rep-masons': g => GOV_ICONS.stonewall(g), 'rep-wayfinders': g => GOV_ICONS.autoscout(g),
   'rep-magecap': g => hatIcon(g), 'rep-stave': g => itemIcon(g, 'grandstave'), 'rep-wand': g => itemIcon(g, 'crypticwand'),
   'rep-harvest': g => MAGIC_ICONS.harvest(g), 'rep-graverob': g => MAGIC_ICONS.graverob(g), 'rep-trading': g => MAGIC_ICONS.trading(g)
 };
@@ -128,8 +129,9 @@ function techIcon(id) {
   return ticoCanvas('tech:' + id, g => {
     const x = TECH_BY_ID[id];
     if (REP_ICONS[id]) { REP_ICONS[id](g); repeatBadge(g); return; }
-    if (id === 'horde') { horseshoeIcon(g, '#ffc93c'); ICO.roman(g, '×5', 32, 52); return; }
+    if (id === 'horde') { horseshoeIcon(g, '#ffc93c'); ICO.roman(g, '×10', 32, 52); return; }
     if (GOV_ICONS[id]) return GOV_ICONS[id](g);
+    if (id === 'apprentice') { hatIcon(g); ICO.roman(g, '+1', 50, 52); return; }
     if (SKIN_TINT[id]) { ICO.poly(g, [[32, 8], [52, 16], [50, 36], [32, 56], [14, 36], [12, 16]], SKIN_TINT[id]); ICO.poly(g, [[32, 20], [42, 28], [32, 44], [22, 28]], '#ffffff', 2); TIERMARK(g, id); return; }
     if (MAGIC_ICONS[id]) { MAGIC_ICONS[id](g); TIERMARK(g, id); return; }
     if (['grandstave', 'mythicstave', 'crypticwand', 'enigmaticwand'].includes(id)) return itemIcon(g, id);

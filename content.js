@@ -43,7 +43,7 @@ function setpieceWhy(p) {
 function drawSetpieces(g) {
   const font = getComputedStyle(document.body).getPropertyValue('--font-display');
   for (const [p, id] of S.setpieces) {
-    if (!S.explored.has(p)) continue;
+    if (!S.explored.has(p) || !spKnown(p)) continue;   // hidden until a Wayfinder of yours surveys it (GPC07a, IC04)
     const D = SETPIECES[id], P = G.provs[p], live = setpieceLive(p), k = Math.max(1, 0.62 / cam.z);
     const w = 52 * k, h = 26 * k, x = P.ic[0] - w / 2, y = P.ic[1] + (S.surveyed.has(p) ? 150 : 118);
     g.save();
@@ -56,12 +56,12 @@ function drawSetpieces(g) {
   }
 }
 function setpieceTag(p) {
-  const sp = setpieceAt(p); if (!sp || !S.explored.has(p)) return '';
+  const sp = setpieceAt(p); if (!sp || !S.explored.has(p) || !spKnown(p)) return '';
   const D = SETPIECES[sp], why = setpieceWhy(p);
   return `<span class="pm-tag sp${why ? ' off' : ''}" title="${D.name}: +${D.pts} ${TECH_TREES[D.tree].name} research every 10 s${why ? ' (' + why + ')' : ''}"><img alt="" src="${rpIcon(D.tree, !!why)}">${D.name} +${D.pts}</span>`;
 }
 function setpieceNote(p) {
-  const sp = setpieceAt(p); if (!sp || !S.explored.has(p)) return '';
+  const sp = setpieceAt(p); if (!sp || !S.explored.has(p) || !spKnown(p)) return '';
   const D = SETPIECES[sp], why = setpieceWhy(p);
   return `<div class="pm-note"><b>${D.name}.</b> ${D.blurb} Gives +${D.pts} ${TECH_TREES[D.tree].name} research every 10 s while you hold it${D.need ? ' and own ' + D.need + ' (or its upgrades)' : ''}. ${why ? 'Inactive: ' + why + '.' : 'Active.'}</div>`;
 }
@@ -72,7 +72,7 @@ function provResearchRow(p) {
   const r = provResearch(p);
   return `<div class="pm-rp" title="Research points this province makes every 10 s"><small>Research</small>${TREE_KEYS.map(t => rpSpan(t, r[t], !S.tech[t].tier || !r[t], `${TECH_TREES[t].name}: +${r[t]} every 10 s from this province${S.tech[t].tier ? '' : ' (tree locked)'}`)).join('')}</div>`;
 }
-const provExtraKey = p => [setpieceAt(p) || '', setpieceWhy(p) || '', banditsSeenIn(p), owned(p) ? JSON.stringify(provResearch(p)) : '', TREE_KEYS.map(t => S.tech[t].tier).join('')].join(':');
+const provExtraKey = p => [spKnown(p) ? setpieceAt(p) || '' : '', setpieceWhy(p) || '', banditsSeenIn(p), owned(p) ? JSON.stringify(provResearch(p)) : '', TREE_KEYS.map(t => S.tech[t].tier).join('')].join(':');
 
 // ---------- Bandit Gangs ----------
 // one province in ten (never a capital) shelters a gang of two starting Footmen. They are hostile to everyone,
@@ -107,8 +107,8 @@ function banditFlee(u) {
 }
 // the "Bandits!" popup
 function showBanditPop(p, back, u) {
-  const el = $q('#banditPop');
-  el.innerHTML = `<h2 id="banditPopT">Bandits!<span>at ${provName(p)}</span></h2><p>${u.name} ran into a Bandit Gang and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats the gang (${BANDIT.bounty} gold bounty).</p><div class="dm-btns"><button type="button" data-bp="look">Show me</button><button type="button" data-bp="ok">OK</button></div>`;
+  const el = $q('#banditPop'), mon = S.units.find(v => v.bandit && v.monster && v.prov === p), M = mon ? MONSTERS[mon.monster] : null;
+  el.innerHTML = mon ? `<h2 id="banditPopT">${M.cry}<span>at ${provName(p)}</span></h2><p>${u.name} ran into ${M.found} and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats them (${lootText(M.loot)} for each one killed).</p>` : `<h2 id="banditPopT">Bandits!<span>at ${provName(p)}</span></h2><p>${u.name} ran into a Bandit Gang and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats the gang (${BANDIT.bounty} gold bounty).</p><div class="dm-btns"><button type="button" data-bp="look">Show me</button><button type="button" data-bp="ok">OK</button></div>`;
   el.dataset.prov = p; el.hidden = false;
   const ok = el.querySelector('[data-bp="ok"]'); if (ok) ok.focus({ preventScroll: true });
 }
@@ -129,13 +129,15 @@ function drawFleeMark(g, u, t) {
   g.font = '13px ' + getComputedStyle(document.body).getPropertyValue('--font-display'); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText('!', x, y + 1);
 }
 function banditSlain(a, b) {
+  if (a.monster) { provKey = ''; return; }   // monsters pay for each one killed instead (monsterLoot)
   if (b.start[ME] !== undefined) { S.stock.gold += BANDIT.bounty; b.bounty = (b.bounty || 0) + BANDIT.bounty; S.pops.push({ prov: a.prov, t0: S.t, k: 'gold', n: BANDIT.bounty, dx: 0 }); }
   else { const o = Object.keys(b.start).map(Number).find(x => NATIONS[x]); if (o) NATIONS[o].stock.gold += BANDIT.bounty; }
   provKey = '';
 }
 function banditTag(p) {
   const list = S.units.filter(v => v.bandit && v.seen && v.prov === p && troopCount(v) > 0); if (!list.length) return '';
-  const n = list.reduce((m, v) => m + troopCount(v), 0);
+  const n = list.reduce((m, v) => m + troopCount(v), 0), mon = list.find(v => v.monster);
+  if (mon) { const L = MONSTERS[mon.monster].loot; return `<span class="pm-tag bandit" title="Hostile to everyone. Wayfinders can’t enter until they are beaten. Each one killed gives ${lootText(L)}.">${troopText(mon)} · ${lootText(L)} each</span>`; }
   return `<span class="pm-tag bandit" title="Hostile to everyone. Wayfinders can’t enter until they are beaten. Beat them for a ${BANDIT.bounty} gold bounty.">Bandit Gang · ${n} soldier${n > 1 ? 's' : ''} · ${BANDIT.bounty} gold bounty</span>`;
 }
 
@@ -178,20 +180,23 @@ function boostStats(k, st) {
 }
 // how fast one kind of troop walks: your cavalry get Swift Steeds
 const troopSpeed = (k, o) => (UNIT_SPEED[k] || 1) * (o === ME && isCav(k) ? 1 + 0.05 * repLv('rep-horsespeed') : 1);
-const mageCap = () => 1 + repLv('rep-magecap');
+const mageCap = () => 1 + (hasTech('apprentice') ? 1 : 0) + repLv('rep-magecap');
 function onRepDone(x) {
   repVer++; computeIncome(); clampStock(); capPanelKey = ''; rosterKey = ''; cmdKey = ''; armKey = ''; provKey = '';
   if (x.id === 'rep-magecap') toast(`Mage Academy: you can now have ${mageCap()} Mages.`);
+  if (x.id === 'rep-masons') toast(`Masons’ Lodge: you can now have ${unitLimit(MASON)} Masons.`);
+  if (x.id === 'rep-wayfinders') toast(`Wayfinders’ Guild: you can now have ${unitLimit(WAYFINDER)} Wayfinders.`);
 }
 
 // ---------- The Horde ----------
-// 5 or more cavalry with no other units (not even a Mage): every rider has double health
+// 10 or more cavalry with no other units (not even a Mage): every rider has 1.3 times the health (GPC08)
+const HORDE_MIN = 10, HORDE_HP = 1.3;
 function hordeActive(a) {
   if (!a || a.kind !== 'army' || a.owner !== ME || !hasTech('horde')) return false;
   let cav = 0; for (const k in a.troops) { if (!a.troops[k]) continue; if (!isCav(k)) return false; cav += a.troops[k]; }
-  return cav >= 5;
+  return cav >= HORDE_MIN;
 }
-const hpOf = (a, k) => statsOf(k, a.owner).hp * (isCav(k) && hordeActive(a) ? 2 : 1);
+const hpOf = (a, k) => statsOf(k, a.owner).hp * (isCav(k) && hordeActive(a) ? HORDE_HP : 1);
 function drawHordeMark(g, x, y, t) {
   const bob = Math.sin(t * 3) * 1.2; y += bob;
   g.save(); g.lineCap = 'round';
@@ -215,19 +220,22 @@ const HOUSE_LOOKS = [
   { w: 24, d: 20, h: 18, roof: '#d9b45a', wall: null, chimney: true }, { w: 30, d: 20, h: 20, roof: '#a33a33', wall: '#ece4d4', chimney: false }
 ];
 const houseSprites = [];
-function houseSprite(v) {
-  if (houseSprites[v]) return houseSprites[v];
+const houseRoofed = new Map();
+function houseSprite(v, roof) {
+  const key = v + (roof || ''); if (roof ? houseRoofed.has(key) : houseSprites[v]) return roof ? houseRoofed.get(key) : houseSprites[v];
   const RES2 = 4, W = 100, H = 100, c = document.createElement('canvas'); c.width = W * RES2; c.height = H * RES2;
   const g = c.getContext('2d'), L = HOUSE_LOOKS[v], K = RealmBuild.KIT;
   g.scale(RES2, RES2); g.translate(50, 70); g.lineJoin = 'round'; g.lineCap = 'round';
   g.beginPath(); g.ellipse(0, 2, 34, 15, 0, 0, Math.PI * 2); g.fillStyle = 'rgba(176,138,86,0.55)'; g.fill();
-  K.house(g, -L.w / 2, -L.d / 2, L.w, L.d, L.h, L.roof, 0, { chimney: L.chimney, wall: L.wall || undefined, lit: true });
-  return houseSprites[v] = c;
+  K.house(g, -L.w / 2, -L.d / 2, L.w, L.d, L.h, roof || L.roof, 0, { chimney: L.chimney, wall: L.wall || undefined, lit: true });
+  if (roof) houseRoofed.set(key, c); else houseSprites[v] = c;
+  return c;
 }
 // where the plots, the settlement and standing spots are, so houses stay out of their way
 function housePlace(p, slot, n, taken) {
   const P = G.provs[p], c = P.ic, [bx, by] = bslotOf(p, slot), r = rngFrom(world.seed + ':houses:' + p + ':' + slot), out = [];
   const plots = []; for (let k = 0; k < BSLOTS.length; k++) plots.push(bslotOf(p, k));
+  if (S.setpieces.has(p)) plots.push(spSpot(p));
   for (let i = 0; i < n; i++) {
     for (let tries = 0; tries < 60; tries++) {
       const a = r() * Math.PI * 2, rad = 52 + r() * 38, x = bx + Math.cos(a) * rad, y = by + Math.sin(a) * rad * 0.75;
@@ -254,7 +262,8 @@ function syncTowns() {
     const taken = []; for (const [k2, hs] of S.houses) if (+k2.split('@')[0] === p && k2 !== key) taken.push(...hs);
     const r = rngFrom(world.seed + ':housecount:' + key), hs = housePlace(p, e.slot, 2 + (r() < 0.5 ? 1 : 0), taken);
     hs.type = e.type;
-    for (const h of hs) { h.born = e.born ?? S.t; h.prov = p; }
+    let ord = 0; for (const [k2, hs2] of S.houses) if (+k2.split('@')[0] === p && k2 !== key) ord += hs2.length;
+    for (const h of hs) { h.born = e.born ?? S.t; h.prov = p; h.n = ord++; }
     S.houses.set(key, hs);
     S.civs = S.civs.filter(cv => cv.key !== key);
     for (const h of hs) for (let j = 0; j < 2; j++) S.civs.push({ key, prov: p, home: h, x: G.provs[p].ic[0] + h.x, y: G.provs[p].ic[1] + h.y + 6, tx: null, ty: null, wait: 1 + r() * 4, ph: r() * 6, col: CIV_TUNIC[Math.floor(r() * CIV_TUNIC.length)], skin: CIV_SKIN[Math.floor(r() * CIV_SKIN.length)], hat: r() < 0.45 ? (r() < 0.5 ? 'straw' : 'hood') : null, sack: r() < 0.3, born: h.born + 0.6 + j * 0.4, moving: false });
@@ -271,11 +280,32 @@ function civTarget(cv) {
   [cv.tx, cv.ty] = clampInto(p, x, y);
 }
 const civsShown = () => cam.z >= civZ;
+const civDangerMemo = { t: -1, m: new Map() };
+function civDanger(p) {
+  if (civDangerMemo.t !== S.t) { civDangerMemo.t = S.t; civDangerMemo.m.clear(); }
+  let d = civDangerMemo.m.get(p); if (d !== undefined) return d;
+  const owner = nationOf(p);
+  d = S.occ.has(p) || S.occProg.has(p) || S.battles.some(b => b.prov === p) || (!!owner && S.units.some(v => v.kind === 'army' && v.prov === p && troopCount(v) > 0 && hostile(v.owner, owner)));
+  civDangerMemo.m.set(p, d); return d;
+}
 function stepTowns(dt) {
   syncTowns();
-  if (!civsShown() || !dt) return;
+  if (!dt) return;
+  const shown = civsShown();
   for (const cv of S.civs) {
-    if (!S.visible.has(cv.prov) || S.t < cv.born) continue;
+    if (S.t < cv.born) continue;
+    if (civDanger(cv.prov)) {
+      if (cv.inside) continue;
+      const c = G.provs[cv.prov].ic, hx = c[0] + cv.home.x, hy = c[1] + cv.home.y + 6;
+      if (!shown || !S.visible.has(cv.prov)) { cv.inside = true; cv.x = hx; cv.y = hy; continue; }
+      const dx = hx - cv.x, dy = hy - cv.y, d = Math.hypot(dx, dy), step = CIV_SPEED * 3 * dt;   // running
+      if (d <= step) { cv.x = hx; cv.y = hy; cv.inside = true; cv.moving = false; cv.tx = null; }
+      else { cv.x += dx / d * step; cv.y += dy / d * step; cv.moving = true; cv.running = true; cv.dir = dx < 0 ? -1 : 1; }
+      continue;
+    }
+    if (cv.inside) { cv.inside = false; cv.running = false; cv.tx = null; cv.wait = 0.4 + Math.random() * 3; }   // the danger is gone: out they come
+    cv.running = false;
+    if (!shown || !S.visible.has(cv.prov)) continue;
     if (cv.wait > 0) { cv.wait -= dt; cv.moving = false; if (cv.wait <= 0) civTarget(cv); continue; }
     if (cv.tx === null) civTarget(cv);
     const dx = cv.tx - cv.x, dy = cv.ty - cv.y, d = Math.hypot(dx, dy), step = CIV_SPEED * dt;
@@ -286,12 +316,13 @@ function stepTowns(dt) {
 function drawHouse(g, p, h, t) {
   const c = G.provs[p].ic, x = c[0] + h.x, y = c[1] + h.y, age = t - h.born;
   const pop = age < 1.2 ? Math.max(0.01, 1 - Math.exp(-age * 7) * Math.cos(age * 15)) : 1, k = HOUSE_K * pop;
-  g.drawImage(houseSprite(h.v), x - 50 * k, y - 70 * k, 100 * k, 100 * k);
+  const b = S.buildings.get(p), own = b && PLAYERS[b.owner] ? PLAYERS[b.owner].color : null;
+  g.drawImage(houseSprite(h.v, own && (h.n || 0) % 3 !== 2 ? own : null), x - 50 * k, y - 70 * k, 100 * k, 100 * k);
 }
 function drawCiv(g, cv, t) {
   const age = t - cv.born; if (age < 0) return;
   const s = age < 0.8 ? Math.max(0.01, 1 - Math.exp(-age * 8) * Math.cos(age * 14)) : 1;
-  const ph = t * 9 + cv.ph, sw = cv.moving ? Math.sin(ph) * 2.2 : 0, bob = cv.moving ? -Math.abs(Math.sin(ph)) * 1.1 : 0;
+  const ph = t * (cv.running ? 18 : 9) + cv.ph, sw = cv.moving ? Math.sin(ph) * 2.2 : 0, bob = cv.moving ? -Math.abs(Math.sin(ph)) * 1.1 : 0;
   g.save(); g.translate(cv.x, cv.y); g.scale(s * (cv.dir || 1), s); g.lineCap = 'round'; g.lineJoin = 'round';
   g.beginPath(); g.ellipse(0, 0.6, 4.6, 1.8, 0, 0, 7); g.fillStyle = 'rgba(29,26,34,0.22)'; g.fill();
   for (const [lx, d] of [[-1.4, sw], [1.4, -sw]]) { g.beginPath(); g.moveTo(lx, -4.6 + bob); g.lineTo(lx + d, 0); g.lineWidth = 2.8; g.strokeStyle = OL; g.stroke(); g.lineWidth = 1.4; g.strokeStyle = '#5b4a3a'; g.stroke(); }
@@ -312,7 +343,7 @@ function townItems(g, t, items) {
     for (const h of hs) if (inView(c[0] + h.x, c[1] + h.y)) items.push({ y: c[1] + h.y, f: () => drawHouse(g, p, h, t) });
   }
   if (!civsShown()) return;
-  for (const cv of S.civs) if (S.visible.has(cv.prov) && t >= cv.born && inView(cv.x, cv.y)) items.push({ y: cv.y, f: () => drawCiv(g, cv, t) });
+  for (const cv of S.civs) if (!cv.inside && S.visible.has(cv.prov) && t >= cv.born && inView(cv.x, cv.y)) items.push({ y: cv.y, f: () => drawCiv(g, cv, t) });
 }
 
 // ---------- every frame, and at the start of a game ----------
@@ -328,9 +359,8 @@ function setupContent() {
     const roll = r(), pick = r(), ok = Object.keys(SETPIECES).filter(k => SETPIECES[k].terrain.includes(P.terrain));
     if (roll < SETPIECE_CHANCE && ok.length && !(S.buildings.get(i) && S.buildings.get(i).stage === 2)) S.setpieces.set(i, ok[Math.floor(pick * ok.length)]);
   });
-  // Bandit Gangs: rolled separately, so a gang can sit on a set piece
-  const rb = rngFrom(world.seed + ':bandits'); banditCount = 0;
-  world.provinces.forEach((P, i) => { if (rb() < BANDIT.chance && !S.buildings.has(i) && !S.units.some(u => u.prov === i)) spawnBandit(i); });
+  // Bandit Gangs and Roaming Monsters are placed by setupV78 (spawnLairs, SMA03e), after the Intact Ruins
+  banditCount = 0;
   // civilians disappear halfway between the F3 and F4 zoom levels (measured around the capital)
   const cap = S.capital, near = fitView(boxOf([cap, ...allNbr[cap]]), 0.95);
   civZ = (clampZ(near.z) + clampZ(near.z / 2)) / 2;

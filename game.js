@@ -26,7 +26,8 @@ const buildTime = type => SLOW_BUILD.has(type) ? 60 : BUILD_TIME;
 const OUTPOST_COST = { wood: 25 };
 const SURVEY_TIME = 30;  // seconds
 const CAPITAL_BONUS = { gold: 5, wood: 5, food: 5 };
-const TRAIN_TIME = 5;    // seconds per unit
+// seconds per unit: Wayfinders and Masons 12 s, soldiers 18 s, Mages 30 s
+const trainTime = kind => kind === 'mage:A' ? 30 : (kind === 'pioneer:B' || kind === 'mason:A') ? 12 : 18;
 const UNIT_DEFS = {
   'pioneer:B': { name: 'Wayfinder', cost: { gold: 50 }, upkeep: { food: 1 }, blurb: 'Explores fog and surveys land.' },
   'mason:A': { name: 'Mason', cost: { gold: 50 }, upkeep: { food: 1 }, blurb: 'Builds outposts and buildings.' }
@@ -82,7 +83,7 @@ const plotCap = p => { const b = S.buildings.get(p); return b ? PLOTS_BY_STAGE[b
 const FORT_UPGRADE = { cost: { gold: 200, wood: 300 }, time: 15 };
 const BUILD_DEFS = {
   farm: { name: 'Farm', variant: 0, cost: { gold: 50, wood: 100 }, upkeep: { wood: 2 }, gives: { food: 5 } },
-  lumber: { name: 'Lumber Mill', variant: 1, cost: { gold: 25, wood: 100 }, upkeep: { wood: 2 }, gives: { wood: 5 } },
+  lumber: { name: 'Lumber Mill', variant: 1, cost: { gold: 25, wood: 100 }, upkeep: {}, gives: { wood: 4 } },   // no upkeep at all (GPC29)
   goldmine: { name: 'Gold Mine', variant: 2, cost: { wood: 300 }, upkeep: { wood: 2 }, gives: { gold: 10 } },
   barracks: { name: 'Barracks', variant: 2, cost: { gold: 100, wood: 300 }, upkeep: { wood: 4 }, note: 'trains infantry' },
   stable: { name: 'Stable', variant: 1, cost: { gold: 300, wood: 400 }, upkeep: { wood: 6 }, note: 'with a Barracks: cavalry', tech: 'stable' },
@@ -149,8 +150,9 @@ function freeSlot(prov, u) {
 // unexplored: everything else
 function computeFog() {
   const vis = new Set(), exp = new Set([...S.wf, ...S.known]);
-  for (const u of S.units) if (u.owner === ME && u.scouting !== u.prov) { vis.add(u.prov); if (u.kind === WAYFINDER && hasTech('farsight')) for (const q of allNbr[u.prov]) vis.add(q); }
+  for (const u of S.units) if (u.owner === ME && u.scouting !== u.prov) { vis.add(u.prov); if (u.kind === WAYFINDER && hasTech('farsight')) for (const { q } of openNbr[u.prov]) { vis.add(q); if (!S.known.has(q)) { S.known.add(q); exp.add(q); } } }   // far sight explores what it sees, for good (GPC18)
   for (const [p, b] of S.buildings) { if (b.owner !== ME) continue; vis.add(p); for (const n of openNbr[p]) exp.add(n.q); }
+  for (const [p, o] of S.occ) if (o === ME) vis.add(p);   // an occupied province stays in view for its occupier
   towerSight(vis);
   if (S.reveal) for (let i = 0; i < G.provs.length; i++) vis.add(i);   // debug: lift the fog
   for (const p of vis) exp.add(p);
@@ -161,21 +163,29 @@ const fogState = i => S.visible.has(i) ? 'visible' : S.explored.has(i) ? 'explor
 
 // ---------- movement ----------
 // at peace, armies stay out of other nations' land (armies heading home after a peace deal are let through)
-// every unit may only walk through its own land, unclaimed land, or the land of a nation it is at war with (units marching home after a peace deal excepted)
-const nationOk = (u, q) => { if (u.exiting || u.owner === RAIDERS) return true; const n = nationOf(q); return !n || n === u.owner || hostile(u.owner, n); };
+// every unit may only walk through its own land, unclaimed land, the land of a nation it is at war with, or the land of a nation it has a truce with (units marching home after a peace deal excepted)
+// a truce after a peace deal opens the border too (GPC23)
+const nationOk = (u, q) => { if (u.exiting || u.owner === RAIDERS) return true; const n = nationOf(q); return !n || n === u.owner || hostile(u.owner, n) || truceLeft(u.owner, n) > 0; };
 // at war, any unit may march into unexplored land that belongs to the enemy
-const canEnter = (u, q) => (u.owner !== ME || (u.kind === WAYFINDER && (!u.autoWalk || q === u.autoWalk.to)) || u.exiting || S.explored.has(q) || (S.wars.length && nationOf(q) && hostile(ME, nationOf(q)))) && nationOk(u, q) && !(u.kind === WAYFINDER && u.owner === ME && banditsSeenIn(q));
+const canEnter = (u, q) => (u.owner !== ME || (u.kind === WAYFINDER && (!u.autoWalk || q === u.autoWalk.to)) || u.exiting || S.explored.has(q) || (S.wars.length && nationOf(q) && hostile(ME, nationOf(q)))) && nationOk(u, q) && !(u.kind === WAYFINDER && u.owner === ME && banditsSeenIn(q)) && !(u.kind === MASON && masonDanger(u, q));
+// Masons won't walk into a province holding a hostile army they know about (GPC05)
+const masonDanger = (u, q) => S.units.some(v => v.kind === 'army' && v.prov === q && troopCount(v) > 0 && !v.retreating && hostile(v.owner, u.owner) && (u.owner !== ME || (v.bandit ? v.seen : S.visible.has(q))));
+// an army that can't get there through open borders and gates will batter down an enemy wall on the way
 function findPath(u, target) {
+  const p = findPathVia(u, target, false);
+  return p || u.kind !== 'army' || !S.walls.size ? p : findPathVia(u, target, true);
+}
+function findPathVia(u, target, siege) {
   if (target === u.prov) return [];
   if (!canEnter(u, target)) return null;
   const prev = new Map([[u.prov, null]]), q = [u.prov];
   while (q.length) {
     const a = q.shift(); if (a === target) break;
-    for (const n of pathNbr(u, a)) if (!prev.has(n.q) && canEnter(u, n.q)) { prev.set(n.q, { a, m: n.m }); q.push(n.q); }
+    for (const n of pathNbr(u, a, siege)) if (!prev.has(n.q) && canEnter(u, n.q)) { prev.set(n.q, { a, m: n.m, siege: n.siege }); q.push(n.q); }
   }
   if (!prev.has(target)) return null;
   const hops = []; let c = target;
-  while (c !== u.prov) { const pr = prev.get(c); hops.unshift({ to: c, m: pr.m }); c = pr.a; }
+  while (c !== u.prov) { const pr = prev.get(c); hops.unshift({ to: c, m: pr.m, siege: pr.siege }); c = pr.a; }
   return hops;
 }
 // free movement: units walk to the exact spot you right-click, kept inside the province's open ground
@@ -203,10 +213,11 @@ function order(u, target, quiet, pt) {
   if (u.stasisUntil && u.stasisUntil > S.t) { if (!quiet) toast(`${u.name} is held by a stasis trap for ${Math.ceil(u.stasisUntil - S.t)} s more.`, true); return false; }
   if (!quiet && u.exiting && nationOf(target) !== u.owner) { toast(`${u.name} is marching home after the peace deal. You can send it to one of your own provinces.`, true); return false; }
   if (u.battle && !u.retreating) { if (!quiet) toast(`${u.name} is in battle. Use Retreat in the command card to pull out.`, true); return false; }
+  if (u.retreatHome) { if (!quiet) toast(`${u.name} is retreating and takes orders again once it gets there.`, true); return false; }
   const hops = findPath(u, target);
   if (hops === null) {
     const tn = nationOf(target);
-    if (!quiet && tn && tn !== u.owner && !hostile(u.owner, tn)) { toast(`You are at peace with the ${PLAYERS[tn].name}. Your units can only cross your own land, unclaimed land, or the land of a nation you are at war with.`, true); return false; }
+    if (!quiet && tn && tn !== u.owner && !hostile(u.owner, tn)) { toast(`You are at peace with the ${PLAYERS[tn].name}. Your units can only cross your own land, unclaimed land, the land of a nation you are at war with, or the land of a nation you have a truce with.`, true); return false; }
     if (!quiet && !u.exiting) { u.exiting = true; const free = findPath(u, target); u.exiting = false; if (free) { toast('The only route there crosses a nation you are at peace with. Find another way, or declare war.', true); return false; } }
     if (!quiet) toast(u.kind === WAYFINDER ? 'No open route there. Trees, mountains, rivers and ruins block the way.' : `The ${u.name} can only enter explored provinces, and needs an open route.`, true);
     return false;
@@ -214,15 +225,20 @@ function order(u, target, quiet, pt) {
   if (u.build) { cancelBuild(u); toast('Construction cancelled. Resources refunded.'); }
   u.pending = null;
   if (u.survey) { u.survey = null; toast('Survey cancelled.'); }
+  walkHops(u, hops, target, pt);
+  return true;
+}
+// turn a list of border crossings into the walk itself
+function walkHops(u, hops, target, pt) {
   const wps = [], dest = pt ? clampInto(target, pt[0], pt[1]) : null;
   // walk straight from crossing to crossing (or to the chosen spot) when the way is clear, else by the province's middle
   let at = [u.x, u.y], inProv = u.prov;
-  const via = (to, pr) => { if (!segClear(pr, at, to)) { const P = G.provs[pr]; wps.push({ x: P.ic[0], y: P.ic[1] }); } };
-  hops.forEach(h => { via(h.m, inProv); wps.push({ x: h.m[0], y: h.m[1], enter: h.to }); at = h.m; inProv = h.to; });
+  // when the straight line leaves the open ground, walk around the bend instead of through the province's middle (GPC24)
+  const via = (to, pr) => { if (!segClear(pr, at, to)) for (const q of navRoute(pr, at, to)) wps.push({ x: q[0], y: q[1] }); };
+  hops.forEach(h => { via(h.m, inProv); wps.push({ x: h.m[0], y: h.m[1], enter: h.to, siege: h.siege }); at = h.m; inProv = h.to; });
   if (dest) { via(dest, inProv); wps.push({ x: dest[0], y: dest[1], slot: true }); }
   u.path = wps; u.moving = true; u.slot = -1; u.final = target;
   if (!hops.length && !dest) { u.slot = freeSlot(u.prov, u); const [x, y] = slotPos(u.prov, u.slot); u.path = [{ x, y, slot: true }]; }
-  return true;
 }
 // every unit keeps one order list: numbers are surveys, { move: p } entries are queued moves
 const surveysIn = u => u.surveyQueue.filter(e => typeof e === 'number').length + (u.pendingSurvey >= 0 ? 1 : 0);
@@ -301,7 +317,7 @@ function trainable(kind, prov) {
 const UNIT_LIMIT = { 'pioneer:B': 3, 'mason:A': 3 };
 // Mages count wherever they are: on their own, inside an army, or in training
 function unitTotal(kind) { return S.units.filter(v => v.owner === ME && v.kind === kind).length + Object.values(S.queues).reduce((n, q) => n + q.filter(e => e.kind === kind).length, 0) + (kind === MAGE ? S.units.reduce((n, v) => n + (v.owner === ME && v.kind === 'army' ? (v.troops[MAGE] || 0) : 0), 0) : 0); }
-const unitLimit = kind => kind === MAGE ? mageCap() : UNIT_LIMIT[kind];
+const unitLimit = kind => kind === MAGE ? mageCap() : kind === MASON ? UNIT_LIMIT[kind] + repLv('rep-masons') : kind === WAYFINDER ? UNIT_LIMIT[kind] + repLv('rep-wayfinders') : UNIT_LIMIT[kind];
 function limitWhy(kind) { const L = unitLimit(kind); return L && unitTotal(kind) >= L ? `Limit reached: ${L} ${UNIT_DEFS[kind].name}${L > 1 ? 's' : ''}` + (kind === MAGE ? ' · research Mage Academy for more' : '') : null; }
 function train(kind) {
   const d = UNIT_DEFS[kind], key = srcKey();
@@ -323,7 +339,7 @@ function stepTraining(t) {
   for (const key in S.queues) {
     const Q = S.queues[key], q = Q[0]; if (!q) continue;
     if (q.t0 === null) q.t0 = t;
-    if (t - q.t0 < TRAIN_TIME) continue;
+    if (t - q.t0 < trainTime(q.kind)) continue;
     Q.shift();
     const spot = srcSpot(key), d = UNIT_DEFS[q.kind];
     if (MILITARY.has(q.kind)) {
@@ -378,7 +394,7 @@ function upgradeWhy(p) {
   const b = S.buildings.get(p); if (!b || b.owner !== ME) return 'Not yours';
   if (b.stage !== 0) return b.stage === 1 ? 'Already a Fort' : 'Capitals can’t be upgraded yet';
   if (S.upgrades.has(p)) return 'Already upgrading';
-  if (fortCount() >= fortLimit()) return `Fort limit reached (${fortCount()}/${fortLimit()})` + (hasTech('forts') ? '' : ' · research Fort Charters for 5');
+  if (fortCount() >= fortLimit()) return `Fort limit reached (${fortCount()}/${fortLimit()})` + (hasTech('forts') ? '' : ' · research Fort Charters for 3');
   return lackText(FORT_UPGRADE.cost);
 }
 function startUpgrade(p) {
@@ -446,7 +462,7 @@ const rawStrength = armies => armies.reduce((n, a) => n + Object.entries(a.troop
 function stepBattles(t) {
   // start battles where armies of different owners share a province
   const byProv = new Map();
-  for (const a of S.units) { if (a.kind !== 'army' || a.retreating || a.moving && !a.battle || troopCount(a) <= 0) continue; if (!byProv.has(a.prov)) byProv.set(a.prov, []); byProv.get(a.prov).push(a); }
+  for (const a of S.units) { if (a.kind !== 'army' || a.retreating || a.moving && !a.battle && !a.sieging || troopCount(a) <= 0) continue; if (!byProv.has(a.prov)) byProv.set(a.prov, []); byProv.get(a.prov).push(a); }
   for (const [p, list] of byProv) {
     // only owners that are hostile to each other fight (raiders always; nations only while at war)
     const os = [...new Set(list.map(a => a.owner))]; let pair = null;
@@ -462,7 +478,7 @@ function stepBattles(t) {
       S.battles.push(b); if (list.some(a => a.owner === ME)) sfx('bat_loop', { prov: p });
       if (list.some(a => a.owner === ME)) toast(`Battle in the ${TER[world.provinces[p].terrain].label.toLowerCase()}! ${TERRAIN_MOD[world.provinces[p].terrain].note}.`);
     }
-    for (const a of list) if (!a.battle && pair.includes(a.owner)) { onBattleJoin(a, t); a.battle = b; a.path = []; a.moving = false; b.start[a.owner] = (b.start[a.owner] || 0) + troopCount(a); }
+    for (const a of list) if (!a.battle && pair.includes(a.owner)) { onBattleJoin(a, t); a.battle = b; a.path = []; a.moving = false; a.retreatHome = false; a.sieging = null; b.start[a.owner] = (b.start[a.owner] || 0) + troopCount(a); }
   }
   for (const b of S.battles.slice()) {
     const sides = {};
@@ -498,6 +514,7 @@ function applyDamage(b, armies, dmg, t, pierce = 0) {
       // Risen Dead: every Nth soldier who falls gets straight back up
       if (a.risen && k !== MAGE && isCaster(a) && ++a.risenN >= a.risen) { a.risenN = 0; a.riseFx = t; a.risenTotal = (a.risenTotal || 0) + 1; if (a.owner === ME) sfx('mg_risen', { prov: b.prov }); continue; }
       a.troops[k]--; if (!a.troops[k]) delete a.troops[k];
+      if (a.monster) monsterLoot(a, k, b);   // SMA03: wood or gold for every monster killed
       if (a.fallen) a.fallen[k] = (a.fallen[k] || 0) + 1;
       b.lost[owner] = (b.lost[owner] || 0) + 1; warKill(b, owner, 1); if (owner === ME || (b.start && b.start[ME] !== undefined)) sfx('bat_fall', { prov: b.prov });
       S.fx.push({ kind: 'fall', prov: b.prov, owner, unit: k, t0: t, r: Math.random() });
@@ -517,7 +534,7 @@ function endBattle(b, winner, sides) {
   if (b.start[ME] === undefined) return;
   const where = TER[world.provinces[b.prov].terrain].label.toLowerCase();
   if (winner === ME) sfx('bat_win'); else sfx('bat_lose');
-  if (winner === ME) toast(`Victory in the ${where}! You lost ${mine}, the enemy lost ${theirs}.${b.bounty ? ` The Bandit Gang is broken: +${b.bounty} gold bounty.` : ''}`);
+  if (winner === ME) toast(`Victory in the ${where}! You lost ${mine}, the enemy lost ${theirs}.${b.bounty ? ` The Bandit Gang is broken: +${b.bounty} gold bounty.` : ''}${b.loot ? ` Spoils from the monsters: +${lootText(b.loot)}.` : ''}`);
   else if (b.retreatedMe) toast(`You withdrew from the ${where}. You lost ${mine}, the enemy lost ${theirs}.`, true);
   else toast(`Defeat in the ${where}. You lost ${mine}, the enemy lost ${theirs}.`, true);
   computeIncome();
@@ -530,20 +547,27 @@ function retreatLoss(a) {
 }
 function retreatTo(a) {
   const ok = q => !hostilesIn(q, a.owner).length;
-  const nb = openNbr[a.prov].map(n => n.q).filter(q => canEnter(a, q) && ok(q));
+  const nb = pathNbr(a, a.prov, false).map(n => n.q).filter(q => canEnter(a, q) && ok(q));   // own gates count as a way out
   if (!nb.length) return -1;
   if (a.lastProv !== undefined && nb.includes(a.lastProv)) return a.lastProv;
   return nb.sort((x, y) => (owned(y) ? 1 : 0) - (owned(x) ? 1 : 0))[0];
 }
+// GPC21: nobody can pull out of a battle in its first 10 seconds
+const RETREAT_LOCK = 10;
+const retreatLockLeft = a => a.battle ? Math.max(0, RETREAT_LOCK - (S.t - a.battle.t0)) : 0;
 function retreat(a) {
+  if (retreatLockLeft(a) > 0) { if (a.owner === ME) toast(`${a.name} can’t pull out yet: the lines are locked for ${Math.ceil(retreatLockLeft(a))} s more.`, true); return; }
   const dest = retreatTo(a); if (dest < 0) return a.owner === ME ? toast(`${a.name} is surrounded and can’t retreat.`, true) : undefined;
   const n = retreatLoss(a);
   for (let i = 0; i < n; i++) { const kinds = Object.keys(a.troops).filter(k => a.troops[k] > 0); const k = kinds[Math.floor(Math.random() * kinds.length)]; a.troops[k]--; if (!a.troops[k]) delete a.troops[k]; S.fx.push({ kind: 'fall', prov: a.prov, owner: a.owner, unit: k, t0: S.t, r: Math.random() }); }
   const b = a.battle; b.lost[a.owner] = (b.lost[a.owner] || 0) + n; warKill(b, a.owner, n); if (a.owner === ME) b.retreatedMe = true;
   if (troopCount(a) <= 0) { warWipe(b, a); removeArmy(a); if (a.owner === ME) toast(`${a.name} was cut down while retreating.`, true); return; }
   a.retreating = true; a.battle = null;
-  order(a, dest, true);
-  if (a.owner === ME) toast(`${a.name} retreats, losing ${n} soldier${n === 1 ? '' : 's'}.`);
+  // GPC26: all the way back to the capital, or as close to it as the army can get; no orders until it arrives
+  const home = retreatHome(a);
+  if (home) { if (a.cast && typeof cancelCast === 'function') cancelCast(a); a.surveyQueue = []; walkHops(a, home.hops, home.to); a.retreatHome = true; S.selected = S.selected.filter(v => v !== a); }
+  else order(a, dest, true);
+  if (a.owner === ME) toast(`${a.name} retreats${home ? ' toward ' + (home.to === capitalOf(ME) ? 'the capital' : provName(home.to)) : ''}, losing ${n} soldier${n === 1 ? '' : 's'}.`);
   else if (b.start[ME] !== undefined) toast(`${a.name} retreats from the battle.`);
   computeIncome();
 }
@@ -574,7 +598,7 @@ function drawBattle(g, b, t) {
   for (const { o, dir, figs } of figsBySide) {
     figs.forEach((k, i) => {
       const row = i % 3, col = Math.floor(i / 3);
-      const bx = cx + dir * (30 + col * 24 + (row === 1 ? 8 : 0)), by = cy - 14 + row * 15;
+      const bx = cx + dir * (30 + col * 24 + (row === 1 ? 8 : 0)) * Math.sqrt(UKK), by = cy - 14 + row * 15 * Math.sqrt(UKK);
       const ph = i * 1.37 + o * 2.1, swing = Math.pow(Math.max(0, Math.sin(t * 3.2 + ph)), 6);
       const hitAge = t - (b.hits[o] || -9), shake = hitAge < 0.25 ? Math.sin(hitAge * 80) * 2.5 : 0;
       all.push({ k, o, dir, x: bx - dir * swing * 20 + shake, y: by, swing });
@@ -582,7 +606,7 @@ function drawBattle(g, b, t) {
   }
   all.sort((p, q) => p.y - q.y).forEach(f => {
     g.globalAlpha = 0.28; g.fillStyle = (PLAYERS[f.o] || PLAYERS[RAIDERS]).color; g.beginPath(); g.ellipse(f.x, f.y + 2, 12, 4.5, 0, 0, 7); g.fill(); g.globalAlpha = 1;
-    RealmIso.drawUnitAt(g, f.k, f.dir < 0 ? Math.PI / 2 : -Math.PI / 2, t * 2 + f.x, f.x, f.y, isCav(f.k) ? UK * 0.8 : UK);
+    RealmIso.drawUnitAt(g, f.k, f.dir < 0 ? Math.PI / 2 : -Math.PI / 2, t * 2 + f.x, f.x, f.y, (isCav(f.k) ? UK * 0.8 : UK) * UKK);
     if (f.swing > 0.55) { // a slash arc in front of the attacker
       const sx = f.x - f.dir * 14, sy = f.y - 16; g.beginPath(); g.arc(sx, sy, 11, f.dir < 0 ? -1.2 : Math.PI + 1.2, f.dir < 0 ? 1.2 : Math.PI - 1.2, f.dir > 0); g.lineWidth = 3.2; g.strokeStyle = 'rgba(255,255,255,' + ((f.swing - 0.55) * 2).toFixed(2) + ')'; g.stroke();
     }
@@ -632,7 +656,7 @@ function drawBattleFx(g, t) {
       // a soldier topples over and fades, with a puff and little stars
       const x = c[0] + dir * (36 + f.r * 30), y = c[1] + 22 + f.r * 26, a = Math.max(0, 1 - dt / 1.4);
       g.save(); g.globalAlpha = a; g.translate(x, y); g.rotate(-dir * Math.min(1.4, dt * 4));
-      RealmIso.drawUnitAt(g, f.unit, dir < 0 ? Math.PI / 2 : -Math.PI / 2, 0, 0, 0, isCav(f.unit) ? UK * 0.8 : UK);
+      RealmIso.drawUnitAt(g, f.unit, dir < 0 ? Math.PI / 2 : -Math.PI / 2, 0, 0, 0, (isCav(f.unit) ? UK * 0.8 : UK) * UKK);
       g.restore();
       g.globalAlpha = a * 0.45; g.fillStyle = '#eef0f4'; g.beginPath(); g.arc(x, y - 4, 4 + dt * 9, 0, 7); g.fill();
       g.globalAlpha = a; g.fillStyle = '#fff3a6'; for (let i = 0; i < 3; i++) { const q = t * 6 + i * 2.1; g.beginPath(); g.arc(x + Math.cos(q) * 10, y - 26 + Math.sin(q) * 3, 2, 0, 7); g.fill(); }
@@ -667,7 +691,7 @@ function abilityQ() {
   if (!S.selected.length) return toast('Select the Wayfinder to survey, or the Mason to build.', true);
   const w = S.selected.find(v => v.kind === WAYFINDER), m = S.selected.find(v => v.kind === MASON);
   if (w) surveyCommand();
-  if (m && tyrannyConfirm(m.prov)) startBuild(m);
+  if (m) startBuild(m);
 }
 // ---------- survey queue ----------
 // Survey surveys the Wayfinder's own province if it needs it; otherwise it picks targets:
@@ -776,7 +800,6 @@ function beginExtra(u, type, want) {
 }
 // a build order from the menu: walk there first if needed, then start
 function orderBuild(u, p, type, slot) {
-  if (type === 'outpost' && !tyrannyConfirm(p)) return false;
   if (u.prov !== p) { if (!order(u, p)) return false; u.pending = { prov: p, type, slot }; toast(`${u.name} is heading out to build ${type === 'outpost' ? 'an outpost' : 'a ' + BUILD_DEFS[type].name}.`); return true; }
   if (u.moving) { order(u, p, true); u.pending = { prov: p, type, slot }; return true; }
   type === 'outpost' ? startBuild(u) : beginExtra(u, type, slot);
@@ -799,7 +822,7 @@ function cancelBuild(u) { if (u.build && u.build.paid) { const st = stockOf(u.ow
 function togglePause() { S.paused = !S.paused; $q('#paused').hidden = !S.paused || !$q('#settings').hidden; const pb = $q('#pauseBtn'); if (pb) { pb.setAttribute('aria-pressed', S.paused ? 'true' : 'false'); pb.innerHTML = S.paused ? PLAY_ICON : PAUSE_ICON; pb.setAttribute('aria-label', S.paused ? 'Resume' : 'Pause'); } if (typeof soundPaused === 'function') soundPaused(S.paused); }
 const PAUSE_ICON = '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="4.5" y="3.5" width="4" height="13" rx="1" fill="currentColor"/><rect x="11.5" y="3.5" width="4" height="13" rx="1" fill="currentColor"/></svg>', PLAY_ICON = '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M6 3.5v13l10-6.5z" fill="currentColor"/></svg>';
 function update(realT) {
-  if (S.selected.some(u => u.exiting || u.fleeing)) S.selected = S.selected.filter(u => !u.exiting && !u.fleeing);   // fleeing Wayfinders can't be commanded either   // units marching home after a peace deal can't be commanded
+  if (S.selected.some(u => u.exiting || u.fleeing || u.retreatHome)) S.selected = S.selected.filter(u => !u.exiting && !u.fleeing && !u.retreatHome);   // fleeing Wayfinders can't be commanded either   // units marching home after a peace deal can't be commanded
   sndSelection(); sndWatch(S.t);
   if (!S.started) { S.last = realT; menuDrift(realT); return; }
   // game time only advances while unpaused; the camera keeps working either way
@@ -809,6 +832,7 @@ function update(realT) {
     if (u.moving) {
       let time = dt;
       while (time > 0 && u.path.length) {
+        if (siegeHold(u, time)) { time = 0; break; }
         const wp = u.path[0], sp = SPEED * unitSpeed(u) / (u.scouting !== null ? SCOUT_SLOW : 1) * (onRoad(u, wp) ? roadSpeed() : 1) / (u.stealth ? 3 : 1), dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy);
         if (d > 0.5) u.th = Math.round(Math.atan2(dx, dy) / (Math.PI / 4)) * (Math.PI / 4);
         if (d <= sp * time) {
@@ -824,7 +848,7 @@ function update(realT) {
             S.wf.add(u.prov); u.scouting = null;
           }
           if (!u.path.length && !wp.slot) { u.slot = freeSlot(u.prov, u); const [x, y] = slotPos(u.prov, u.slot); u.path.push({ x, y, slot: true }); }
-          else if (!u.path.length && wp.slot) { u.moving = false; u.th = 0; u.arrived = S.t; if (u.fleeing) { u.fleeing = false; cmdKey = ''; rosterKey = ''; } if (u.retreating) u.retreating = false; if (u.exiting && nationOf(u.prov) === u.owner) u.exiting = false; }
+          else if (!u.path.length && wp.slot) { u.moving = false; u.th = 0; u.arrived = S.t; if (u.fleeing) { u.fleeing = false; cmdKey = ''; rosterKey = ''; } if (u.retreating) u.retreating = false; if (u.retreatHome) { u.retreatHome = false; cmdKey = ''; rosterKey = ''; if (u.owner === ME) toast(`${u.name} is back under your command at ${provName(u.prov)}.`); } if (u.exiting && (nationOf(u.prov) === u.owner || u.exitTo === u.prov)) { u.exiting = false; u.exitTo = undefined; } }
         } else { u.x += dx / d * sp * time; u.y += dy / d * sp * time; time = 0; }
       }
     }
@@ -840,6 +864,9 @@ function update(realT) {
           S.surveyed.set(u.prov, t);
           const y = yields[u.prov];
           sfx('pr_survey', { prov: u.prov }); toast('Survey complete: ' + RES.map(k => y[k] + ' ' + k).join(', ') + ' every 10 s.' + (y.deposit ? ' Found a Hidden Gold Deposit!' : ''));
+          if (u.owner === ME) S.spFound.add(u.prov);
+          if (setpieceAt(u.prov)) showSetpiecePop(u.prov, u);
+          if (u.owner === ME) surveyFinds(u);   // SMA02 Forgotten Treasure, SMA04 Intact Ruins
           u.survey = null;
           if (!u.surveyQueue.length || typeof u.surveyQueue[0] !== 'number') order(u, u.prov, true);   // stroll back to his spot unless more surveys are queued
         }
@@ -854,7 +881,7 @@ function update(realT) {
     if (u.build) {
       if (u.moving || u.prov !== u.build.prov) cancelBuild(u);
       else if (t - u.build.t0 >= (u.build.dur || BUILD_TIME)) {
-        if (u.build.type === 'road' || u.build.type === 'wall') finishLink(u.build);
+        if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall') finishLink(u.build);
         else if (u.build.type && u.build.type !== 'outpost') {
           if (nationOf(u.prov) === u.owner) {
             const list = S.extras.get(u.prov) || []; list.push({ type: u.build.type, slot: u.build.slot, born: t }); S.extras.set(u.prov, list);
@@ -863,6 +890,7 @@ function update(realT) {
         } else if (!S.buildings.has(u.prov)) {
           S.buildings.set(u.prov, { stage: 0, born: t, owner: u.owner });
           territory = null; cacheDirty = true; computeIncome();
+          outpostClaimed(u.prov, u.owner);
           if (u.owner === ME) { toast('Outpost built. Its neighbors are now explored.'); sfx('bld_outpost', { prov: u.prov }); }
         }
         if (u.owner !== ME) aiBuilt(u);
@@ -891,6 +919,8 @@ function update(realT) {
   run('training', () => stepTraining(t));
   if (!S.paused) { run('battles', () => stepBattles(t)); run('war', () => stepWar(t)); run('ai', () => stepAI(t)); run('arrows', () => stepArrows(t)); run('scouts', () => stepScouts(t)); run('magic', () => stepMagic(t, dt)); }
   run('content', () => stepContent(t, dt));
+  if (!S.paused) run('gpc', () => stepGPC(t, dt));
+  run('v78', () => stepV78(t, dt));
   run('stock', () => clampStock());
   run('diplomacy', () => renderDip(t));
   run('research', () => renderTech());
@@ -966,7 +996,7 @@ function computeIncome() {
 function payday(t) {
   const short = S.stock.food + income.food < 0;   // soldiers only need feeding: units have food upkeep only
   for (const k of RES) S.stock[k] = Math.max(0, S.stock[k] + income[k]);
-  stepExhaustion(short); stepTyranny();
+  stepExhaustion(short);
   aiPayday();
   techPayday();
   for (const [p, b] of S.buildings) {
@@ -1067,16 +1097,16 @@ function setupBar() {
   bar.innerHTML = RES.map(k => {
     const c = document.createElement('canvas'); c.width = c.height = 44; resIcon(c.getContext('2d'), k, 22, 23, 1.9);
     return `<span class="r" id="r-${k}" title="${RES_LABEL[k]}"><img alt="${RES_LABEL[k]}" src="${c.toDataURL()}"><b></b><em class="rcap"></em><small></small></span>`;
-  }).join('') + '<span class="r exh" id="r-exh" title="Army Exhaustion: rises every payout you can’t feed your army. At 10 the whole army deserts." hidden><b></b></span><span class="r exh tyr" id="r-tyr" title="Tyranny Exhaustion: past 10 provinces you need one soldier per province. Rises every payout you fall short; at 15 the province farthest from your capital is abandoned." hidden><b></b></span><span class="tick" title="Next payout"><i></i></span>';
+  }).join('') + '<span class="r exh" id="r-exh" title="Army Exhaustion: rises every payout you can’t feed your army. At 10 the whole army deserts." hidden><b></b></span><span class="tick" title="Next payout"><i></i></span>';
   RES.forEach(k => { const el = $q('#r-' + k); barEls[k] = { el, b: el.querySelector('b'), s: el.querySelector('small'), c: el.querySelector('.rcap') }; });
-  barEls.tick = bar.querySelector('.tick i'); barEls.exh = $q('#r-exh'); barEls.tyr = $q('#r-tyr');
+  barEls.tick = bar.querySelector('.tick i'); barEls.exh = $q('#r-exh');
 }
 function updateBar(t) {
   const caps = {}; RES.forEach(k => caps[k] = storageCap(k));
   const key = RES.map(k => S.stock[k] + ':' + income[k] + ':' + caps[k]).join('|');
   if (key !== barKey) { barKey = key; RES.forEach(k => { barEls[k].c.textContent = '/' + caps[k]; barEls[k].c.classList.toggle('full', S.stock[k] >= caps[k]); barEls[k].b.textContent = S.stock[k]; barEls[k].s.textContent = '(' + (income[k] < 0 ? '−' + (-income[k]) : '+' + income[k]) + ')'; barEls[k].s.style.color = income[k] < 0 ? '#b3261e' : ''; }); }
-  const fk = S.exhaust + '|' + S.tyranny;
-  if (fk !== barEls.fk) { barEls.fk = fk; barEls.exh.hidden = !S.exhaust; barEls.exh.querySelector('b').textContent = 'Exhaustion ' + S.exhaust + '/' + EXHAUST_MAX; barEls.tyr.hidden = !S.tyranny; barEls.tyr.querySelector('b').textContent = 'Tyranny ' + S.tyranny + '/' + TYRANNY_MAX; }
+  const fk = S.exhaust + '';
+  if (fk !== barEls.fk) { barEls.fk = fk; barEls.exh.hidden = !S.exhaust; barEls.exh.querySelector('b').textContent = 'Exhaustion ' + S.exhaust + '/' + EXHAUST_MAX; }
   const f = Math.max(0, Math.min(1, 1 - (S.nextTick - t) / TICK));
   barEls.tick.style.background = `conic-gradient(#ffc93c ${Math.round(f * 360)}deg, #e9edf3 0deg)`;
 }
@@ -1142,11 +1172,12 @@ function renderFog() {
   worldTx(g);
   // cut out explored land, plus a band of sea along explored coasts
   g.globalCompositeOperation = 'destination-out';
-  const ex = new Path2D(), sea = new Path2D(), V = world.vertices;
+  const ex = new Path2D(), V = world.vertices, segs = [];
   for (const i of S.explored) {
     G.provs[i].pts.forEach(([x, y], k) => k ? ex.lineTo(x, y) : ex.moveTo(x, y)); ex.closePath();
-    for (const [a, b] of world.provinces[i].coast) { sea.moveTo(V[a][0], V[a][1]); sea.lineTo(V[b][0], V[b][1]); }
+    for (const [a, b] of world.provinces[i].coast) segs.push([a, b]);
   }
+  const sea = coastChains(segs, V);
   g.fillStyle = '#000'; g.fill(ex);
   g.lineJoin = 'round'; g.lineCap = 'butt'; g.strokeStyle = '#000';
   g.lineWidth = 24; g.stroke(ex);
@@ -1172,9 +1203,28 @@ function renderFog() {
   g.lineWidth = Math.max(3, 2 / cam.z); g.strokeStyle = 'rgba(16,24,46,0.35)'; g.stroke(dim);
   fogDirty = false;
 }
+// GC25: the coast segments are joined into continuous lines, so the band of sea follows the coast's corners smoothly
+// (stroked as separate pieces, every corner left a notch) while the ends of the band still stop square
+function coastChains(segs, V) {
+  const path = new Path2D(), at = new Map(), used = new Array(segs.length).fill(false);
+  segs.forEach(([a, b], i) => { for (const v of [a, b]) (at.get(v) || at.set(v, []).get(v)).push(i); });
+  const next = (v, from) => (at.get(v) || []).find(j => j !== from && !used[j]);
+  // start chains at loose ends first, then whatever is left (closed loops)
+  const order = segs.map((_, i) => i).sort((x, y) => Math.min(at.get(segs[x][0]).length, at.get(segs[x][1]).length) - Math.min(at.get(segs[y][0]).length, at.get(segs[y][1]).length));
+  for (const i0 of order) {
+    if (used[i0]) continue;
+    let [a, b] = segs[i0]; if (at.get(a).length > 1 && at.get(b).length === 1) [a, b] = [b, a];
+    used[i0] = true; path.moveTo(V[a][0], V[a][1]); path.lineTo(V[b][0], V[b][1]);
+    let v = b, j = i0;
+    for (;;) { const k = next(v, j); if (k === undefined) break; used[k] = true; const w = segs[k][0] === v ? segs[k][1] : segs[k][0]; path.lineTo(V[w][0], V[w][1]); v = w; j = k; }
+  }
+  return path;
+}
 let hoverProv = -1, hoverPath;
 function drawGame(g, t) {
-  artBudget = 4;
+  artBudget = 4; UKK = unitK();
+  drawLairGlow(g, t);   // GC18: provinces where your Wayfinders found bandits or monsters
+  drawSelProvs(g, t);   // GC23: the province of every selected unit is lightly highlighted
   drawWar(g, t);
   // movement preview on hover
   if (surveyAim && hoverProv >= 0) {
@@ -1187,21 +1237,11 @@ function drawGame(g, t) {
     if (hoverPath === undefined || hoverPath.prov !== hoverProv || hoverPath.u !== P0) hoverPath = { prov: hoverProv, u: P0, hops: findPath(P0, hoverProv) };
     const ok = !!hoverPath.hops, p = G.provs[hoverProv];
     roundedPath(g, p.inner, 12); g.lineWidth = Math.max(5, 3 / cam.z); g.strokeStyle = ok ? '#7cf07c' : '#ff6b6b'; g.setLineDash(ok ? [] : [14, 10]); g.stroke(); g.setLineDash([]);
-    if (ok && hoverPath.hops.length) {
-      g.beginPath(); g.moveTo(P0.x, P0.y);
-      hoverPath.hops.forEach((h, i) => { g.lineTo(h.m[0], h.m[1]); const q = G.provs[h.to]; g.lineTo(q.ic[0], q.ic[1]); });
-      g.setLineDash([10, 12]); g.lineWidth = Math.max(4, 2.5 / cam.z); g.strokeStyle = 'rgba(255,255,255,0.85)'; g.stroke(); g.setLineDash([]);
-    }
   } else if (hoverProv >= 0 && P0 && !S.explored.has(hoverProv)) {
     const p = G.provs[hoverProv]; roundedPath(g, p.inner, 12); g.setLineDash([14, 10]); g.lineWidth = Math.max(5, 3 / cam.z); g.strokeStyle = '#ff6b6b'; g.stroke(); g.setLineDash([]);
   }
-  // planned route of moving units
-  for (const u of S.units) if (u.owner === ME && u.moving && u.path.length) {
-    g.beginPath(); g.moveTo(u.x, u.y); u.path.forEach(w => g.lineTo(w.x, w.y));
-    g.setLineDash([6, 10]); g.lineWidth = Math.max(3, 2 / cam.z); g.strokeStyle = 'rgba(255,214,90,0.9)'; g.stroke(); g.setLineDash([]);
-  }
   drawLinks(g, t);
-  drawMagic(g, t);
+  drawMagic(g, t); drawQuakes(g, t); drawRewalls(g, t);
   const items = [];
   // only what is on screen (with a margin for tall buildings)
   const vx0 = cam.x - cw / 2 / cam.z - 360, vx1 = cam.x + cw / 2 / cam.z + 360, vy0 = cam.y - ch / 2 / cam.z - 360, vy1 = cam.y + ch / 2 / cam.z + 420;
@@ -1210,15 +1250,16 @@ function drawGame(g, t) {
   for (const [p, list] of S.extras) if (S.visible.has(p) && onScreen(p)) for (const e of list) { const c = G.provs[p].ic, [ox, oy] = bslotOf(p, e.slot); items.push({ y: c[1] + oy, f: () => { drawExtra(g, c[0] + ox, c[1] + oy, e.type, t, 1, t - e.born, e.level, owned(p)); const xu = S.xup.get(p + '@' + e.slot); if (xu) drawXupBar(g, c[0] + ox, c[1] + oy, xu, e); } }); }
   for (const u of S.units) if (u.build && S.visible.has(u.build.prov)) {
     const c = G.provs[u.build.prov].ic;
-    if (u.build.type === 'road' || u.build.type === 'wall') continue;
+    if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall') continue;
     if (u.build.type === 'outpost') items.push({ y: c[1], f: () => drawSite(g, u.build, t) });
     else items.push({ y: c[1] + u.build.oy, f: () => drawExtraSite(g, u.build, t) });
   }
-  townItems(g, t, items);
+  townItems(g, t, items); setpieceItems(g, t, items, onScreen); roadWalkerItems(g, t, items); findItems(g, t, items, onScreen); travelerItems(g, t, items);
   for (const u of S.units) if ((u.owner === ME || (S.visible.has(u.prov) && stealthSeen(u)) || armyDetected(u) || (u.bandit && u.seen && S.explored.has(u.prov))) && u.x > vx0 && u.x < vx1 && u.y > vy0 && u.y < vy1) items.push({ y: u.y, f: () => drawUnit(g, u, t) });
   for (const b of S.battles) if (S.visible.has(b.prov)) items.push({ y: battleCenter(b.prov)[1] - 4, f: () => drawBattle(g, b, t) });
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
   for (const [p, at] of S.surveyed) if (S.explored.has(p) && !S.battles.some(b => b.prov === p)) drawYieldBadge(g, p, t - at);
+  drawProvLabels(g, t);   // GC04 / GC05: province names under their resources, your nation's name over its land
   drawSetpieces(g, t);
   for (const b of S.battles) if (S.visible.has(b.prov)) drawBattleBar(g, b, t);
   if (S.selProv >= 0) {
@@ -1232,7 +1273,7 @@ function drawGame(g, t) {
       g.beginPath(); g.ellipse(x, y + 2, rx * pulse, ry * pulse, 0, 0, 7); g.lineWidth = 7; g.strokeStyle = OL; g.stroke(); g.lineWidth = 4; g.strokeStyle = '#ffc93c'; g.stroke();
     }
   }
-  for (const key in S.queues) { const q = S.queues[key][0]; if (q && q.t0 !== null) { const sp = srcSpot(key); if (S.visible.has(sp.prov)) drawProgress(g, { prov: sp.prov, ox: sp.ox, oy: sp.oy, t0: q.t0 }, t, TRAIN_TIME, '#7fb0ff', 'Training', sp.yOff); } }
+  for (const key in S.queues) { const q = S.queues[key][0]; if (q && q.t0 !== null) { const sp = srcSpot(key); if (S.visible.has(sp.prov)) drawProgress(g, { prov: sp.prov, ox: sp.ox, oy: sp.oy, t0: q.t0 }, t, trainTime(q.kind), '#7fb0ff', 'Training', sp.yOff); } }
   for (const u of S.units) if (u.survey) drawSurvey(g, u.survey, t);
   drawSurveyQueue(g, t);
   for (const u of S.units) if (u.build && S.visible.has(u.build.prov)) drawProgress(g, u.build, t);
@@ -1284,11 +1325,10 @@ function drawSurveyQueue(g, t) {
     if (u.owner !== ME) continue;
     const list = (u.pendingSurvey >= 0 ? [u.pendingSurvey] : []).concat(u.surveyQueue);
     if (!list.length) continue;
-    // a dotted trail from the unit through each queued order: survey flags for surveys, white markers for moves
+    // each queued order gets a numbered marker: survey flags for surveys, white markers for moves
     const ptOf = e => { const p = typeof e === 'number' ? e : e.move, o = (u.id % 5 - 2) * 9; return [G.provs[p].ic[0] + o, G.provs[p].ic[1] + 40 + o * 0.5]; };
     const start = u.moving && u.final !== undefined && u.pendingSurvey < 0 ? [G.provs[u.final].ic[0], G.provs[u.final].ic[1] + 40] : null;
-    g.beginPath(); g.moveTo(u.x, u.y); if (start) g.lineTo(start[0], start[1]); list.forEach(e => g.lineTo(...ptOf(e)));
-    g.setLineDash([3, 12]); g.lineWidth = Math.max(4, 2.5 / cam.z); g.strokeStyle = u.kind === WAYFINDER ? 'rgba(143,227,255,0.95)' : 'rgba(255,255,255,0.9)'; g.lineCap = 'round'; g.stroke(); g.setLineDash([]);
+    void start;   // GC06: no dotted trail to the province centers, just the numbered markers
     list.forEach((e, i) => {
       const [x, y] = ptOf(e), k = Math.max(1, 0.62 / cam.z), bob = Math.sin(t * 3 + i) * 2;
       if (typeof e !== 'number') {
@@ -1386,27 +1426,32 @@ function ownRing(g, u, t, rx, ry) {
   g.beginPath(); g.ellipse(u.x, u.y + 1, rx * pulse, ry * pulse, 0, 0, 7); g.lineWidth = 3; g.strokeStyle = OL; g.stroke(); g.lineWidth = 1.6; g.strokeStyle = PLAYERS[ME].color; g.stroke();
 }
 function drawArmy(g, u, t) {
-  if (u.battle && !u.retreating) { if (isSel(u)) { const pulse = 1 + Math.sin(t * 5) * 0.08; g.beginPath(); g.ellipse(u.x, u.y + 2, 44 * pulse, 18 * pulse, 0, 0, 7); g.lineWidth = 5; g.strokeStyle = OL; g.stroke(); g.lineWidth = 3; g.strokeStyle = '#ffc93c'; g.stroke(); } return; }
-  if (u.owner !== ME) { g.beginPath(); g.ellipse(u.x, u.y + 2, 28, 11, 0, 0, 7); g.lineWidth = 5; g.strokeStyle = OL; g.stroke(); g.lineWidth = 3; g.strokeStyle = (PLAYERS[u.owner] || PLAYERS[RAIDERS]).color; g.stroke(); }
-  ownRing(g, u, t, 28, 11);
-  if (isSel(u)) { const pulse = 1 + Math.sin(t * 5) * 0.08; g.beginPath(); g.ellipse(u.x, u.y + 2, 30 * pulse, 12 * pulse, 0, 0, 7); g.lineWidth = 5; g.strokeStyle = OL; g.stroke(); g.lineWidth = 3; g.strokeStyle = '#ffc93c'; g.stroke(); }
-  const kinds = Object.entries(u.troops).filter(([, n]) => n).sort((a, b) => b[1] - a[1]).map(([k]) => k);
-  const figs = []; for (const k of kinds) { figs.push(k); if (figs.length >= 3) break; }
-  while (figs.length < Math.min(3, troopCount(u))) figs.push(kinds[0]);
-  const spots = [[0, 4], [-15, -6], [15, -6]].slice(0, figs.length);
-  const hop = u.moving ? -Math.abs(Math.sin(t * 9)) * 3 : 0, tt = u.moving ? t * 2.4 : t;
-  let sc = UK; const grow = u.grew !== undefined ? t - u.grew : 9, born = u.born !== undefined ? t - u.born : 9;
+  const K = UKK, sc0 = UK * K;
+  if (u.battle && !u.retreating) { if (isSel(u)) selRing(g, u.x, u.y + 2, 44 * K, 18 * K, t); drawMagicFx(g, u, u.x, u.y - 60 * K, t); return; }
+  // GC01: up to 10 soldiers stand in ranks, shared out between the kinds of soldier in the army
+  const figs = armyFigures(u), n = figs.length; if (!n) return;
+  const per = n <= 3 ? n : n <= 8 ? 4 : 5, rows = Math.ceil(n / per);
+  const gx = 15 * K, gy = 10 * K, halfW = Math.max(18 * K, (per - 1) * gx / 2 + 14 * K), rx = halfW + 8 * K, ry = Math.max(11 * K, rx * 0.4);
+  const cy = u.y - (rows - 1) * gy / 2;
+  if (u.owner !== ME) { g.beginPath(); g.ellipse(u.x, cy + (rows - 1) * gy / 2 + 2, rx, ry, 0, 0, 7); g.lineWidth = 5; g.strokeStyle = OL; g.stroke(); g.lineWidth = 3; g.strokeStyle = (PLAYERS[u.owner] || PLAYERS[RAIDERS]).color; g.stroke(); }
+  ownRing(g, u, t, rx, ry);
+  if (isSel(u)) selRing(g, u.x, u.y + 2, rx + 2 * K, ry + 1 * K, t);
+  const walking = u.moving || u.patrolling;
+  const hop = walking ? -Math.abs(Math.sin(t * 9)) * 3 : 0, tt = walking ? t * 2.4 : t;
+  let sc = sc0; const grow = u.grew !== undefined ? t - u.grew : 9, born = u.born !== undefined ? t - u.born : 9;
   if (born < 1.2) sc *= Math.max(0.01, 1 - Math.exp(-born * 7) * Math.cos(born * 15));
   else if (grow < 0.6) sc *= 1 + Math.sin(grow / 0.6 * Math.PI) * 0.15;
-  figs.map((k, i) => ({ k, o: spots[i] })).sort((a, b) => a.o[1] - b.o[1]).forEach(({ k, o }, i) => RealmIso.drawUnitAt(g, k, u.th, tt + u.id + i, u.x + o[0], u.y + o[1] + hop, isCav(k) ? sc * 0.85 : sc));
-  // banner with the head count
-  const bx = u.x + 22, by = u.y - 40;
-  g.beginPath(); g.moveTo(bx, u.y - 4); g.lineTo(bx, by - 6); g.lineWidth = 4.5; g.strokeStyle = OL; g.stroke(); g.lineWidth = 2.2; g.strokeStyle = '#c99a2c'; g.stroke();
-  const wave = Math.sin(t * 5) * 1.5;
-  g.beginPath(); g.moveTo(bx + 1, by - 6); g.lineTo(bx + 22, by - 4 + wave); g.lineTo(bx + 19, by + 3 + wave); g.lineTo(bx + 22, by + 10 + wave); g.lineTo(bx + 1, by + 8); g.closePath();
-  g.fillStyle = PLAYERS[u.owner].color; g.fill(); g.lineWidth = 2; g.strokeStyle = OL; g.stroke();
-  g.font = '12px ' + getComputedStyle(document.body).getPropertyValue('--font-display'); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#fff'; g.fillText(String(troopCount(u)), bx + 10, by + 2 + wave * 0.5);
-  if (hordeActive(u)) drawHordeMark(g, u.x, u.y - 52, t);
+  const casting = !!u.cast;
+  const spots = figs.map((k, i) => { const r = Math.floor(i / per), c = i % per, inRow = Math.min(per, n - r * per); return { k, x: u.x + (c - (inRow - 1) / 2) * gx + (r % 2 ? gx * 0.35 : 0), y: u.y + (rows - 1 - r) * gy - (rows - 1) * gy / 2 + 4 * K, i }; });
+  spots.sort((a, b) => a.y - b.y).forEach(({ k, x, y, i }) => RealmIso.drawUnitAt(g, casting && k === MAGE ? castUnitId(u) : k, u.th, tt + u.id + i * 0.7, x, y + hop, isCav(k) ? sc * 0.85 : sc));
+  const top = u.y - (rows - 1) * gy / 2 + 4 * K - (figs.some(isCav) ? 38 : 33) * K - (casting && figs.includes(MAGE) ? 22 * K : 0);   // just above the heads of the back rank (and a casting Mage's staff)
+  // GC11: the nation's flag on the banner pole (monsters carry none)
+  if (!u.monster) drawArmyFlag(g, u, u.x + halfW + 4 * K, u.y + (rows - 1) * gy / 2 + 2, top - 2 * K, t, K);
+  // GC12: a thin health bar above the army; GC10: its power below
+  drawArmyHealth(g, u, u.x, top - 5 * K, Math.min(56 * K, halfW * 1.6), K);
+  drawArmyPower(g, u, u.x, u.y + ry + 6 * K, t);
+  drawMagicFx(g, u, u.x, top - 22 * K, t);
+  if (hordeActive(u)) drawHordeMark(g, u.x - halfW - 8 * K, top, t);
 }
 function drawUnit(g, u, t) {
   if (u.exiting) { g.save(); g.globalAlpha = 0.55; u.exiting = false; drawUnit(g, u, t); u.exiting = true; g.restore(); return; }   // marching home: faded, can't be selected
@@ -1415,33 +1460,30 @@ function drawUnit(g, u, t) {
   drawUnitBody(g, u, t);
 }
 function drawUnitBody(g, u, t) {
-  ownRing(g, u, t, 16, 6.5);
-  if (u.owner !== ME && PLAYERS[u.owner]) { g.beginPath(); g.ellipse(u.x, u.y + 1, 16, 6.5, 0, 0, 7); g.lineWidth = 4; g.strokeStyle = OL; g.stroke(); g.lineWidth = 2.2; g.strokeStyle = PLAYERS[u.owner].color; g.stroke(); }
-  if (isSel(u)) {
-    const pulse = 1 + Math.sin(t * 5) * 0.08;
-    void 0;
-    g.beginPath(); g.ellipse(u.x, u.y + 1, 17 * pulse, 7 * pulse, 0, 0, 7); g.lineWidth = 5; g.strokeStyle = OL; g.stroke(); g.lineWidth = 3; g.strokeStyle = '#ffc93c'; g.stroke();
-  }
+  const K = UKK;
+  ownRing(g, u, t, 16 * K, 6.5 * K);
+  if (u.owner !== ME && PLAYERS[u.owner]) { g.beginPath(); g.ellipse(u.x, u.y + 1, 16 * K, 6.5 * K, 0, 0, 7); g.lineWidth = 4; g.strokeStyle = OL; g.stroke(); g.lineWidth = 2.2; g.strokeStyle = PLAYERS[u.owner].color; g.stroke(); }
+  if (isSel(u)) selRing(g, u.x, u.y + 1, 17 * K, 7 * K, t);
   const working = !!u.build || !!u.survey;
   const walking = u.moving || !!u.survey;
   const tt = walking ? t * 2.4 : working ? t * 3 : t;
   const hop = walking ? -Math.abs(Math.sin(t * 9)) * 3 : working ? -Math.abs(Math.sin(t * 8)) * 2 : 0;
-  let sc = UK;
-  if (u.born !== undefined && t - u.born < 1.2) { const a = t - u.born; sc = UK * Math.max(0.01, 1 - Math.exp(-a * 7) * Math.cos(a * 15)); }
-  RealmIso.drawUnitAt(g, u.kind, u.th, tt + u.id, u.x, u.y + hop, sc);
+  let sc = UK * K;
+  if (u.born !== undefined && t - u.born < 1.2) { const a = t - u.born; sc = UK * K * Math.max(0.01, 1 - Math.exp(-a * 7) * Math.cos(a * 15)); }
+  RealmIso.drawUnitAt(g, u.kind === MAGE && u.cast ? castUnitId(u) : u.kind, u.th, tt + u.id, u.x, u.y + hop, sc);
   if (u.fleeing || u.doomAt) drawFleeMark(g, u, t);
   else if (u.scouting !== null) {
-    const bx = u.x + 13, by = u.y - 34 + Math.sin(t * 4) * 1.5;
+    const bx = u.x + 13 * K, by = u.y - 34 * K + Math.sin(t * 4) * 1.5;
     g.beginPath(); g.arc(bx, by, 8, 0, 7); g.moveTo(bx - 4, by + 6); g.lineTo(bx - 8, by + 12); g.lineTo(bx, by + 7.5);
     g.fillStyle = '#fff'; g.fill(); g.lineWidth = 2.2; g.strokeStyle = OL; g.stroke();
     g.font = '12px ' + getComputedStyle(document.body).getPropertyValue('--font-display'); g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = OL; g.fillText('?', bx, by + 1);
   }
-  if (working && Math.sin(t * 8) > 0.6) { g.fillStyle = '#fff3a6'; for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(u.x + 12 + k * 3, u.y - 18 - k * 4, 1.8, 0, 7); g.fill(); } }
+  if (working && Math.sin(t * 8) > 0.6) { g.fillStyle = '#fff3a6'; for (let k = 0; k < 3; k++) { g.beginPath(); g.arc(u.x + (12 + k * 3) * K, u.y - (18 + k * 4) * K, 1.8 * K, 0, 7); g.fill(); } }
 }
 
 // ---------- input ----------
 const $q = s => document.querySelector(s);
-function unitAt(wx, wy) { let best = null, bd = 30; for (const u of S.units) { if (u.owner !== ME) continue; const r = u.kind === 'army' ? 1.25 : 1, d = Math.hypot(u.x - wx, u.y - 10 - wy) / r; if (d < bd) { bd = d; best = u; } } return best; }
+function unitAt(wx, wy) { const K = UKK; let best = null, bd = 30 * K; for (const u of S.units) { if (u.owner !== ME) continue; const r = u.kind === 'army' ? 1.25 + Math.min(1, troopCount(u) / 10) * 0.6 : 1, d = Math.hypot(u.x - wx, u.y - 12 * K - wy) / r; if (d < bd) { bd = d; best = u; } } return best; }
 function provAt(wx, wy) { const i = G.provs.findIndex(q => inPoly(wx, wy, q.pts)); return i; }
 const pointers = new Map(); let dragMoved = 0, pinch = null, box = null;
 const keysHeld = new Set();
@@ -1568,7 +1610,9 @@ function clickAt(sx, sy, right, shift, ctrl) {
     if (hit) { selectPart(hit.prov, hit.part); return; }
   }
   // right-click always moves; Ctrl+right-click opens the survey / build menu
-  if (right && ctrl && p >= 0 && S.selected.some(v => v.kind === MASON || v.kind === WAYFINDER || isCaster(v))) { menuPt = [wx, wy]; openBuildMenu(sx, sy, p, shift); return; }
+  // Quick queue (a setting, off by default): with only Wayfinders and Masons selected, a plain right-click opens it too
+  const quick = right && !ctrl && quickQueueOn() && S.selected.length > 0 && S.selected.every(v => v.kind === MASON || v.kind === WAYFINDER);
+  if (right && (ctrl || quick) && p >= 0 && S.selected.some(v => v.kind === MASON || v.kind === WAYFINDER || isCaster(v))) { menuPt = [wx, wy]; openBuildMenu(sx, sy, p, shift); return; }
   // right-click gives orders; a left-click that doesn't land on a unit or building deselects them
   if (right) { if (p >= 0 && S.selected.length) orderGroup(p, shift, [wx, wy]); return; }
   S.selected = []; S.selBuilding = -1; S.selPart = null; hoverPath = undefined;
@@ -1625,7 +1669,7 @@ function openBuildMenu(sx, sy, p, shift) {
   const n = extrasIn(p).length + sitesIn(p).length;
   const row = type => {
     const why = buildCheck(p, type), d = type === 'outpost' ? { name: 'Outpost', cost: OUTPOST_COST } : BUILD_DEFS[type];
-    return `<button type="button" class="bm-item" data-type="${type}" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${buildThumb(type)}"><span class="bm-name">${d.name}<small>${why ? why : 'Build here · ' + buildTime(type) + ' s' + capNote(p, type)}${d.gives ? ' · ' + Object.entries(d.gives).map(([k, v]) => '+' + v + ' ' + k).join(', ') : d.note ? ' · ' + d.note : ''}</small></span><span class="bm-cost">${costHTML(d.cost)}</span></button>`;
+    return `<button type="button" class="bm-item" data-type="${type}" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${buildThumb(type)}"${cmdBg('build:' + type)}><span class="bm-name">${d.name}<small>${why ? why : 'Build here · ' + buildTime(type) + ' s' + capNote(p, type)}${d.gives ? ' · ' + Object.entries(d.gives).map(([k, v]) => '+' + v + ' ' + k).join(', ') : d.note ? ' · ' + d.note : ''}</small></span><span class="bm-cost">${costHTML(d.cost)}</span></button>`;
   };
   menuEl.innerHTML = `<div class="bm-head"><b>${S.explored.has(p) ? T.label : 'Unexplored'}</b><span>${owned(p) && m ? `${n}/${plotCap(p)} buildings` : ''}${m && m.prov !== p && types.length ? ' · Mason will walk there' : ''}</span></div>` +
     `<button type="button" class="bm-item bm-move" data-type="move"><span class="bm-ico">➜</span><span class="bm-name">${S.selected.every(v => v.kind === WAYFINDER) ? (menuShift ? 'Queue explore' : 'Explore') : (menuShift ? 'Queue move here' : 'Move here')}${menuShift ? '<small>Add to the end of the order list</small>' : '<small>Shift to queue</small>'}</span></button>` +
@@ -1641,12 +1685,11 @@ function linkRows(m, q) {
   if (!m || (!hasTech('roads') && !hasTech('walls')) || m.prov === q) return '';
   const meta = {
     road: { tech: 'roads', ico: '🛤', cost: ROAD_COST, label: `${ROAD_LOOK[roadTier()].name[0].toUpperCase() + ROAD_LOOK[roadTier()].name.slice(1)} road to ${provName(q)}`, ok: `From ${provName(m.prov)} · ${ROAD_TIME} s · units move ${Math.round(ROAD_BONUS[roadTier()] * 100)}% faster` },
-    wall: { tech: 'walls', ico: wallKind() === 'stone' ? '🧱' : '🪵', cost: WALL_COST, label: `${wallKind() === 'stone' ? 'Stone wall' : 'Palisade'} to ${provName(q)}`, ok: `Closes the border with ${provName(m.prov)} · ${WALL_TIME} s` },
-    gate: { tech: 'gates', ico: '🚪', cost: GATE_COST, label: `Gate into the wall with ${provName(q)}`, ok: `Only your units can pass · ${GATE_TIME} s` }
+    wall: { tech: 'walls', ico: wallKind() === 'stone' ? '🧱' : '🪵', cost: WALL_COST, label: `${wallKind() === 'stone' ? 'Stone wall' : 'Palisade'} to ${provName(q)}`, ok: `Closes the border with ${provName(m.prov)}; its gate lets your units through · ${WALL_TIME} s` }
   };
-  const row = type => { const M = meta[type]; if (!hasTech(M.tech)) return ''; if (type === 'gate' ? !wallBetween(m.prov, q) : !openBetween(m.prov, q)) return ''; const why = linkWhy(type, m, q);
+  const row = type => { const M = meta[type]; if (!hasTech(M.tech)) return ''; if (!openBetween(m.prov, q)) return ''; const why = linkWhy(type, m, q);
     return `<button type="button" class="bm-item" data-type="${type}" ${why ? 'aria-disabled="true"' : ''}><span class="bm-ico">${M.ico}</span><span class="bm-name">${M.label}<small>${why || M.ok}</small></span><span class="bm-cost">${costHTML(M.cost)}</span></button>`; };
-  const rows = row('road') + row('wall') + row('gate');
+  const rows = row('road') + row('wall');
   if (!rows) return allNbr[m.prov].includes(q) ? '' : `<p class="bm-note">Stand the Mason in a neighboring province to build a road or wall on this border.</p>`;
   return `<div class="bm-sec">Border with ${provName(m.prov)}</div>` + rows;
 }
@@ -1657,7 +1700,7 @@ function openPlotMenu(p, slot, anchor) {
   const m = nearestMason(p), T = TER[G.provs[p].terrain];
   const row = type => {
     const why = !m ? 'No free Mason' : buildCheck(p, type), d = BUILD_DEFS[type];
-    return `<button type="button" class="bm-item" data-type="${type}" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${buildThumb(type)}"><span class="bm-name">${d.name}<small>${why ? why : (m.prov === p ? 'Build now' : 'Send ' + m.name) + ' · ' + buildTime(type) + ' s' + capNote(p, type)}${d.gives ? ' · ' + Object.entries(d.gives).map(([k, v]) => '+' + v + ' ' + k).join(', ') : d.note ? ' · ' + d.note : ''}</small></span><span class="bm-cost">${costHTML(d.cost)}</span></button>`;
+    return `<button type="button" class="bm-item" data-type="${type}" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${buildThumb(type)}"${cmdBg('build:' + type)}><span class="bm-name">${d.name}<small>${why ? why : (m.prov === p ? 'Build now' : 'Send ' + m.name) + ' · ' + buildTime(type) + ' s' + capNote(p, type)}${d.gives ? ' · ' + Object.entries(d.gives).map(([k, v]) => '+' + v + ' ' + k).join(', ') : d.note ? ' · ' + d.note : ''}</small></span><span class="bm-cost">${costHTML(d.cost)}</span></button>`;
   };
   menuEl.innerHTML = `<div class="bm-head"><b>Build on plot ${slot + 1}</b><span>${T.label} · ${m ? (m.prov === p ? m.name + ' is here' : m.name + ' will walk over') : 'every Mason is busy'}</span></div>` +
     BUILD_ORDER.slice().sort((a, b) => !!buildCheck(p, a) - !!buildCheck(p, b)).map(row).join('') +
@@ -1679,7 +1722,7 @@ menuEl.addEventListener('click', e => {
     const append = menuShift || e.shiftKey; closeBuildMenu(); queueSurvey(p, append); return;
   }
   if (type.startsWith('popen:') || type.startsWith('pclose:')) { const c = S.selected.find(isCaster); closeBuildMenu(); if (c) startPath(c, p, type.split(':')[1], type.startsWith('pclose')); return; }
-  if (type === 'road' || type === 'wall' || type === 'gate') { const m = S.selected.find(v => v.kind === MASON); closeBuildMenu(); if (m) startLink(m, p, type); return; }
+  if (type === 'road' || type === 'wall' || type === 'rewall') { const m = S.selected.find(v => v.kind === MASON); closeBuildMenu(); if (m) startLink(m, p, type); return; }
   const why = buildCheck(p, type);
   if (why) { toast(why + '.', true); return; }
   if (menuSlot >= 0) {
@@ -1737,12 +1780,12 @@ function selUI() {
   const el = $q('#sel');
   const st = u => u.scouting !== null ? 'scouting unexplored land' : (u.surveyQueue && surveysIn(u) && !u.survey) ? `heading to survey (${surveysIn(u)} queued)` : (u.surveyQueue && movesIn(u)) ? `on the move (${movesIn(u)} more queued)` : u.moving ? 'on the move' : u.build ? 'building an outpost' : u.survey ? 'surveying' : 'idle';
   const bq = S.selBuilding >= 0 ? (S.queues[srcKey()] || []) : null;
-  const txt = (bq ? srcKey() + bq.length : '') + (S.selected.map(u => u.name + st(u) + !!u.battle + !!u.retreating + (u.troops ? troopText(u) : '')).join('|') || 'none');
+  const txt = (bq ? srcKey() + bq.length : '') + (S.selected.map(u => u.name + st(u) + !!u.battle + !!u.retreating + (u.troops ? troopText(u) + powerOf(u) : '')).join('|') || 'none');
   if (txt === selKey) return; selKey = txt;
   el.hidden = !(bq && !S.selected.length) && !S.selected.length;
   if (bq && !S.selected.length) { el.title = 'Train units from the command card. Hover a button for its cost.'; el.innerHTML = `<b>${S.selKind === 'capital' ? 'Capital' : 'Barracks'}</b> · ${bq.length ? bq.length + ' in training' : 'ready to train'}`; return; }
   if (!S.selected.length) { el.innerHTML = ''; el.title = ''; return; }
-  if (S.selected.length === 1) { const u = S.selected[0]; if (u.kind === 'army') { el.title = 'Right-click a province to move. R retreats from a battle. Hold Shift to queue moves.'; el.innerHTML = `<b>${u.name}</b> · ${u.battle && !u.retreating ? '<span style="color:#b3261e">in battle</span>' : u.retreating ? 'retreating' : st(u)} · ${troopText(u)}`; return; } el.title = u.kind === WAYFINDER ? 'Can enter unexplored land. Right-click to move; Ctrl+right-click a province to survey it. Q surveys the province he is in. Hold Shift to queue (up to 10).' : u.kind === MASON ? 'Walks on explored land only. Right-click to move; Ctrl+right-click a province for the build menu. Q builds an outpost. Hold Shift to queue (up to 10).' : 'Walks on explored land only. Right-click a province to move.'; el.innerHTML = `<b>${u.name}</b>${u.kind === WAYFINDER || u.kind === MASON ? ' the ' + UNIT_DEFS[u.kind].name : ''} · ${st(u)}`; return; }
+  if (S.selected.length === 1) { const u = S.selected[0]; if (u.kind === 'army') { el.title = 'Right-click a province to move. R retreats from a battle. Hold Shift to queue moves.'; el.innerHTML = `<b>${escHTML(u.name)}</b>${renameBtn(u)} · ${u.battle && !u.retreating ? '<span style="color:#b3261e">in battle</span>' : u.retreating ? 'retreating' : st(u)} · ${troopText(u)} · <span title="Estimated army power">power ${powerOf(u)}</span>`; return; } el.title = u.kind === WAYFINDER ? 'Can enter unexplored land. Right-click to move; Ctrl+right-click a province to survey it. Q surveys the province he is in. Hold Shift to queue (up to 10).' : u.kind === MASON ? 'Walks on explored land only. Right-click to move; Ctrl+right-click a province for the build menu. Q builds an outpost. Hold Shift to queue (up to 10).' : 'Walks on explored land only. Right-click a province to move.'; el.innerHTML = `<b>${escHTML(u.name)}</b>${u.kind === WAYFINDER || u.kind === MASON ? ' the ' + UNIT_DEFS[u.kind].name : ''}${renameBtn(u)} · ${st(u)}`; return; }
   el.title = 'Right-click a province to move them all. Hold Shift to queue moves.';
   el.innerHTML = `<b>${S.selected.length} units</b> · ` + S.selected.map(u => `${u.name} (${st(u)})`).join(' · ');
 }
@@ -1780,7 +1823,7 @@ function capPanel(t) {
   panel.querySelectorAll('canvas[data-kind]').forEach(c => { const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); const cav = isCav(c.dataset.kind); RealmIso.drawUnitAt(g, c.dataset.kind, Math.PI / 4, t, 48, cav ? 104 : 98, cav ? 0.5 : 0.85); });
   const Q = S.queues[srcKey()] || [];
   const key = RES.map(k => S.stock[k]).join(',') + '|' + Q.length;
-  const f = Q[0] && Q[0].t0 !== null ? Math.min(1, (t - Q[0].t0) / TRAIN_TIME) : 0;
+  const f = Q[0] && Q[0].t0 !== null ? Math.min(1, (t - Q[0].t0) / trainTime(Q[0].kind)) : 0;
   if (key !== capPanelKey) {
     capPanelKey = key;
     panel.querySelectorAll('[data-train]').forEach(b => { const ok = canAfford(UNIT_DEFS[b.dataset.train].cost); b.disabled = !ok; b.textContent = ok ? 'Train' : 'Not enough'; });
@@ -1854,12 +1897,12 @@ function cmdInfo(id) {
     const lack = Object.keys(d.cost).filter(k => S.stock[k] < d.cost[k]);
     const extra = isCav(type) ? ' Needs a Stable in this province. Joins the army standing here.' : MILITARY.has(type) ? ' Joins the army standing in this province.' : '';
     const ds = DSTATS[type] ? statsOf(type, ME) : null, r1 = n => Math.round(n * 10) / 10, statLine = (ds ? ` Attack ${r1(ds.atk)}, health ${r1(ds.hp)}, armor ${Math.round(ds.red * 100)}%, speed ${r1(troopSpeed(type, ME) * 100) / 100}.` : '') + (type === MAGE ? ` Mages: ${unitTotal(MAGE)}/${mageCap()} (counting those in armies and in training).` : '');
-    return { name: 'Train ' + d.name, desc: `${d.blurb}${statLine}${extra} Takes ${TRAIN_TIME} s. Upkeep every 10 s: ${Object.entries(d.upkeep).map(([k, v]) => v + ' ' + k).join(', ')}.${Q.length ? ' ' + Q.length + ' already queued.' : ''}`, cost: d.cost, why: limitWhy(type) || (lack.length ? 'Need ' + lack.map(k => d.cost[k] + ' ' + k).join(', ') : null), icon: portrait(type) };
+    return { name: 'Train ' + d.name, desc: `${d.blurb}${statLine}${extra} Takes ${trainTime(type)} s. Upkeep every 10 s: ${Object.entries(d.upkeep).map(([k, v]) => v + ' ' + k).join(', ')}.${Q.length ? ' ' + Q.length + ' already queued.' : ''}`, cost: d.cost, why: limitWhy(type) || (lack.length ? 'Need ' + lack.map(k => d.cost[k] + ' ' + k).join(', ') : null), icon: portrait(type) };
   }
   if (what === 'queue') {
     const q = (S.queues[srcKey()] || [])[+type];
     if (!q) return { name: 'Queue', desc: '', cost: null, why: 'Empty', icon: '' };
-    const left = q.t0 === null ? TRAIN_TIME : Math.max(0, TRAIN_TIME - (S.t - q.t0));
+    const left = q.t0 === null ? trainTime(q.kind) : Math.max(0, trainTime(q.kind) - (S.t - q.t0));
     return { name: UNIT_DEFS[q.kind].name + (+type === 0 ? ' (training)' : ' (waiting)'), desc: (+type === 0 ? `Ready in ${Math.ceil(left)} s.` : `Number ${+type + 1} in the queue.`) + ' Click to cancel and get the resources back.', cost: q.paid, why: null, ok: 'Click to cancel', icon: portrait(q.kind) };
   }
   if (what === 'upgrade') return { name: 'Upgrade to Fort', desc: `Rebuild the outpost as a stone fort, opening 4 building plots instead of 2. Takes ${FORT_UPGRADE.time} s; no Mason needed. Forts: ${fortCount()}/${fortLimit()}. Each fort allows 4 more outposts.`, cost: FORT_UPGRADE.cost, why: upgradeWhy(S.selProv), icon: settlementThumb(1) };
@@ -1876,7 +1919,8 @@ function cmdInfo(id) {
   }
   if (what === 'retreat') {
     const armies = S.selected.filter(v => v.kind === 'army' && v.battle && !v.retreating);
-    const why = !armies.length ? 'Not in battle' : armies.every(a => !retreatTo(a)) ? 'No way out: every open border is blocked' : null;
+    const lock = Math.max(0, ...armies.map(retreatLockLeft));
+    const why = !armies.length ? 'Not in battle' : armies.every(a => retreatTo(a) < 0) ? 'No way out: every open border is blocked' : lock > 0 ? `Locked in battle for ${Math.ceil(lock)} s` : null;
     const est = armies.map(a => { const n = retreatLoss(a); return `${a.name} would lose about ${n} of ${troopCount(a)}`; }).join('; ');
     return { name: 'Retreat', desc: 'Pull out of the battle to a safe neighboring province. Some soldiers are lost covering the escape; the bigger the enemy compared to you, the more you lose.' + (est ? ' ' + est + '.' : ''), cost: null, why, icon: retreatIcon };
   }
@@ -1885,7 +1929,7 @@ function cmdInfo(id) {
     if (what === 'split') {
       const a = armies[0];
       const why = armies.length !== 1 ? 'Select a single army' : a.battle ? 'Not during battle' : troopCount(a) < 2 ? 'Only one soldier' : a.moving ? 'It is on the move' : null;
-      return { name: 'Split Army', desc: 'Divide the army into two, sharing out each kind of soldier.' + (a ? ' ' + a.name + ': ' + troopText(a) + '.' : ''), cost: null, why, icon: splitIcon };
+      return { name: 'Split Army', desc: 'Divide the army into two, sharing out each kind of soldier. An army with more than one kind of soldier can also split off one kind (say, its cavalry) into a new army.' + (a ? ' ' + a.name + ': ' + troopText(a) + '.' : ''), cost: null, why, icon: splitIcon };
     }
     const why = armies.length < 2 ? 'Select two or more armies' : armies.some(a => a.battle) ? 'Not during battle' : armies.some(a => a.prov !== armies[0].prov) ? 'Armies must share a province' : armies.some(a => a.moving) ? 'An army is on the move' : null;
     return { name: 'Combine Armies', desc: 'Merge the selected armies into one.' + (armies.length > 1 ? ` ${armies.length} armies, ${armies.reduce((n, a) => n + troopCount(a), 0)} soldiers.` : ''), cost: null, why, icon: combineIcon };
@@ -1896,7 +1940,7 @@ function cmdInfo(id) {
   }
   if (what === 'auto') {
     const ws = S.selected.filter(v => v.kind === WAYFINDER), on = ws.some(w => w.auto !== false);
-    return { name: 'Auto-survey: ' + (hasTech('autoscout') ? (on ? 'On' : 'Off') : 'locked'), desc: 'When idle, Wayfinders walk to the nearest explored province that hasn’t been surveyed and survey it. Click to turn it ' + (on ? 'off' : 'on') + ' for the selected Wayfinders.', cost: null, why: hasTech('autoscout') ? null : 'Research Automating Wayfinders first', ok: on ? 'Click to turn off' : 'Click to turn on', icon: on && hasTech('autoscout') ? autoIconOn : autoIcon };
+    return { name: 'Auto-survey: ' + (hasTech('autoscout') ? (on ? 'On' : 'Off') : 'locked'), desc: 'When idle, Wayfinders walk to the nearest explored province that hasn’t been surveyed and survey it. Click to turn it ' + (on ? 'off' : 'on') + ' for the selected Wayfinders.', cost: null, why: hasTech('autoscout') ? null : 'Research Automating Wayfinders first', ok: on ? 'Click to turn off' : 'Click to turn on', glow: on && hasTech('autoscout'), icon: on && hasTech('autoscout') ? autoIconOn : autoIcon };
   }
   if (what === 'survey') {
     const ws = S.selected.filter(v => v.kind === WAYFINDER);
@@ -1923,11 +1967,10 @@ function cmdUse(id) {
   if (what === 'stealth') { const ws = S.selected.filter(v => v.kind === WAYFINDER), on = ws.some(w => w.stealth); ws.forEach(w => w.stealth = !on); toast(on ? 'Wayfinder stops sneaking.' : 'Wayfinder is sneaking: three times slower, hidden from enemy armies.'); return; }
   if (what === 'auto') { const ws = S.selected.filter(v => v.kind === WAYFINDER), on = ws.some(w => w.auto !== false); ws.forEach(w => { w.auto = !on; w.nextAuto = 0; }); toast(`Auto-survey ${on ? 'off' : 'on'} for ${ws.length > 1 ? ws.length + ' Wayfinders' : ws[0].name}.`); return; }
   if (what === 'retreat') { S.selected.filter(v => v.kind === 'army' && v.battle && !v.retreating).forEach(retreat); return; }
-  if (what === 'split') { const a = S.selected.find(v => v.kind === 'army'); if (a) splitArmy(a); return; }
+  if (what === 'split') { const a = S.selected.find(v => v.kind === 'army'); if (a) { if (Object.keys(a.troops).filter(k => a.troops[k] > 0).length > 1) openSplitMenu(a); else splitArmy(a); } return; }   // IC05: an army of mixed soldiers can be split by kind
   if (what === 'combine') { combineArmies(S.selected.filter(v => v.kind === 'army')); return; }
   if (extraCmdUse(id)) return;
   const m = S.selected.find(v => v.kind === MASON); if (!m) return;
-  if (type === 'outpost' && !tyrannyConfirm(m.prov)) return;
   type === 'outpost' ? startBuild(m) : beginExtra(m, type);
 }
 // when a capital or barracks is selected the command card trains units: top row trains, bottom row is the queue
@@ -1947,17 +1990,18 @@ function renderTrainCard() {
     if (cmdHover) showCmdTip(cmdHover);
   }
   const bar = $q('#cmdGrid .cmd-prog s'), q = Q[0];
-  if (bar) bar.style.width = (q && q.t0 !== null ? Math.min(100, (S.t - q.t0) / TRAIN_TIME * 100) : 0) + '%';
+  if (bar) bar.style.width = (q && q.t0 !== null ? Math.min(100, (S.t - q.t0) / trainTime(q.kind) * 100) : 0) + '%';
 }
 function renderSettleCard() {
   const p = S.selProv, b = S.buildings.get(p), up = S.upgrades.get(p);
-  const key = 'settle|' + p + '|' + b.stage + '|' + !!up + '|' + RES.map(k => S.stock[k]).join(',');
+  const key = 'settle|' + p + '|' + b.stage + '|' + !!up + '|' + RES.map(k => S.stock[k]).join(',') + '|' + rewallsAt(p).length + '|' + warsOf(ME).length + '|' + S.rewallJobs.has(p);
   if (key !== cmdKey) {
     cmdKey = key;
     $q('#cmdTabs').innerHTML = `<span class="cmd-tab" aria-selected="true"><img alt="" src="${settlementThumb(b.stage)}">${STAGE_NAME[b.stage]}</span>`;
     const cells = new Array(16).fill('<div class="cmd-cell"></div>');
-    if (b.stage === 0) { const info = cmdInfo(up ? 'cancelup' : 'upgrade'); cells[0] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="${up ? 'cancelup' : 'upgrade'}" aria-label="${info.name}"><img alt="" src="${info.icon}">${up ? '<i class="cmd-prog"><s></s></i>' : ''}</button>`; }
-    $q('#cmdGrid').innerHTML = b.stage === 0 ? cells.join('') : `<div class="cmd-empty">${b.stage === 1 ? 'Forts have no actions yet.' : ''}</div>`;
+    if (b.stage === 0) { const info = cmdInfo(up ? 'cancelup' : 'upgrade'); cells[0] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="${up ? 'cancelup' : 'upgrade'}" aria-label="${info.name}"${cmdBg('build:outpost')}><img alt="" src="${info.icon}">${up ? '<i class="cmd-prog"><s></s></i>' : ''}</button>`; }
+    if (b.stage >= 1 && (b.stage === 1 || rewallsAt(p).length)) { const info = cmdInfo('rewalls'); cells[0] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="rewalls" aria-label="${info.name}"><img alt="" src="${info.icon}"></button>`; }
+    $q('#cmdGrid').innerHTML = b.stage === 0 || cells[0].includes('rewalls') ? cells.join('') : '<div class="cmd-empty"></div>';
     if (cmdHover) showCmdTip(cmdHover);
   }
   const bar = $q('#cmdGrid .cmd-prog s'); if (bar && up) bar.style.width = Math.min(100, (S.t - up.t0) / FORT_UPGRADE.time * 100) + '%';
@@ -1998,7 +2042,7 @@ function renderCmd() {
   grid.innerHTML = empty ? `<div class="cmd-empty">${empty}</div>` : cells.map(a => {
     if (!a) return '<div class="cmd-cell"></div>';
     const info = cmdInfo(a.id);
-    return `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="${a.id}" aria-label="${info.name}${info.why ? ' (' + info.why + ')' : ''}"><img alt="" src="${info.icon}">${a.key ? `<kbd>${a.key}</kbd>` : ''}</button>`;
+    return `<button type="button" class="cmd-btn${info.why ? ' off' : ''}${info.glow ? ' glow' : ''}" data-cmd="${a.id}" aria-label="${info.name}${info.why ? ' (' + info.why + ')' : ''}"${cmdBg(a.id)}><img alt="" src="${info.icon}">${a.key ? `<kbd>${a.key}</kbd>` : ''}</button>`;
   }).join('');
   if (cmdHover) showCmdTip(cmdHover);
 }
@@ -2039,7 +2083,7 @@ function provMenu() {
   const el = $q('#prov'), p = S.selProv;
   if (p < 0 || !S.explored.has(p)) { if (!el.hidden) { el.hidden = true; provKey = ''; } if (p >= 0) S.selProv = -1; return; }
   const vis = S.visible.has(p), b = vis ? S.buildings.get(p) : null, list = vis ? extrasIn(p) : [], site = vis ? sitesIn(p) : [], pend = vis ? pendingIn(p) : [];
-  const key = [p, S.selPart, vis, b ? b.stage : -1, S.upgrades.has(p), list.map(e => e.type + (e.level || '')).join(','), [...S.xup.keys()].join(','), site.map(v => v.build.type).join(','), pend.map(v => v.pending.type + v.pending.slot).join(','), menuSlot, S.surveyed.has(p), RES.map(k => income[k]).join(','), S.occ.get(p), S.wars.length, b ? b.owner : 0, provExtraKey(p)].join('|');
+  const key = [p, provName(p), S.selPart, vis, b ? b.stage : -1, S.upgrades.has(p), list.map(e => e.type + (e.level || '')).join(','), [...S.xup.keys()].join(','), site.map(v => v.build.type).join(','), pend.map(v => v.pending.type + v.pending.slot).join(','), menuSlot, S.surveyed.has(p), RES.map(k => income[k]).join(','), S.occ.get(p), S.wars.length, b ? b.owner : 0, provExtraKey(p)].join('|');
   if (key === provKey && !el.hidden) return; provKey = key; el.hidden = false;
   const P = G.provs[p], T = TER[P.terrain], y = yields[p], surveyed = S.surveyed.has(p);
   const owner = b ? `<span class="pm-own"><i style="background:${PLAYERS[b.owner].color}"></i>${PLAYERS[b.owner].name}${b.owner === ME ? ' (you)' : ''}</span>` : vis ? '<span class="pm-own none">Unclaimed</span>' : '<span class="pm-own none">Owner unknown</span>';
@@ -2068,7 +2112,7 @@ function provMenu() {
   }
   const sel = S.selPart && vis ? partInfo(p, ptype(S.selPart), extraAt(p, S.selPart)) : null;
   const occBy = S.occ.get(p), occRow = occBy ? `<div class="pm-occ" style="--oc:${PLAYERS[occBy].color}">Occupied by ${occBy === ME ? 'you' : 'the ' + PLAYERS[occBy].name} · ${b && b.owner === ME ? 'pays you nothing' : 'pays its owner nothing'}${b && atWar(b.owner, occBy) ? ` · ${occBy === ME ? '+' : '−'}${WAR.occVal[b.stage]} warscore` : ''}</div>` : '';
-  el.innerHTML = `<div class="pm-head"><i class="pm-sw" style="background:${T.base}"></i><b>${provName(p)}</b><small class="pm-ter">${T.label}</small>${owner}<button type="button" class="pm-x" aria-label="Close province menu">×</button></div>` +
+  el.innerHTML = `<div class="pm-head"><i class="pm-sw" style="background:${T.base}"></i><b>${escHTML(provName(p))}</b><button type="button" class="rn-btn" data-rename="prov:${p}" title="Rename this province" aria-label="Rename ${escHTML(provName(p))}">✎</button><small class="pm-ter">${T.label}</small>${owner}<button type="button" class="pm-x" aria-label="Close province menu">×</button></div>` +
     occRow + res + provResearchRow(p) + (tags ? `<div class="pm-tags">${tags}</div>` : '') + setpieceNote(p) +
     `<div class="pm-sec">Buildings${b ? ` <span>${list.length}/${plotCap(p)}</span>` : ''}</div>` + blds +
     (sel ? `<div class="pm-sel"><b>${sel.name}</b> · ${sel.desc}</div>` : '');
@@ -2090,7 +2134,7 @@ function unitStatus(u) {
   if (u.stealth && u.moving) return 'sneaking';
   if (u.scouting !== null) return 'scouting';
   if (u.survey) return 'surveying';
-  if (u.build) return 'building ' + (u.build.type === 'outpost' ? 'an outpost' : u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'gate' ? 'a ' + u.build.type : BUILD_DEFS[u.build.type].name);
+  if (u.build) return 'building ' + (u.build.type === 'outpost' ? 'an outpost' : u.build.type === 'rewall' ? 'a wall back up' : u.build.type === 'road' || u.build.type === 'wall' ? 'a ' + u.build.type : BUILD_DEFS[u.build.type].name);
   if (u.pending) return 'going to build';
   if (u.surveyQueue && surveysIn(u)) return `to survey (${surveysIn(u)})`;
   if (u.surveyQueue && movesIn(u)) return `walking (${movesIn(u)} queued)`;
@@ -2108,16 +2152,18 @@ function myProvList() {
 }
 function renderRoster() {
   const list = S.units.filter(u => u.owner === ME && (u.kind === WAYFINDER || u.kind === MASON)), provs = myProvList();
-  const key = rosterTab + '#' + (rosterTab === 'armies' ? armiesKey() : rosterTab === 'units' ? list.map(u => u.id + unitStatus(u) + u.prov + (isSel(u) ? '*' : '')).join('|') : provs.map(p => p + ':' + S.buildings.get(p).stage + ':' + extrasIn(p).length).join('|') + '|' + S.selProv) + '#' + provs.length + ':' + list.length;
+  const key = rosterTab + '#' + (rosterTab === 'armies' ? armiesKey() : rosterTab === 'units' ? list.map(u => u.id + u.name + unitStatus(u) + u.prov + (isSel(u) ? '*' : '')).join('|') : provs.map(p => p + provName(p) + ':' + S.buildings.get(p).stage + ':' + extrasIn(p).length).join('|') + '|' + S.selProv + '|' + VIEW.hideFull) + '#' + provs.length + ':' + list.length;
   if (key === rosterKey) return; rosterKey = key;
   const el = $q('#roster');
   const tabs = `<div class="ro-tabs" role="tablist"><button type="button" class="ro-tab" role="tab" aria-selected="${rosterTab === 'units'}" data-rtab="units">Workers <span>${list.length}</span></button><button type="button" class="ro-tab" role="tab" aria-selected="${rosterTab === 'provs'}" data-rtab="provs" title="Your provinces: buildings built / building plots">Provinces <span>${provs.length}</span></button><button type="button" class="ro-tab" role="tab" aria-selected="${rosterTab === 'armies'}" data-rtab="armies" title="Your armies">Armies <span>${S.units.filter(v => v.kind === 'army' && v.owner === ME).length}</span></button></div>`;
   if (rosterTab === 'armies') { el.innerHTML = tabs + armiesTabHTML(); return; }
   if (rosterTab === 'provs') {
-    el.innerHTML = tabs + (provs.length ? provs.map(p => {
+    const full = p => extrasIn(p).length >= plotCap(p), nFull = provs.filter(full).length, shown = VIEW.hideFull ? provs.filter(p => !full(p)) : provs;
+    const bar = `<div class="ro-bar"><button type="button" class="ro-hide" data-hidefull="1" aria-pressed="${VIEW.hideFull}" title="Hide provinces whose building plots are all built">${VIEW.hideFull ? '☑' : '☐'} Hide full${nFull ? ` <span>${nFull}</span>` : ''}</button></div>`;
+    el.innerHTML = tabs + bar + (shown.length ? shown.map(p => {
       const n = extrasIn(p).length, cap = plotCap(p), t = G.provs[p].terrain, st = S.buildings.get(p).stage;
       return `<button type="button" class="ro-p${S.selProv === p ? ' on' : ''}" data-prov="${p}" title="${provName(p)} · ${TER[t].label} ${STAGE_NAME[st].toLowerCase()} · ${n} of ${cap} plots built${n < cap ? ' (' + (cap - n) + ' empty)' : ''}. Click to open, double-click to go there."><b style="color:${TER_TEXT[t] || 'var(--chip-text)'}">${provName(p)}</b>${st ? `<small>${STAGE_NAME[st]}</small>` : ''}<em class="${n >= cap ? 'full' : 'miss'}">${n}/${cap}</em></button>`;
-    }).join('') : '<div class="ro-none">No provinces yet</div>');
+    }).join('') : `<div class="ro-none">${provs.length ? 'Every province is full' : 'No provinces yet'}</div>`);
     return;
   }
   const group = (kind, title) => { const us = list.filter(u => u.kind === kind); return `<div class="ro-sec">${title} <span>${us.length}</span></div>` + (us.length ? us.map(u => `<button type="button" class="ro-u${isSel(u) ? ' on' : ''}" data-uid="${u.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(u.kind)}"><span><b>${u.name}</b><small><i class="${unitStatus(u) === 'idle' ? 'idle' : 'busy'}"></i>${unitStatus(u)} · ${S.explored.has(u.prov) ? provName(u.prov) : 'fog'}</small></span></button>`).join('') : '<div class="ro-none">None yet</div>'); };
@@ -2125,6 +2171,7 @@ function renderRoster() {
 }
 $q('#roster').addEventListener('pointerdown', e => e.stopPropagation());
 $q('#roster').addEventListener('click', e => {
+  if (e.target.closest('[data-hidefull]')) { VIEW.hideFull = !VIEW.hideFull; viewSave(); rosterKey = ''; return; }
   const tb = e.target.closest('[data-rtab]');
   if (tb) { rosterTab = tb.dataset.rtab; rosterKey = ''; try { localStorage.setItem('realm-roster-tab', rosterTab); } catch (er) {} return; }
   const pb = e.target.closest('[data-prov]');

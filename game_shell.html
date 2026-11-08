@@ -266,6 +266,9 @@ span.cmd-tab { cursor: default; }
 .bandit-pop .dm-btns { justify-content: center; }
 body.in-menu .bandit-pop { display: none !important; }
 .meet-pop { background: var(--chip); z-index: 9; }
+.sp-pop { background: #f6efdc; }
+.sp-pop h2 { color: #e8a817; }
+.sp-pop .sp-ico { width: 30px; height: 36px; vertical-align: -8px; margin-right: 6px; }
 .meet-pop .mp-flag { width: 72px; height: 51px; display: block; margin: 2px auto 4px; }
 .meet-pop h2 { color: var(--chip-text); -webkit-text-stroke: 0; font-size: 24px; }
 .meet-pop h2 span { font-size: 14px; color: var(--muted); }
@@ -506,6 +509,7 @@ body.in-menu .nflags { display: none !important; }
 .nf img { width: 100%; height: 100%; display: block; animation: nfglow 1.3s ease-in-out infinite; }
 .nf b { position: absolute; right: -3px; bottom: 9px; min-width: 19px; height: 19px; padding: 0 4px; font: 800 12px/15px var(--font-ui); color: var(--ink); background: var(--sun); border: 2px solid var(--ink); border-radius: 999px; } /* counter, e.g. exhaustion 4 */
 .nf.warn img { animation-name: nfglowbad; }
+.nf em { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 2px; white-space: nowrap; font: 700 11px/1.2 var(--font-ui); font-style: normal; color: var(--ink); background: #faf1dc; border: 1px solid var(--ink); padding: 1px 5px; pointer-events: none; } /* a label under a flag, e.g. Earthquake at Ashdale */
 .nf:hover { animation-play-state: paused; }
 .nf:active { transform: translateY(2px); }
 .nf:focus-visible { outline: 3px solid #e8a817; outline-offset: 2px; border-radius: 6px; }
@@ -617,6 +621,103 @@ body.in-menu .lcol { display: none !important; }
 /* outliner names in blackletter */
 .ro-u b, .ro-p b { font-family: "Grenze Gotisch", "Cinzel Decorative", Georgia, serif !important; font-weight: 600; font-size: 17px; line-height: 1.05; }
 .st-quit { background: #f4d6cf; }
+
+/* ================= v78 ================= */
+/* GC03: in a game, the pointer is a disembodied, torn leather glove */
+body:not(.in-menu), body:not(.in-menu) #map, body:not(.in-menu) button, body:not(.in-menu) [role="button"], body:not(.in-menu) canvas, body:not(.in-menu) .chip, body:not(.in-menu) label { cursor: url("data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2232%22%20height%3D%2232%22%20viewBox%3D%220%200%2032%2032%22%3E%3Cg%20transform%3D%22rotate%28-25%2016%2016%29%22%20stroke%3D%22%231d1a22%22%20stroke-width%3D%221.6%22%20stroke-linejoin%3D%22round%22%20stroke-linecap%3D%22round%22%3E%3Cpath%20d%3D%22M10.5%2024.5%20L10.5%2030.2%20L12.4%2028.4%20L14%2031%20L15.8%2028.6%20L17.6%2031%20L19.3%2028.5%20L21%2030.6%20L22.6%2028.6%20L22.6%2024.5%20Z%22%20fill%3D%22%236d4426%22/%3E%3Cpath%20d%3D%22M13.4%2015.5%20L13.4%204%20Q15.6%201%2017.8%204%20L17.8%2013.6%20Q20.4%2012%2022%2014.2%20Q24.4%2013.6%2024.6%2016.4%20L24.4%2021.6%20Q23.8%2025.4%2020%2025.4%20L13.4%2025.4%20Q10.2%2025%209.6%2022%20L7.4%2017.6%20Q6.6%2015.2%209%2015.4%20Q10.6%2015.8%2012%2018.2%20Z%22%20fill%3D%22%23a36a3c%22/%3E%3Cpath%20d%3D%22M17.8%2013.6%20L17.8%2017.6%20M22%2014.2%20L21.8%2017.8%22%20fill%3D%22none%22%20stroke-width%3D%221.2%22/%3E%3Cpath%20d%3D%22M15.6%205.5%20L15.6%2013%22%20fill%3D%22none%22%20stroke%3D%22%23e2b98a%22%20stroke-width%3D%220.9%22%20stroke-dasharray%3D%221.2%201.4%22/%3E%3Cpath%20d%3D%22M12.2%2023.4%20L21.6%2023.4%22%20fill%3D%22none%22%20stroke%3D%22%23e2b98a%22%20stroke-width%3D%220.9%22%20stroke-dasharray%3D%221.2%201.4%22/%3E%3Cpath%20d%3D%22M14.4%204.2%20Q15.4%203%2016.4%203.6%22%20fill%3D%22none%22%20stroke%3D%22%23e8c49a%22%20stroke-width%3D%221%22%20/%3E%3C/g%3E%3C/svg%3E") 12 5, default; }
+body:not(.in-menu) #map.dragging { cursor: grabbing; }
+body:not(.in-menu) input[type="text"] { cursor: text; }
+/* GC09: building colors in the action card and the build menus */
+.cmd-btn[style*="--bbg"] { background: var(--bbg); }
+.cmd-btn.off[style*="--bbg"] { background: linear-gradient(rgba(214,219,227,0.72), rgba(214,219,227,0.72)), var(--bbg); }
+.bm-item img[style*="--bbg"] { background: var(--bbg); outline: 1px solid var(--ink); }
+/* GC13: an autocast that is on glows around its button's edges */
+.cmd-btn.glow { box-shadow: 0 0 0 2px #ffe27a, 0 0 10px 3px rgba(255,211,77,0.95), inset 0 0 10px 2px rgba(255,226,122,0.9) !important; animation: v78glow 1.6s ease-in-out infinite; }
+@keyframes v78glow { 50% { box-shadow: 0 0 0 2px #fff3b8, 0 0 16px 6px rgba(255,211,77,1), inset 0 0 14px 4px rgba(255,236,160,1); } }
+@media (prefers-reduced-motion: reduce) { .cmd-btn.glow { animation: none; } }
+/* GC04 / GC05: map toggles above the minimap */
+.mini-togs { position: absolute; left: -3px; bottom: calc(100% + 6px); display: flex; gap: 6px; line-height: normal; }
+.mini-togs button { font: 800 11px var(--font-ui); padding: 3px 8px; border: 1px solid var(--ink); background: var(--chip-hi); color: var(--chip-text); box-shadow: 0 1px 2px rgba(20,16,28,0.25); cursor: pointer; }
+.mini-togs button[aria-pressed="true"] { background: var(--sun); }
+.mini-togs button::before { content: "☐ "; }
+.mini-togs button[aria-pressed="true"]::before { content: "☑ "; }
+/* IC07: game clock */
+.gtime { display: grid; place-items: center; height: 40px; min-width: 64px; box-sizing: border-box; padding: 0 10px; font: 400 19px var(--font-display); font-variant-numeric: tabular-nums; background: var(--chip-hi); border: 1px solid var(--ink); box-shadow: 0 1px 2px rgba(20,16,28,0.25); color: var(--chip-text); margin-right: 6px; }
+.gtime.paused { color: var(--muted); background: #e9e3d4; }
+body.in-menu .gtime { display: none; }
+/* GC10: army power in the outliner */
+.ro-pow { margin-left: auto; flex: none; font: 800 12px var(--font-ui); font-style: normal; padding: 1px 6px; background: #f3e4c4; border: 1px solid var(--ink); white-space: nowrap; }
+/* IC08: hide full provinces */
+.ro-bar { display: flex; justify-content: flex-end; padding: 2px 2px 4px; }
+.ro-hide { font: 800 11px var(--font-ui); padding: 1px 7px; border: 1px solid var(--ink); background: var(--chip-hi); color: var(--chip-text); cursor: pointer; }
+.ro-hide[aria-pressed="true"] { background: var(--sun); }
+.ro-hide span { color: var(--muted); }
+/* T03: rename buttons and box */
+.rn-btn { margin-left: 4px; width: 20px; height: 20px; padding: 0; font: 700 12px/1 var(--font-ui); border: 1px solid var(--ink); background: var(--chip-hi); color: var(--chip-text); cursor: pointer; vertical-align: 2px; }
+.rn-btn:hover { background: var(--sun); }
+.pm-head .rn-btn { margin-left: 0; }
+.rename-pop { position: fixed; z-index: 12; top: calc(env(safe-area-inset-top, 0px) + 120px); left: 50%; transform: translateX(-50%); width: min(320px, calc(100vw - 32px)); padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.rename-pop b { font: 400 18px var(--font-display); }
+.rename-pop input { font: 700 16px var(--font-ui); padding: 4px 8px; border: 1px solid var(--ink); background: #fffaf0; color: var(--chip-text); }
+.sel .rn-btn { pointer-events: auto; }
+/* IC01: Inspect window */
+.insp-win { position: fixed; z-index: 9; right: calc(max(16px, env(safe-area-inset-right, 0px)) + 250px); bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); width: min(460px, calc(100vw - 300px)); max-height: calc(100vh - 120px); overflow: auto; padding: 8px 10px 10px; }
+.iw-head { display: flex; align-items: center; gap: 6px; }
+.iw-head b { font: 400 24px var(--font-display); line-height: 1.1; }
+.iw-sub { font-size: 12.5px; font-weight: 700; color: var(--muted); margin: 2px 0 8px; }
+.iw-cards { display: flex; flex-direction: column; gap: 8px; }
+.iw-card { background: var(--chip-hi); border: 1px solid var(--ink); padding: 6px 8px 8px; }
+.iw-ch { display: flex; align-items: center; gap: 8px; }
+.iw-ch img { width: 48px; height: 48px; flex: none; }
+.iw-ch b { font: 400 17px var(--font-display); display: block; }
+.iw-ch small { font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.iw-slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 6px; margin-top: 6px; }
+.iw-slot { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.iw-sl { font: 800 9.5px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.iw-ico { width: 54px; height: 54px; display: grid; place-items: center; background: #efe3c6; border: 1px solid var(--ink); }
+.iw-ico img { width: 48px; height: 48px; }
+.iw-ico i { font-style: normal; color: var(--muted); font-weight: 800; }
+.iw-slot b { font-size: 11.5px; font-weight: 700; line-height: 1.15; }
+/* IC02: Country Breakdown */
+.country-win { position: fixed; z-index: 11; top: calc(env(safe-area-inset-top, 0px) + 70px); left: 50%; transform: translateX(-50%); width: min(660px, calc(100vw - 32px)); max-height: calc(100vh - 100px); overflow: auto; padding: 10px 14px 14px; }
+.cw-head { display: flex; align-items: center; gap: 10px; }
+.cw-head img { width: 48px; height: 34px; }
+.cw-head b { font: 400 26px var(--font-display); }
+.cw-head span { font: 800 11px var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.cw-body { display: flex; gap: 14px; margin-top: 10px; }
+.cw-left { flex: none; width: 150px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.cw-portrait { width: 140px; height: 164px; background: repeating-linear-gradient(135deg, #efe3c6 0 8px, #e8dabb 8px 16px); border: 1px dashed var(--ink); display: grid; place-items: center; }
+.cw-portrait svg { width: 100px; opacity: 0.55; }
+.cw-leader { text-align: center; } .cw-leader b { font: 400 18px var(--font-display); display: block; } .cw-leader small { font-size: 11px; color: var(--muted); font-weight: 600; }
+.cw-right { flex: 1; min-width: 0; }
+.cw-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cw-stats div { background: var(--chip-hi); border: 1px solid var(--ink); padding: 4px 8px; }
+.cw-stats span { display: block; font: 800 9.5px var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.cw-stats b { font: 400 22px var(--font-display); }
+.cw-sec { font: 800 10.5px var(--font-ui); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin: 10px 0 4px; border-bottom: 1px solid rgba(29,26,34,0.25); padding-bottom: 2px; }
+.cw-terr { display: flex; flex-wrap: wrap; gap: 6px; }
+.cw-t { display: inline-flex; align-items: center; gap: 5px; background: var(--chip-hi); border: 1px solid var(--ink); padding: 2px 8px; font-weight: 700; font-size: 13px; }
+.cw-t i { width: 12px; height: 12px; border: 1px solid var(--ink); display: inline-block; }
+.cw-t b { font: 400 16px var(--font-display); }
+.cw-tab { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--chip-hi); border: 1px solid var(--ink); }
+.cw-tab th, .cw-tab td { padding: 3px 8px; border-bottom: 1px solid rgba(29,26,34,0.15); text-align: left; }
+.cw-tab thead td, .cw-tab thead th { font: 800 10px var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.cw-tab tr.net { background: #f3e4c4; font-weight: 800; }
+.cw-tab .cst img { width: 16px; height: 16px; vertical-align: -3px; margin-right: 2px; }
+.cw-wars td.win { color: #1f7a2e; font-weight: 800; } .cw-wars td.loss { color: #b3261e; font-weight: 800; }
+.cw-wars th small { font-weight: 600; color: var(--muted); }
+.cw-dot { display: inline-block; width: 10px; height: 10px; border: 1px solid var(--ink); margin-right: 6px; border-radius: 50% !important; }
+.cw-none { margin: 4px 0 0; color: var(--muted); font-weight: 600; font-size: 13px; }
+.nation { cursor: pointer; } .nation:hover { background: var(--chip-hi); }
+.sp-pop .sp-said { color: var(--chip-text); font-size: 14px; }
+/* SMA01: the travelers' three choices */
+.trav-pop h2 { color: #6d4426; }
+.trav-btns { flex-wrap: wrap; }
+.trav-btns button { display: flex; flex-direction: column; align-items: center; line-height: 1.15; }
+.trav-btns button small { font-size: 11px; font-weight: 600; color: var(--muted); }
+.trav-btns button:disabled { opacity: 0.5; cursor: not-allowed; }
+body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { display: none !important; }
+.insp-win, .country-win, .rename-pop { zoom: var(--ui, 1); }
 </style>
 
 <canvas id="map" aria-label="Realmlings playtest map"></canvas>
@@ -629,6 +730,7 @@ body.in-menu .lcol { display: none !important; }
       <div class="menu-row"><span class="lbl">Music</span><div class="menu-mus"><button type="button" class="menu-tog" id="musBtn" aria-pressed="true" aria-label="Music" title="Music on/off (M)"><span>On</span></button><input type="range" id="musVol" min="0" max="100" value="35" aria-label="Music volume"></div></div>
       <div class="menu-row"><span class="lbl">Sound effects</span><div class="menu-mus"><button type="button" class="menu-tog" id="sfxBtn" aria-pressed="true" aria-label="Sound effects"><span>On</span></button><input type="range" id="sfxVol" min="0" max="100" value="70" aria-label="Sound effects volume"></div></div>
       <div class="menu-row"><span class="lbl">UI size</span><div class="menu-mus"><input type="range" id="uiSize" min="70" max="150" step="5" value="100" aria-label="UI size"><b class="ui-val" id="uiVal">100%</b><button type="button" class="menu-btn ui-reset" id="uiReset" title="Back to 100%">Reset</button></div></div>
+      <div class="menu-row"><span class="lbl" title="Right-click opens the survey / build menu for Wayfinders and Masons, no Ctrl needed">Quick queue</span><div class="menu-mus"><button type="button" class="menu-tog" id="qqBtn" aria-pressed="false" aria-label="Quick queue" title="When on, right-clicking a province with only Wayfinders and Masons selected opens their survey / build menu without holding Ctrl"><span>Off</span></button></div></div>
       <button type="button" class="st-btn" id="stHow">How to Play</button>
       <button type="button" class="menu-start" id="stResume">Resume</button>
       <button type="button" class="st-btn st-quit" id="stQuit">Return to main menu</button>
@@ -636,9 +738,9 @@ body.in-menu .lcol { display: none !important; }
     <div class="st-how" id="stHowBody" hidden>
       <button type="button" class="st-back" id="stBack">← Back</button>
       <ul>
-    <li>Click a unit, or drag a box to select several. <kbd>Shift</kbd> adds to the selection; <kbd>1</kbd> / <kbd>2</kbd> pick a unit.</li><li>Grid hotkeys: every command-card button has a key matching its place in the grid: <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd> / <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd> / <kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd><kbd>V</kbd> / <kbd>U</kbd><kbd>I</kbd><kbd>O</kbd><kbd>P</kbd>. A key only acts when its cell has a button.</li>
+    <li>Click a unit, or drag a box to select several. <kbd>Shift</kbd> adds to the selection; <kbd>1</kbd> / <kbd>2</kbd> pick a unit.</li><li>Grid hotkeys: every command-card button has a key matching its place in the grid: <kbd>Q</kbd><kbd>W</kbd><kbd>E</kbd><kbd>R</kbd> / <kbd>A</kbd><kbd>S</kbd><kbd>D</kbd><kbd>F</kbd> / <kbd>Z</kbd><kbd>X</kbd><kbd>C</kbd><kbd>V</kbd> / <kbd>U</kbd><kbd>I</kbd><kbd>O</kbd><kbd>P</kbd>. A key only acts when its cell has a button. Dismissing a unit or destroying a building is on <kbd>Delete</kbd> (press it twice).</li>
     <li>Hold <kbd>Shift</kbd> while giving orders to queue them; units carry them out in order. Each unit can queue up to 10 actions.</li>
-    <li>Right-click anywhere to move there. <kbd>Ctrl</kbd>+right-click a province with a Wayfinder or Mason selected for the survey and build menu. Left-clicking empty ground deselects your units (and opens that province’s menu).</li>
+    <li>Right-click anywhere to move there. <kbd>Ctrl</kbd>+right-click a province with a Wayfinder or Mason selected for the survey and build menu. With Quick queue on (Settings), a plain right-click opens that menu whenever only Wayfinders and Masons are selected; pick Explore / Move there to just walk. Left-clicking empty ground deselects your units (and opens that province’s menu).</li>
     <li>Pan by moving the mouse to the edge of the screen, with the arrow keys, or with right-drag / middle-drag. Scroll to zoom.</li>
     <li>Wayfinders move 4× slower through unexplored land and reveal it on arrival.</li>
     <li>The Mason walks at half speed.</li>
@@ -646,33 +748,34 @@ body.in-menu .lcol { display: none !important; }
     <li>Owned provinces pay gold, wood and food every 10 s. Surveyed provinces show their yield; green numbers include a bonus.</li>
     <li>The command card (bottom right) shows the selected unit’s abilities. With several unit types selected, use its tabs to switch.</li>
     <li><kbd>Ctrl</kbd>+right-click a province with the Wayfinder selected and pick Survey (or Explore to just walk there). Hold <kbd>Shift</kbd> to queue more surveys. <kbd>Q</kbd> surveys the province he’s in.</li>
-    <li>The list on the right shows every Wayfinder and Mason: click to select, double-click to jump to them. Its Provinces tab lists your provinces as buildings built / plots: green when every plot is used, red when plots are empty. Names are colored by terrain.</li>
-    <li>Trained soldiers join the army already standing in that province. Select armies to Split or Combine them from the command card.</li>
-    <li><kbd>Q</kbd> with the Mason: build an outpost (25 wood, 5 s, 1 wood upkeep) in a surveyed province that borders one you own. You can hold 4 outposts per fort (the capital counts as one) until the third Fort Charter removes the limit.</li>
-    <li>Tyranny Exhaustion: past 10 provinces you need one soldier per province (11 soldiers for 11 provinces). Each payout you fall short adds 1; at 15 the province farthest from your capital is abandoned with its buildings and the count resets. It falls by 1 every 10 s you have enough soldiers.</li>
-    <li>Army Exhaustion rises each payout you can’t feed your army; at 10 the whole army deserts. It falls by 1 every 10 s you have food to spare.</li><li>Command card extras: Dismiss a unit (bottom-right button, click twice); select a building and Destroy it (click twice); a Mason standing at an open border can build a road from his card; armies can be Inspected and Retrofitted to another Armory design (you pay the gear difference; the Armory can retrofit every army in your land at once); a Mage can Open a path, then click the neighboring province. Ctrl+right-click a walled border with a Mason to tear the wall down.</li><li>Building takes 30 s (Forges and Mage Towers 60 s). Temples add 2 Government research. Forge and Mage Tower upgrades need their research first (Battle Forge, War Forge, Mage Sanctum, Mage Arcanum).</li><li>Harvest is cast continuously: while the Mage stands still, Farms give 10 / 20 / 30% more food.</li><li>Upkeep: units eat food, buildings use wood; nothing costs gold upkeep. Units cost no food to train. You can have at most 3 Wayfinders and 3 Masons at a time.</li>
-    <li><kbd>Ctrl</kbd>+right-click a province with the Mason selected for the build menu. Building plots: Outpost 2, Fort 4, Capital 6; one of each kind except farms and lumber mills. Select an Outpost to upgrade it to a Fort. Buildings have upkeep. Farms (+5 food, up to 4) need grassland or forest (Mushroom Farming adds swamps); Lumber Mills (+5 wood) need tree borders, one per tree border; Gold Mines (+10 gold) need a Hidden Gold Deposit found by surveying.</li>
+    <li>The list on the right shows every Wayfinder and Mason: click to select, double-click to jump to them. Its Provinces tab lists your provinces as buildings built / plots: green when every plot is used, red when plots are empty. Names are colored by terrain. Tick Hide full to list only provinces with empty plots.</li>
+    <li>Click your flag (top left) for the Country Breakdown: your provinces and land, income and upkeep, and the record of your wars. The clock at the top right is game time; it stops while the game is paused. Above the minimap you can show province names under their resources and your nation’s name over your land. The ✎ button next to a unit’s, army’s or province’s name renames it.</li>
+    <li>Trained soldiers join the army already standing in that province. Select armies to Split or Combine them from the command card; an army with more than one kind of soldier can split off one kind (its cavalry, say) into a new army. Armies show up to 10 soldiers in ranks, a health bar above them, their nation’s flag and their power (⚔) below. Inspect shows each kind of soldier with its weapon, shield and armor.</li>
+    <li><kbd>Q</kbd> with the Mason: build an outpost (25 wood, 30 s, 1 wood upkeep) in a surveyed province that borders one you own. You can hold 4 outposts per fort (the capital counts as one) until the third Fort Charter removes the limit.</li>
+    <li>Army Exhaustion rises each payout you can’t feed your army; at 10 the whole army deserts. It falls by 1 every 10 s you have food to spare.</li><li>Command card extras: Dismiss a unit (bottom-right button, click twice or press <kbd>Delete</kbd> twice); select a building and Destroy it (the same way); a Mason standing at an open border can build a road from his card; armies can be Inspected and Retrofitted to another Armory design (you pay the gear difference; the Armory can retrofit every army in your land at once); a Mage can Open a path, then click the neighboring province. Ctrl+right-click a walled border with a Mason to tear the wall down.</li><li>Building takes 30 s (Forges and Mage Towers 60 s). Temples add 2 Government research. Forge and Mage Tower upgrades need their research first (Battle Forge, War Forge, Mage Sanctum, Mage Arcanum).</li><li>Harvest is cast continuously: while the Mage stands still, Farms give 10 / 20 / 30% more food.</li><li>Upkeep: units eat food, buildings use wood; nothing costs gold upkeep. Units cost no food to train. You can have at most 3 Wayfinders and 3 Masons at a time (repeatable Government research raises each limit). Training takes 12 s for Wayfinders and Masons, 18 s for soldiers and 30 s for Mages.</li>
+    <li><kbd>Ctrl</kbd>+right-click a province with the Mason selected for the build menu. Building plots: Outpost 2, Fort 4, Capital 6; one of each kind except farms and lumber mills. Select an Outpost to upgrade it to a Fort. Buildings have upkeep. Farms (+5 food, up to 4) need grassland or forest (Mushroom Farming adds swamps); Lumber Mills (+4 wood, no upkeep) need tree borders, one per tree border; Gold Mines (+10 gold) need a Hidden Gold Deposit found by surveying.</li>
     <li>Click a Barracks to train infantry; with a Stable in the same province it trains cavalry too.</li>
     <li>Click a province to open its province menu above the command card (terrain, owner, resources, buildings). Click a building there or on the map to select it.</li>
     <li>Select your capital or a Barracks to train units from the command card; hover any button for details. Queued units show on its bottom row; click one to cancel.</li>
     <li>Your capital trains Wayfinders and Masons. Units cost upkeep; the capital adds +5 of each resource.</li>
-    <li>Battles start automatically when hostile armies share a province and are fought to the last soldier. Armor soaks damage; polearms do +50% against cavalry; blunt weapons ignore half of the armor. Select your army and press Retreat (<kbd>R</kbd>) to pull out; losses depend on how big the enemy is.</li>
+    <li>Battles start automatically when hostile armies share a province and are fought to the last soldier. Armor soaks damage; polearms do +50% against cavalry; blunt weapons ignore half of the armor. Neither side can pull out during a battle’s first 10 seconds; after that, select your army and press Retreat (<kbd>R</kbd>). Losses depend on how big the enemy is, and the army falls back all the way to your capital (or as close as it can get) and takes no orders until it arrives.</li><li>Armies: each shows an estimated power number (⚔). An army standing still at one of your Barracks rests and gets its health back (5 s for every soldier in it: 10 soldiers take 50 s); Rest on the command card marches it to the nearest one. Retrofitting takes 10 s per soldier at a Barracks (with a Stable for cavalry); the army marches there by itself.</li>
     <li>Terrain: grassland gives cavalry +20%; forest gives defenders +25% and cavalry −25%; swamp weakens everyone.</li>
     <li>Music (<kbd>M</kbd> turns it on or off) and sound effects: set both in Settings.</li>
     <li>Research (<kbd>T</kbd>, or the button in the resource bar): Government research runs from the start, earning points from your forts (+2), capital (+3) and temples (+2); outposts give none. The bar shows each tree’s points per 10 s next to its banner (blue column: Government, red swords: Military, purple star: Magic), and each province’s menu shows what it adds. Past 10 provinces every technology costs 5% more per province, and past 20 another 15% per province. Research the Forge (Government Tier I; a Barracks makes it more likely to be offered) and build one to open Military research, and a Mage Tower to open Magic; once offered, both stay on offer until researched. Select either building to upgrade it (Forge → Battle Forge → War Forge; Mage Tower → Mage Sanctum → Mage Arcanum), which unlocks the next tier. Retained Knowledge adds a fourth and fifth choice. When a tree has fewer than 5 technologies left, repeatable technologies appear (marked ↻); each costs 30% more every time.</li>
-    <li>Set pieces: some deserts and swamps hold an Ancient Battle Site (+1 Military research, needs a Forge), a Forgotten Library (+1 Government) or a Closed Interdimensional Rift (+1 Magic, needs a Mage Tower). Claim the province to use it; the badge under the province is gray until you can.</li>
-    <li>Bandit Gangs hide in some provinces (never a capital). They are hostile to everyone and never move. A Wayfinder who finds them scurries back unharmed, and can’t go back in until they are beaten. Beat them with an army for a 50 gold bounty; you can’t build an outpost where they are.</li>
-    <li>Other nations: up to 7 computer nations (set each slot on the title card to Easy, Moderate, Difficult or Closed) live on the island and play by your rules. Easy nations stay small and peaceful; Moderate ones grow to 10 provinces, research Mages, grow to 20 and go to war when they think they have a 2-to-1 advantage over a weaker neighbor; Difficult ones grow, research and build as fast as they can. They treat you like any other nation, and no more than 2 nations can be at war with you at once.</li>
-    <li>Diplomacy (the chip under the research bar): see every nation you have met, declare war (50 gold), make peace, or propose an alliance. Each war has its own warscore. Two nations at peace can ally against a common neighbor at least 25% larger than both; if anyone declares war on one ally, the other joins in. While at peace, armies can only cross their own land, unclaimed land or the land of a nation they are at war with.</li>
+    <li>Set pieces: some deserts and swamps hold an Ancient Battle Site (+1 Military research, needs a Forge), a Forgotten Library (+1 Government) or a Closed Interdimensional Rift (+1 Magic, needs a Mage Tower). They stay hidden until a Wayfinder surveys the province, and then stand there as a landmark. Claim the province to use it; the badge under the province is gray until you can.</li>
+    <li>Bandit Gangs hide in some provinces (never a capital). They are hostile to everyone and patrol the edges of their own province, never leaving it. Roaming Monsters do the same: Walking Ents in forests (1–3, each as strong as two Riders, 100 wood each when killed), Roaming Zombies in swamps (2, 4 or 6, half a Footman each, 20 gold each) and Packs of Jackal-men in deserts (3 or 6, each like a Long Sword infantryman in Chain I, 30 gold each). One province in seven holds bandits or monsters, never next to a starting capital: grassland always bandits, elsewhere bandits or monsters half and half.</li>
+    <li>Lost bands of travelers wander some provinces. When your unit stops beside them, share food and they join you as Footmen, or rob them for gold with an army. Surveying a desert has a 1 in 8 chance to turn up Forgotten Treasure (+200 gold). One swamp on each map holds the Intact Ruins of an ancient temple: survey it and your nation gains a Tier I Government technology (or 3 minutes of Government research if you already know them all). A province where your Wayfinder found bandits or monsters glows burgundy until they are beaten. A Wayfinder who finds them scurries back unharmed, and can’t go back in until they are beaten. Beat them with an army for a 50 gold bounty; you can’t build an outpost where they are.</li>
+    <li>Other nations: up to 7 computer nations (set each slot on the title card to Easy, Moderate, Difficult or Closed) live on the island and play by your rules. Easy nations stay small and peaceful; Moderate ones grow to 10 provinces, research Mages and grow to 20; Difficult ones grow, research and build as fast as they can. Moderate and Difficult nations whose armies are twice as strong (by power, not head count) as a bordering nation’s take a minute to think it over, then declare war. They treat you like any other nation, and no more than 2 nations can be at war with you at once.</li>
+    <li>Diplomacy (the chip under the research bar): see every nation you have met, declare war (50 gold, only on a nation that borders you), make peace, or propose an alliance. Each war has its own warscore. Two nations at peace can ally against a common neighbor at least 25% larger than both; if anyone declares war on one ally, the other joins in. Units can only cross their own land, unclaimed land, the land of a nation they are at war with, or the land of a nation they have a truce with. A peace deal starts an 8-minute truce; a red flag with a dove warns you 30 s before one ends (click it to look at that nation).</li>
     <li>Meeting nations: you meet a nation when you explore its land or when one of your Wayfinders stands next to one of its provinces. The game pauses to introduce it.</li>
-    <li>At war: any of your units may march into the enemy’s land even where you haven’t explored it. A capture that is interrupted by a battle picks up where it left off if the capturing army wins. At 100 warscore Total Victory happens on its own: the winner takes 5 provinces (the whole country if it has 5 or fewer), a minute of the loser’s gold income from its treasury, and 100 research points in every tree it has unlocked.</li>
-    <li>Wayfinders at war: a Wayfinder who meets enemy soldiers runs back to the province he came from. For 15 seconds after that, if he meets enemy soldiers again, an army of yours has 5 seconds to reach him before he is caught. Sneaking Wayfinders can’t be seen at all.</li>
+    <li>At war: any of your units may march into the enemy’s land even where you haven’t explored it. A capture that is interrupted by a battle picks up where it left off if the capturing army wins. At 100 warscore Total Victory happens on its own: the winner takes 5 provinces (the whole country if it has 5 or fewer), a minute of the loser’s gold income from its treasury, and 100 research points in every tree it has unlocked. A nation with every province occupied and no army left loses at once. No peace deal can take a province another nation occupies: the winner takes what it can, never the capital. Both the occupier and the owner keep sight of an occupied province.</li>
+    <li>Wayfinders and Masons at war: Masons won’t walk into a province where they can see enemy soldiers. A Wayfinder or Mason who meets enemy soldiers runs back to the province he came from. For 15 seconds after that, if he meets enemy soldiers again, an army of yours has 5 seconds to reach him before he is caught. Sneaking Wayfinders can’t be seen at all. A Wayfinder standing where another nation finishes an outpost withdraws to the province he came from (if it is yours or an enemy’s), or else all the way to your capital.</li>
     <li>Armory (<kbd>G</kbd>): design your infantry and cavalry by choosing a weapon (polearms beat cavalry, blunt weapons crush armor, swords parry), a shield for one-handed weapons, armor (leather is fast, plate is tough but slow) and, for cavalry, a horse. Military research unlocks better gear. Barracks train your designs.</li>
-    <li>Magic: research the Mage Tower (Government Tier II) and build one, then choose a school: Life, Death or Arcane. Train Mages at the tower (you can have 1 at first; Mage Academy raises the limit, and the Armies tab shows how many you have); select a Mage to cast spells from the command card, or have him join an army so its battle spells (skins, curses, the risen dead) fire on their own. Ctrl+right-click a neighboring province with a Mage to open forest paths or mountain tunnels.</li>
-    <li>Storage: the nation holds at most 2000 of each resource; Granaries, Storehouses and Banks add 1000 each. Forts are limited to 3 (5 with Fort Charters).</li>
-    <li>With road or wall research, select a Mason and Ctrl+right-click a neighboring province to build a road (dirt, then gravel, then cobblestone: 25%, 35%, 50% faster) or a wall (palisade, then stone) on that border. Wall Gates let only your units through a wall between two of your provinces.</li>
+    <li>Magic: research the Mage Tower (Government Tier II) and build one, then choose a school: Herbomancy, Necromancy or Arcane. Train Mages at the tower (you can have 1 at first; Apprentice and Mage Academy raise the limit, and the Armies tab shows how many you have); select a Mage to cast spells from the command card, or have him join an army so its battle spells (skins, curses, the risen dead) fire on their own. Ctrl+right-click a neighboring province with a Mage to open forest paths or mountain tunnels. Every Mage knows Earthquake: 30 s of casting from land you control (or unclaimed land) raise a wall with your gate on the border with a neighbor. Nations at war with the caster get an “Earthquake at …” banner.</li>
+    <li>Storage: the nation holds at most 2000 of each resource; Granaries, Storehouses and Banks add 1000 each. You start allowed a single fort; each Fort Charter adds 2, and the repeatable Garrison Charters (+1) never gets dearer and stays on offer once it appears.</li>
+    <li>With road or wall research, select a Mason and Ctrl+right-click a neighboring province to build a road (dirt, then gravel, then cobblestone: 25%, 35%, 50% faster) or a wall (palisade, then stone) on that border. Roads must join two of your own provinces. Every wall has a gate that only its owner’s units can pass; once walls are researched, forts raise walls with gates on their open borders. A captured fort’s gates open for the occupier and shut out the owner. Armies at war with a wall’s owner batter it down when there is no other way through: that takes 2 minutes, and the army needs at least 6 soldiers. At peace, select a fort (or your capital) and press Rebuild walls to put its broken walls back for 50 wood each; it takes 15 s.</li>
     <li>An enemy army that finds a Wayfinder kills him. With Wayfinder Stealth he can sneak (three times slower, unseen).</li>
-    <li><kbd>Space</kbd> pauses and resumes. The gear (top left, or <kbd>Esc</kbd>) pauses and opens Settings. Pausing mutes the game.</li><li>Hover a unit’s status, a button or a province detail to see tips.</li>
+    <li><kbd>Space</kbd> pauses and resumes. The gear (top left, or <kbd>Esc</kbd>) pauses and opens Settings. Pausing mutes the game.</li><li>Hover a unit’s status, a button or a province detail to see tips. Notification flags: left-click to act on them, right-click to dismiss. The green building flag only shows when a Mason is free and a plot is open.</li>
   </ul>
       <div class="legend"><span><i style="background:#9bd95f"></i>Visible</span><span><i style="background:#6e8a63"></i>Explored</span><span><i style="background:#2f3b55"></i>Unexplored</span><span><i style="background:#fff;border-color:#2f6fe0;border-width:3px"></i>Player 1 (you)</span></div>
     </div>
@@ -715,6 +818,12 @@ body.in-menu .lcol { display: none !important; }
 <div class="demand chip" id="demand" role="alertdialog" aria-label="Enemy demand" hidden></div>
 <div class="bandit-pop meet-pop chip" id="metPop" role="alertdialog" aria-label="A new nation" hidden></div>
 <div class="bandit-pop chip" id="banditPop" role="alertdialog" aria-labelledby="banditPopT" hidden></div>
+<div class="bandit-pop sp-pop chip" id="spPop" role="alertdialog" aria-labelledby="spPopT" hidden></div>
+<div class="insp-win chip" id="inspWin" role="dialog" aria-label="Inspect army" hidden></div>
+<div class="bandit-pop sp-pop chip" id="findPop" role="alertdialog" aria-labelledby="findPopT" hidden></div>
+<div class="bandit-pop chip trav-pop" id="travPop" role="alertdialog" aria-labelledby="travPopT" hidden></div>
+<div class="country-win chip" id="countryWin" role="dialog" aria-label="Country Breakdown" hidden></div>
+<div class="rename-pop chip" id="renamePop" role="dialog" aria-label="Rename" hidden></div>
 <div class="chip" id="gameover" role="alertdialog" hidden></div>
 <div class="minimap chip" id="mini"><canvas id="miniCv" aria-label="Minimap. Click to move the view."></canvas></div>
 <div class="sel chip" id="sel"></div>

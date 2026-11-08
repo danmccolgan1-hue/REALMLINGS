@@ -18,25 +18,25 @@ const DUMMY_WORD = { gov: 'Edict', mil: 'Drill', mag: 'Rite' };
 const TECHS = [
   // Government, Tier I: the first real technologies
   { id: 'roads', tree: 'gov', tier: 1, cost: 40, name: 'Dirt Roads', blurb: 'Masons can build a dirt road across an open border (75 wood, 25 gold). Units move 25% faster along it.' },
-  { id: 'walls', tree: 'gov', tier: 1, cost: 60, name: 'Wooden Walls', blurb: 'Masons can close an open border with a wooden palisade (150 wood, 100 gold). Both provinces must keep at least one other way in and out.' },
+  { id: 'walls', tree: 'gov', tier: 1, cost: 60, name: 'Wooden Walls', blurb: 'Masons can close an open border with a wooden palisade (150 wood, 100 gold). Every wall has a gate that only its owner’s units can pass. Forts raise walls with gates on all their open borders.' },
   { id: 'stable', tree: 'gov', tier: 1, cost: 30, name: 'Building: Stable', blurb: 'Unlocks the Stable, which lets a Barracks in the same province train Cavalry.' },
   { id: 'market', tree: 'gov', tier: 1, cost: 30, name: 'Building: Marketplace', blurb: 'Unlocks the Marketplace: +3 gold every payout, buildable in any province.' },
   { id: 'granary', tree: 'gov', tier: 1, cost: 30, name: 'Building: Granary', blurb: 'Unlocks the Granary: +1000 food storage each (the nation starts able to hold 2000).' },
   { id: 'storehouse', tree: 'gov', tier: 1, cost: 30, name: 'Building: Storehouse', blurb: 'Unlocks the Storehouse: +1000 wood storage each (the nation starts able to hold 2000).' },
   { id: 'bank', tree: 'gov', tier: 1, cost: 40, name: 'Building: Bank', blurb: 'Unlocks the Bank: +1000 gold storage each (the nation starts able to hold 2000).' },
-  { id: 'forts', tree: 'gov', tier: 1, cost: 60, name: 'Fort Charters I', blurb: 'Raises the Fort limit from 3 to 5.' },
+  { id: 'forts', tree: 'gov', tier: 1, cost: 60, name: 'Fort Charters I', blurb: 'Raises the Fort limit from 1 to 3.' },
   { id: 'autoscout', tree: 'gov', tier: 1, cost: 40, name: 'Automating Wayfinders', blurb: 'Idle Wayfinders survey explored, unsurveyed provinces on their own. Toggle it on a Wayfinder’s command card.' },
-  { id: 'arrowslits', tree: 'gov', tier: 1, cost: 50, name: 'Arrowslits', blurb: 'Forts and capitals slowly shoot at enemy armies standing in their province, wearing them down while they try to capture it.' },
+  { id: 'arrowslits', tree: 'gov', tier: 1, cost: 50, name: 'Arrowslits', blurb: 'Forts and capitals shoot at enemy armies standing in their province: one volley every 10 s, enough to bring down a Footman. An occupied fort stops shooting.' },
   { id: 'advfarms', tree: 'gov', tier: 1, cost: 40, name: 'Advanced Farms', blurb: 'Every Farm gives +1 food.' },
   { id: 'advmills', tree: 'gov', tier: 1, cost: 40, name: 'Advanced Lumber Mills', blurb: 'Every Lumber Mill gives +1 wood.' },
   { id: 'advmines', tree: 'gov', tier: 1, cost: 50, name: 'Advanced Gold Mines', blurb: 'Every Gold Mine gives +2 gold.' },
   { id: 'forge', tree: 'gov', tier: 1, cost: 40, name: 'Building: Forge', blurb: 'Unlocks the Forge, which opens Military research. Owning a Barracks makes this technology 50% more likely to be offered.' },
-  { id: 'retained', tree: 'gov', tier: 1, cost: 50, name: 'Retained Knowledge', blurb: 'Every research tree offers one more technology to choose from (4 instead of 3).' },
+  { id: 'retained', tree: 'gov', tier: 1, cost: 50, name: 'Retained Knowledge', blurb: 'Every research tree (Government, Military and Magic) offers one more technology to choose from (4 instead of 3).' },
   // Government, Tier II (own a Fort)
   { id: 'magetower', tree: 'gov', tier: 2, cost: 100, name: 'Building: Mage Tower', blurb: 'Unlocks the Mage Tower, which trains Mages and opens Magic research. Your first tower lets you choose a school of magic.' },
   { id: 'roads2', tree: 'gov', tier: 2, req: 'roads', cost: 100, name: 'Gravel Roads', blurb: 'Every road is relaid in gravel: units move 35% faster along roads.' },
   { id: 'walls2', tree: 'gov', tier: 2, req: 'walls', cost: 120, name: 'Stone Walls', blurb: 'Walls are built of stone, and existing palisades are rebuilt in stone: three times as strong.' },
-  { id: 'forts2', tree: 'gov', tier: 2, req: 'forts', cost: 100, name: 'Fort Charters II', blurb: 'Raises the Fort limit from 5 to 7.' },
+  { id: 'forts2', tree: 'gov', tier: 2, req: 'forts', cost: 100, name: 'Fort Charters II', blurb: 'Raises the Fort limit from 3 to 5.' },
   { id: 'stealth', tree: 'gov', tier: 2, req: 'autoscout', cost: 100, name: 'Wayfinder Stealth', blurb: 'Wayfinders can sneak: three times slower, but enemy armies can’t see them. Without it, an enemy army that finds a Wayfinder kills him.' },
   { id: 'mushroom', tree: 'gov', tier: 2, req: 'advfarms', cost: 100, name: 'Mushroom Farming', blurb: 'Farms can be built in swamps too: damp, dark beds of mushrooms.' },
   { id: 'reffarms', tree: 'gov', tier: 2, req: 'advfarms', cost: 100, name: 'Refined Farms', blurb: 'Every Farm gives another +1 food.' },
@@ -46,42 +46,42 @@ const TECHS = [
   { id: 'traderoutes', tree: 'gov', tier: 2, req: ['roads', 'market'], cost: 110, name: 'Trade Routes', blurb: 'Your capital makes +1 gold for every Marketplace it can reach by road, through any number of your provinces.' },
   // Government, Tier III (own 2 Forts)
   { id: 'roads3', tree: 'gov', tier: 3, req: 'roads2', cost: 200, name: 'Cobblestone Roads', blurb: 'Every road is paved with cobbles: units move 50% faster along roads.' },
-  { id: 'gates', tree: 'gov', tier: 3, req: 'walls2', cost: 200, name: 'Wall Gates', blurb: 'Masons can build a gate into a wall between two of your provinces. Only your units can pass; enemies must break the wall.' },
-  { id: 'forts3', tree: 'gov', tier: 3, req: 'forts2', cost: 200, name: 'Fort Charters III', blurb: 'Raises the Fort limit from 7 to 9 and removes the outpost limit: claim as many outposts as you can hold.' },
-  { id: 'farsight', tree: 'gov', tier: 3, req: 'stealth', cost: 200, name: 'Far-Seeing Wayfinders', blurb: 'Wayfinders see into every province next to the one they stand in.' },
+  { id: 'forts3', tree: 'gov', tier: 3, req: 'forts2', cost: 200, name: 'Fort Charters III', blurb: 'Raises the Fort limit from 5 to 7 and removes the outpost limit: claim as many outposts as you can hold.' },
+  { id: 'farsight', tree: 'gov', tier: 3, req: 'stealth', cost: 200, name: 'Far-Seeing Wayfinders', blurb: 'Wayfinders see into every province next to the one they stand in, and every unexplored province they look into is explored for good.' },
   { id: 'sophfarms', tree: 'gov', tier: 3, req: 'reffarms', cost: 200, name: 'Sophisticated Farms', blurb: 'Every Farm gives another +1 food.' },
   { id: 'sophmills', tree: 'gov', tier: 3, req: 'refmills', cost: 200, name: 'Sophisticated Lumber Mills', blurb: 'Every Lumber Mill gives another +1 wood.' },
   { id: 'sophmines', tree: 'gov', tier: 3, req: 'refmines', cost: 220, name: 'Sophisticated Gold Mines', blurb: 'Every Gold Mine gives another +2 gold.' },
-  { id: 'retained2', tree: 'gov', tier: 3, req: 'retained', cost: 200, name: 'Retained Knowledge II', blurb: 'Every research tree offers one more technology again (5 to choose from).' }
+  { id: 'retained2', tree: 'gov', tier: 3, req: 'retained', cost: 200, name: 'Retained Knowledge II', blurb: 'Every research tree (Government, Military and Magic) offers one more technology again (5 to choose from).' }
 ];
 // Military: weapons, shields, armor and horses for the Armory. Each family must be researched in order.
 const TECH_EQUIP = { 'w-pike': 'pike', 'w-polearm': 'polearm', 'w-halberd': 'halberd', 'w-bastard': 'sword', 'w-longsword': 'longsword', 'w-greatsword': 'greatsword', 'w-mace': 'mace', 'w-morningstar': 'morningstar', 'w-warhammer': 'warhammer' };
 const MIL_TECHS = [
-  ['w-pike', 1], ['w-bastard', 1], ['w-mace', 1], ['s-round', 1], ['a-leather2', 1], ['a-chain1', 1], ['horse-breeding', 1, null, 60],
+  ['w-pike', 1], ['w-bastard', 1], ['w-mace', 1], ['s-round', 1], ['a-leather2', 1], ['a-chain1', 1], ['horse-breeding', 1, 'stable', 60],
   ['w-polearm', 2, 'w-pike'], ['w-longsword', 2, 'w-bastard'], ['w-morningstar', 2, 'w-mace'], ['s-kite', 2, 's-round'], ['a-leather3', 2, 'a-leather2'], ['a-chain2', 2, 'a-chain1'], ['a-plate1', 2, 'a-chain1'], ['a-plate2', 2, 'a-plate1'], ['horse-training', 2, 'horse-breeding'],
   ['w-halberd', 3, 'w-polearm'], ['w-greatsword', 3, 'w-longsword'], ['w-warhammer', 3, 'w-morningstar'], ['s-tower', 3, 's-kite'], ['s-aegis', 3, 's-tower'], ['a-leather4', 3, 'a-leather3'], ['a-chain3', 3, 'a-chain2'], ['a-chain4', 3, 'a-chain3'], ['a-plate3', 3, 'a-plate2'], ['a-plate4', 3, 'a-plate3']
 ];
 MIL_TECHS.push(['battleforge', 1, null, 60], ['warforge', 2, 'battleforge', 140], ['horde', 2, null, 100]);
 for (const [id, tier, req, cost] of MIL_TECHS) {
-  if (id === 'horde') { TECHS.push({ id, tree: 'mil', tier, cost, name: 'The Horde', blurb: 'An army of 5 or more cavalry and no other units has double health. A horseshoe over the army shows when it is active.' }); continue; }
-  if (id === 'battleforge' || id === 'warforge') { TECHS.push({ id, tree: 'mil', tier, cost, req, name: id === 'battleforge' ? 'Battle Forge' : 'War Forge', blurb: id === 'battleforge' ? 'Lets a Forge be upgraded to a Battle Forge (Military Tier II).' : 'Lets a Battle Forge be upgraded to a War Forge (Military Tier III).' }); continue; }
+  if (id === 'horde') { TECHS.push({ id, tree: 'mil', tier, cost, name: 'The Horde', blurb: 'An army of 10 or more cavalry and no other units has 1.3 times the health. A horseshoe over the army shows when it is active.' }); continue; }
+  if (id === 'battleforge' || id === 'warforge') { TECHS.push({ id, tree: 'mil', tier, cost, req, name: id === 'battleforge' ? 'Battle Forge' : 'War Forge', blurb: id === 'battleforge' ? 'Lets a Forge be upgraded to a Battle Forge (Military Tier II). Offered once two Tier I Military technologies are researched.' : 'Lets a Battle Forge be upgraded to a War Forge (Military Tier III).' }); continue; }
   let name, blurb;
   if (id.startsWith('w-')) { const W = WEAPONS[TECH_EQUIP[id]]; name = W.name + 's'; blurb = `${W.name} for the Armory: attack ${W.atk}, ${W.twoH ? 'two-handed' : 'one-handed'}. ${FAMILY[W.fam].note}.`; }
   else if (id.startsWith('s-')) { const Sh = SHIELD_DEFS[id.slice(2)]; name = Sh.name + 's'; blurb = `${Sh.name} for one-handed designs: +${Sh.armor} armor${Sh.speed < 1 ? ', but 8% slower' : ''}.`; }
   else if (id.startsWith('a-')) { const A = ARMORS[id.slice(2)]; name = A.name + ' Armor'; blurb = `${A.name} armor for the Armory: ${A.armor} armor, ${ARMOR_TYPES[A.type].note}.`; }
-  else if (id === 'horse-breeding') { name = 'Horse Breeding'; blurb = 'Cavalry can ride Arabians (fastest, fragile) or Mongolian horses (cheap to feed, at home in forest and swamp, weak charge).'; }
+  else if (id === 'horse-breeding') { name = 'Horse Breeding'; blurb = 'Needs Building: Stable (Government). Cavalry can ride Arabians (fastest, fragile) or Mongolian horses (cheap to feed, at home in forest and swamp, weak charge).'; }
   else { name = 'Horse Training'; blurb = 'Unlocks Friesians (the hardest charge) and armored Percherons (toughest, but slow and hungry).'; }
   TECHS.push({ id, tree: 'mil', tier, cost: cost || TECH_COST[tier], req, name, blurb });
 }
-// Magic: pick one school (Life, Death or Arcane); only that school's spells can be researched. Staves and wands are open to every school.
+// Magic: pick one school (Herbomancy, Necromancy or Arcane); only that school's spells can be researched. Staves and wands are open to every school.
 const MAG_TECHS = [
-  ['school-life', 1, null, null, 40, 'School of Life', 'Commit to Life magic: harvests, protective skins, healing and the forest.'],
-  ['school-death', 1, null, null, 40, 'School of Death', 'Commit to Death magic: cursed weapons, mountain passages, the risen dead and grave riches.'],
+  ['school-life', 1, null, null, 40, 'School of Herbomancy', 'Commit to Herbomancy: harvests, protective skins, healing and the forest.'],
+  ['school-death', 1, null, null, 40, 'School of Necromancy', 'Commit to Necromancy: cursed weapons, mountain passages, the risen dead and grave riches.'],
   ['school-arcane', 1, null, null, 40, 'School of the Arcane', 'Commit to Arcane magic: far sight from towers, mind reading, trading across worlds, traps and rifts.'],
-  // Life
+  // Herbomancy (Life)
   ['harvest', 1, 'school-life', 'life', 40, 'Harvest', 'A Mage casts it for as long as he stands still: every Farm you own gives 10% more food. One Mage casts it at a time.'],
   ['bountiful', 2, 'harvest', 'life', 100, 'Bountiful Harvest', 'Harvest makes Farms give 20% more food.'],
   ['magnificent', 3, 'bountiful', 'life', 200, 'Magnificent Harvest', 'Harvest makes Farms give 30% more food.'],
+  ['apprentice', 1, null, '*', 40, 'Apprentice', 'Your Mage limit rises by 1: you can train a second Mage.'],
   ['sanctum', 1, null, '*', 60, 'Mage Sanctum', 'Lets a Mage Tower be upgraded to a Mage Sanctum (Magic Tier II).'],
   ['arcanum', 2, 'sanctum', '*', 140, 'Mage Arcanum', 'Lets a Mage Sanctum be upgraded to a Mage Arcanum (Magic Tier III).'],
   ['skin', 1, 'school-life', 'life', 40, 'Hardened Skin', 'Autocast: when an army with a Mage starts a battle, its soldiers get +5% health. 5-minute cooldown per army.'],
@@ -93,7 +93,7 @@ const MAG_TECHS = [
   ['forest', 1, 'school-life', 'life', 40, 'Speak with the Forest', 'A Mage can open a path through a border of trees after 2 minutes of casting. Lumber Mills are unaffected.'],
   ['commune', 2, 'forest', 'life', 100, 'Commune with Nature', 'Opening a forest path takes 1 minute.'],
   ['arboreal', 3, 'commune', 'life', 200, 'Arboreal Restoration', 'A Mage can close a forest path again with 1 minute of casting.'],
-  // Death
+  // Necromancy (Death)
   ['curse1', 1, 'school-death', 'death', 40, 'Cursed Weapons I', 'Autocast: when an army with a Mage starts a battle, its weapons deal +5% damage. 5-minute cooldown per army.'],
   ['curse2', 2, 'curse1', 'death', 100, 'Cursed Weapons II', 'Cursed Weapons deal +10% damage; cooldown 3 minutes.'],
   ['curse3', 3, 'curse2', 'death', 200, 'Cursed Weapons III', 'Cursed Weapons deal +15% damage; cooldown 90 seconds.'],
@@ -132,10 +132,12 @@ for (const [id, tier, req, school, cost, name, blurb] of MAG_TECHS) TECHS.push({
 S.rep = {};
 const REP_STEP = 1.3, REP_LEFT = 5;
 const REP_TECHS = [
-  ['rep-forts', 'gov', 100, 'Garrison Charters', 'Raises the Fort limit by 1.', null],
+  ['rep-forts', 'gov', 100, 'Garrison Charters', 'Raises the Fort limit by 1. Its cost never rises, and once offered it stays on offer.', null],
   ['rep-storage', 'gov', 100, 'Deeper Cellars', 'Raises gold, wood and food storage by 500 each.', null],
   ['rep-trade', 'gov', 100, 'Merchant Guilds', 'Trade Routes give 5% more gold.', 'traderoutes'],
   ['rep-lumber', 'gov', 100, 'Sawyer Guilds', 'Lumber Mills give 5% more wood.', null],
+  ['rep-masons', 'gov', 100, 'Masons’ Lodge', 'Raises the Mason limit by 1.', null],
+  ['rep-wayfinders', 'gov', 100, 'Wayfinders’ Guild', 'Raises the Wayfinder limit by 1.', null],
   ['rep-sword', 'mil', 120, 'Blade Mastery', 'Sword soldiers deal 5% more damage.', null],
   ['rep-blunt', 'mil', 120, 'Crushing Blows', 'Blunt weapons deal 5% more damage.', null],
   ['rep-pole', 'mil', 120, 'Pike Drill', 'Polearms (spears, pikes, polearms, halberds) deal 5% more damage.', null],
@@ -160,7 +162,10 @@ const currentSchool = () => { const d = S.tech.mag.done.find(id => id.startsWith
 const TECH_BY_ID = Object.fromEntries(TECHS.map(x => [x.id, x]));
 const hasTech = id => { const x = TECH_BY_ID[id]; return !!x && S.tech[x.tree].done.includes(id); };
 const treeSize = tree => TECHS.filter(x => x.tree === tree && !x.rep).length;
-const reqMet = (x, st) => !x.req || (Array.isArray(x.req) ? x.req.every(r => st.done.includes(r)) : st.done.includes(x.req));
+// a requirement may sit in another tree (Horse Breeding needs the Stable from Government): pass the nation's other trees as `all`
+const reqMet = (x, st, all) => !x.req || (Array.isArray(x.req) ? x.req : [x.req]).every(r => st.done.includes(r) || (all ? Object.values(all).some(t => t.done.includes(r)) : hasTech(r)));
+// Battle Forge is only offered once two Tier I Military technologies are done (GPC13)
+const forgeReady = (x, st) => x.id !== 'battleforge' || st.done.filter(id => { const y = TECH_BY_ID[id]; return y && y.tier === 1 && !y.rep && y.tree === 'mil'; }).length >= 2;
 // the ordinary (non-repeatable) technologies a tree still has to research; Magic only counts its own school
 function techsLeft(tree) {
   const st = S.tech[tree], sc = tree === 'mag' ? currentSchool() : null;
@@ -170,7 +175,7 @@ const repOpen = tree => techsLeft(tree) < REP_LEFT;
 // how many choices each tree offers: Retained Knowledge adds one, Retained Knowledge II another
 const techOptions = () => TECH_OPTIONS + (hasTech('retained') ? 1 : 0) + (hasTech('retained2') ? 1 : 0);
 // Forge and Mage Tower: once offered, they stay on offer until researched
-const STICKY_TECHS = new Set(['forge', 'magetower']);
+const STICKY_TECHS = new Set(['forge', 'magetower', 'rep-forts']);   // Garrison Charters too: once offered, always on offer
 S.tech = Object.fromEntries(TREE_KEYS.map(k => [k, { cur: null, prog: 0, bank: 0, opts: [], done: [], tier: 0 }]));
 
 const levelsOf = type => { const out = []; for (const [p, list] of S.extras) if (owned(p)) for (const e of list) if (e.type === type) out.push(e.level || 1); return out; };
@@ -178,7 +183,11 @@ const levelsOf = type => { const out = []; for (const [p, list] of S.extras) if 
 const myProvCount = () => [...S.buildings.values()].filter(b => b.owner === ME).length;
 const techCostMult = (n = myProvCount()) => 1 + 0.05 * Math.min(10, Math.max(0, n - 10)) + 0.15 * Math.max(0, n - 20);
 const GOV_COST_MULT = 2;   // Government technologies cost double
-const techCost = x => Math.round(x.cost * (x.rep ? Math.pow(REP_STEP, repLv(x.id)) : 1) * (x.tree === 'gov' ? GOV_COST_MULT : 1) * techCostMult());
+const MIL_COST_MULT = 2;   // so do Military technologies (GPC13)
+const treeCostMult = tree => tree === 'gov' ? GOV_COST_MULT : tree === 'mil' ? MIL_COST_MULT : 1;
+// Garrison Charters never gets dearer (FLAT_REPS), so anyone can keep expanding late in the game
+const FLAT_REPS = new Set(['rep-forts']);
+const techCost = x => Math.round(x.cost * (x.rep && !FLAT_REPS.has(x.id) ? Math.pow(REP_STEP, repLv(x.id)) : 1) * treeCostMult(x.tree) * techCostMult());
 function techTier(tree) {
   if (tree === 'gov') { const forts = [...S.buildings.values()].filter(b => b.owner === ME && b.stage === 1).length; return 1 + (forts >= 1) + (forts >= 2); }
   const lv = levelsOf(tree === 'mil' ? 'forge' : 'magetower'); return lv.length ? Math.max(...lv) : 0;
@@ -197,10 +206,25 @@ function techRate(tree) { let n = 0; for (const [p, b] of S.buildings) if (b.own
 function techBonus() { const y = { gold: 0, wood: 0, food: 0 }; for (const k of TREE_KEYS) for (const id of S.tech[k].done) { const g = TECH_BY_ID[id].gives || {}; for (const r in g) y[r] += g[r]; } return y; }
 // offer up to three unresearched technologies the tree's tier allows, always including one from the newest tier if any are left
 const UPGRADE_TECHS = new Set(['battleforge', 'warforge', 'sanctum', 'arcanum']);
-function drawOptions(tree) {
-  const st = S.tech[tree], T = techTier(tree), N = techOptions(), rep = repOpen(tree);
-  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st) && (!x.rep || rep));
+function availTechs(tree) {
+  const st = S.tech[tree], T = techTier(tree), rep = repOpen(tree);
+  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st) && forgeReady(x, st) && (!x.rep || rep));
   if (tree === 'mag') { const sc = currentSchool(); avail = sc ? avail.filter(x => !x.id.startsWith('school-') && (x.school === '*' || x.school === sc)) : avail.filter(x => x.id.startsWith('school-')); }
+  return avail;
+}
+// GPC06: every tree keeps the full number of choices (Retained Knowledge counts for Government, Military and Magic alike),
+// also while something is being researched
+function topUpOptions(tree) {
+  const st = S.tech[tree]; if (!st.tier) return;
+  const N = techOptions(), have = new Set(st.opts);
+  const sticky = st.sticky || [], more = availTechs(tree).filter(x => !have.has(x.id)).map(x => ({ x, k: Math.random() + (sticky.includes(x.id) ? 2 : 0) })).sort((a, b) => b.k - a.k).map(o => o.x);
+  let added = false;
+  while (st.opts.length < N && more.length) { st.opts.push(more.shift().id); added = true; }
+  if (added) { st.opts.sort((a, b) => { const x = TECH_BY_ID[a], y = TECH_BY_ID[b]; return (x.rep ? 1 : 0) - (y.rep ? 1 : 0) || x.tier - y.tier || a.localeCompare(b); }); techKey = ''; }
+}
+function drawOptions(tree) {
+  const st = S.tech[tree], T = techTier(tree), N = techOptions();
+  const avail = availTechs(tree);
   // weighted shuffle: owning a Barracks makes the Forge 50% more likely to come up
   const weight = x => x.id === 'forge' && [...S.extras].some(([p, l]) => owned(p) && l.some(e => e.type === 'barracks')) ? 1.5 : 1;
   const shuffled = avail.map(x => ({ x, k: Math.pow(Math.random(), 1 / weight(x)) })).sort((a, b) => b.k - a.k).map(o => o.x), top = shuffled.filter(x => x.tier === T && !x.rep), opts = [];
@@ -223,6 +247,7 @@ function pickTech(id) {
   const prev = st.cur;
   st.cur = id; st.prog = st.bank; st.bank = 0; st.opts = st.opts.filter(o => o !== id); techShow[x.tree] = false;
   if (prev && prev !== id && !st.opts.includes(prev)) st.opts.push(prev);   // a switched-away technology stays on offer
+  topUpOptions(x.tree);
   techKey = ''; techBtnKey = '';
   if (st.prog >= techCost(x)) finishTech(x.tree);
 }
@@ -233,7 +258,7 @@ function finishTech(tree) {
   st.bank = Math.min(st.prog - cost, bankCap(tree)); st.prog = 0; st.cur = null;
   if (x.rep) { sfx(tree === 'mag' ? 'pr_research_magic' : 'pr_research'); drawOptions(tree); computeIncome(); onRepDone(x); toast(`${TECH_TREES[tree].name} research complete: ${shown}. ${x.baseBlurb}`); provKey = ''; cmdKey = ''; barKey = ''; return; }
   if (!x.id.startsWith('school-')) sfx(tree === 'mag' ? 'pr_research_magic' : 'pr_research');
-  if (x.id === 'retained' || x.id === 'retained2') for (const t2 of TREE_KEYS) if (t2 !== tree && S.tech[t2].tier) drawOptions(t2);
+  if (x.id === 'retained' || x.id === 'retained2') for (const t2 of TREE_KEYS) if (t2 !== tree && S.tech[t2].tier) { if (S.tech[t2].cur) topUpOptions(t2); else drawOptions(t2); }
   if (x.id === 'abandon') { abandonSchool(); return; }
   if (x.id.startsWith('school-')) { drawOptions(tree); computeIncome(); toast(`You follow the ${x.name}. Its spells can now be researched, and your Mages can cast them.`); closeSchoolPopup(); return; }
   drawOptions(tree); computeIncome();
@@ -255,8 +280,9 @@ function techPayday() {
     if (!T) continue;
     const pts = techRate(tree);
     if (st.cur) { st.prog += pts; if (st.prog >= techCost(TECH_BY_ID[st.cur])) finishTech(tree); }
-    else st.bank = Math.min(st.bank + pts, bankCap(tree));
+    else st.bank = Math.max(st.bank, Math.min(st.bank + pts, bankCap(tree)));   // a windfall (Intact Ruins) above the limit is kept
     if (!st.cur && !st.opts.length) drawOptions(tree);
+    topUpOptions(tree);
   }
   techKey = ''; techBtnKey = '';
 }

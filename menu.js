@@ -60,6 +60,7 @@ function startGame() {
     setupGame();
     spawnAINations(menuOpts.practice ? [] : menuOpts.slots);
     setupContent();   // set pieces, Bandit Gangs, the civilians' zoom level
+    setupV78();       // Roaming Monsters, the F4 unit-size zoom, war record (v78)
     $q('#debug').hidden = true;   // debug buttons are retired
     S.started = true; S.last = 0; S.nextTick = 0;
     document.body.classList.remove('in-menu');

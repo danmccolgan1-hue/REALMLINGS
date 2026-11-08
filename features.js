@@ -16,13 +16,6 @@ function confirmTwice(key, msg) {
   if (armed[key] && performance.now() - armed[key] < 6000) { delete armed[key]; return true; }
   armed[key] = performance.now(); toast(msg, true); return false;
 }
-// an outpost that would push you past the Tyranny line asks first
-function tyrannyConfirm(p) {
-  const have = [...S.buildings.values()].filter(b => b.owner === ME).length, after = have + 1;
-  if (after <= TYRANNY_FREE || soldierCount() >= after) return true;
-  return confirmTwice('tyr:' + p, `Warning: an outpost here makes ${after} provinces, but you have ${soldierCount()} soldiers. Past ${TYRANNY_FREE} provinces you need one soldier per province or Tyranny Exhaustion rises. Build it again to go ahead.`);
-}
-
 // ---------- small icons for the new buttons ----------
 const XICON = {};
 function xIcon(kind) {
@@ -37,6 +30,9 @@ function xIcon(kind) {
   else if (kind === 'road') { g.beginPath(); g.moveTo(24, 76); g.quadraticCurveTo(40, 44, 34, 14); g.moveTo(64, 76); g.quadraticCurveTo(56, 44, 54, 14); stroke(5, '#b9a27c'); g.setLineDash([6, 8]); g.beginPath(); g.moveTo(44, 74); g.quadraticCurveTo(48, 44, 44, 16); g.lineWidth = 4; g.strokeStyle = '#fff3c9'; g.stroke(); g.setLineDash([]); }
   else if (kind === 'inspect') { g.beginPath(); g.arc(38, 38, 18, 0, 7); g.fillStyle = '#cfe8fb'; g.fill(); g.lineWidth = 6; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.moveTo(52, 52); g.lineTo(70, 70); stroke(7, '#9a6b3c'); }
   else if (kind === 'retrofit') { g.beginPath(); g.moveTo(22, 64); g.lineTo(58, 28); stroke(6, '#c9ced8'); g.beginPath(); g.moveTo(52, 22); g.lineTo(66, 36); stroke(6, '#8a6a3a'); g.beginPath(); g.arc(60, 62, 14, 3.6, 1.2); stroke(4, '#3f9b4b'); g.beginPath(); g.moveTo(66, 72); g.lineTo(73, 64); g.lineTo(62, 62); g.closePath(); g.fillStyle = '#3f9b4b'; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke(); }
+  else if (kind === 'rest') { g.beginPath(); g.moveTo(18, 70); g.lineTo(18, 40); g.lineTo(44, 20); g.lineTo(70, 40); g.lineTo(70, 70); g.closePath(); g.fillStyle = '#d9a46b'; g.fill(); g.lineWidth = 5; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.rect(36, 42, 16, 16); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 3; g.stroke(); g.beginPath(); g.moveTo(44, 45); g.lineTo(44, 55); g.moveTo(39, 50); g.lineTo(49, 50); g.lineWidth = 4; g.strokeStyle = '#c7362b'; g.stroke(); }
+  else if (kind === 'rewall') { for (const [x, y] of [[22, 58], [44, 58], [66, 58], [33, 42], [55, 42], [44, 26]]) { g.beginPath(); g.rect(x - 10, y - 7, 20, 14); g.fillStyle = '#cfc8ba'; g.fill(); g.lineWidth = 3.5; g.strokeStyle = OL; g.stroke(); } g.beginPath(); g.moveTo(62, 14); g.lineTo(76, 28); stroke(5, '#8a6a3a'); }
+  else if (kind === 'quake') { g.beginPath(); g.moveTo(10, 60); g.lineTo(78, 60); g.lineWidth = 7; g.strokeStyle = OL; g.stroke(); g.lineWidth = 3; g.strokeStyle = '#8a6a3a'; g.stroke(); g.beginPath(); g.moveTo(44, 60); g.lineTo(38, 48); g.lineTo(48, 40); g.lineTo(40, 26); stroke(4, '#1d1a22'); for (const [x, h] of [[20, 22], [32, 28], [56, 28], [68, 22]]) { g.beginPath(); g.rect(x - 5, 60 - h, 10, h); g.fillStyle = '#cfc8ba'; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke(); } }
   else if (kind === 'path') { for (const [x, s] of [[26, 1], [62, 1]]) { g.beginPath(); g.moveTo(x, 70); g.lineTo(x, 50); stroke(4, '#8a6a3a'); g.beginPath(); g.arc(x, 40, 13 * s, 0, 7); g.fillStyle = '#4ba557'; g.fill(); g.lineWidth = 4; g.strokeStyle = OL; g.stroke(); } g.beginPath(); g.moveTo(44, 76); g.lineTo(44, 26); stroke(5, '#ffc93c'); g.beginPath(); g.moveTo(34, 36); g.lineTo(44, 24); g.lineTo(54, 36); stroke(5, '#ffc93c'); }
   return XICON[kind] = c.toDataURL();
 }
@@ -44,7 +40,7 @@ function xIcon(kind) {
 // ---------- command card entries ----------
 CMD[WAYFINDER].push({ id: 'dismiss', cell: 15, key: '' });
 CMD[MASON].push({ id: 'road', cell: 13, key: '' }, { id: 'dismiss', cell: 15, key: '' });
-CMD_ARMY.push({ id: 'inspect', cell: 12, key: '' }, { id: 'retrofit', cell: 13, key: '' }, { id: 'xpath', cell: 14, key: '' }, { id: 'dismiss', cell: 15, key: '' });
+CMD_ARMY.push({ id: 'rest', cell: 8, key: '' }, { id: 'inspect', cell: 12, key: '' }, { id: 'retrofit', cell: 13, key: '' }, { id: 'xpath', cell: 14, key: '' }, { id: 'dismiss', cell: 15, key: '' });
 {
   const mageGet = Object.getOwnPropertyDescriptor(CMD, MAGE).get;
   Object.defineProperty(CMD, MAGE, { configurable: true, get() { return mageGet().concat([{ id: 'xpath', cell: 13, key: '' }, { id: 'dismiss', cell: 15, key: '' }]); } });
@@ -62,11 +58,11 @@ function extraCmdInfo(id) {
   if (what === 'dismiss') {
     const us = S.selected.filter(v => v.owner === ME && v.kind === cmdTab);
     const n = us.reduce((s, u) => s + (u.kind === 'army' ? troopCount(u) : 1), 0);
-    return { name: 'Dismiss', desc: `Send ${us.length > 1 ? 'these units' : us[0] ? us[0].name : 'the unit'} home for good${n > 1 ? ` (${n} ${us[0] && us[0].kind === 'army' ? 'soldiers' : 'units'})` : ''}. No refund; their upkeep stops. Click twice to confirm.`, cost: null, why: !us.length ? 'Nothing to dismiss' : us.some(u => u.battle) ? 'Not during battle' : null, icon: xIcon('dismiss') };
+    return { name: 'Dismiss', desc: `Send ${us.length > 1 ? 'these units' : us[0] ? us[0].name : 'the unit'} home for good${n > 1 ? ` (${n} ${us[0] && us[0].kind === 'army' ? 'soldiers' : 'units'})` : ''}. No refund; their upkeep stops. Click twice (or press Delete twice) to confirm.`, cost: null, why: !us.length ? 'Nothing to dismiss' : us.some(u => u.battle) ? 'Not during battle' : null, icon: xIcon('dismiss') };
   }
   if (what === 'destroy') {
     const p = S.selProv, e = p >= 0 ? extraAt(p, S.selPart) : null;
-    return { name: 'Destroy building', desc: e ? `Tear down this ${BUILD_DEFS[e.type].name} to free its plot. No refund; its upkeep stops. Click twice to confirm.` : '', cost: null, why: !e ? 'No building selected' : !owned(p) ? 'Not yours' : null, icon: xIcon('destroy') };
+    return { name: 'Destroy building', desc: e ? `Tear down this ${BUILD_DEFS[e.type].name} to free its plot. No refund; its upkeep stops. Click twice (or press Delete twice) to confirm.` : '', cost: null, why: !e ? 'No building selected' : !owned(p) ? 'Not yours' : null, icon: xIcon('destroy') };
   }
   if (what === 'road') {
     const m = S.selected.find(v => v.kind === MASON), q = m ? masonBorder(m) : null;
@@ -79,8 +75,13 @@ function extraCmdInfo(id) {
   }
   if (what === 'retrofit') {
     const a = S.selected.find(v => v.kind === 'army' && v.owner === ME);
-    const why = !a ? 'No army selected' : a.battle ? 'Not during battle' : a.moving ? 'Stop moving first' : !owned(a.prov) ? 'Stand in your own province' : null;
-    return { name: 'Retrofit', desc: 'Re-equip this army’s soldiers with another Armory design of the same kind. You pay the difference in gear cost.', cost: null, why, icon: xIcon('retrofit') };
+    const why = !a ? 'No army selected' : a.battle ? 'Not during battle' : a.retro ? `Retrofitting: ${Math.ceil(a.retro.dur - (S.t - a.retro.t0))} s left` : null;
+    return { name: 'Retrofit', desc: `Re-equip this army’s soldiers with another Armory design of the same kind; you pay the difference in gear cost. It takes ${RETRO_TIME} s per soldier at one of your Barracks (cavalry need a Barracks with a Stable); the army marches to the nearest one by itself.`, cost: null, why, icon: xIcon('retrofit') };
+  }
+  if (what === 'rest') {
+    const a = S.selected.find(v => v.kind === 'army' && v.owner === ME);
+    const why = !a ? 'No army selected' : a.battle ? 'Not during battle' : !woundedUnits(a) ? 'The army isn’t hurt' : null;
+    return { name: a && a.rest ? 'Resting…' : 'Rest at a Barracks', desc: `A wounded army gets its health back while it stands still at one of your Barracks: ${REST_TIME} s for every soldier in it${a ? ` (${REST_TIME * troopCount(a)} s for this one)` : ''}. Click to march to the nearest Barracks; an army that stops at one rests by itself.`, cost: null, why, icon: xIcon('rest') };
   }
   if (what === 'xpath') {
     const c = selCaster(), [f, t] = pathLvls();
@@ -93,7 +94,7 @@ function extraCmdUse(id) {
   const [what] = id.split(':');
   if (what === 'dismiss') {
     const us = S.selected.filter(v => v.owner === ME && v.kind === cmdTab && !v.battle); if (!us.length) return true;
-    if (!confirmTwice('dismiss:' + us.map(u => u.id).join(','), `Dismiss ${us.length > 1 ? us.length + ' units' : us[0].name}? Click Dismiss again to confirm.`)) return true;
+    if (!confirmTwice('dismiss:' + us.map(u => u.id).join(','), `Dismiss ${us.length > 1 ? us.length + ' units' : us[0].name}? Click Dismiss (or press Delete) again to confirm.`)) return true;
     for (const u of us) { if (u.cast) cancelCast(u); if (u.build) cancelBuild(u); }
     S.units = S.units.filter(v => !us.includes(v)); S.selected = S.selected.filter(v => !us.includes(v));
     computeIncome(); rosterKey = ''; toast(`${us.length > 1 ? us.length + ' units' : us[0].name} dismissed.`);
@@ -101,15 +102,16 @@ function extraCmdUse(id) {
   }
   if (what === 'destroy') {
     const p = S.selProv, e = extraAt(p, S.selPart); if (!e) return true;
-    if (!confirmTwice('destroy:' + p + '@' + e.slot, `Destroy the ${BUILD_DEFS[e.type].name}? Click Destroy again to confirm.`)) return true;
+    if (!confirmTwice('destroy:' + p + '@' + e.slot, `Destroy the ${BUILD_DEFS[e.type].name}? Click Destroy (or press Delete) again to confirm.`)) return true;
     S.extras.set(p, extrasIn(p).filter(x => x !== e)); S.xup.delete(p + '@' + e.slot);
     S.selPart = null; S.selBuilding = -1; provKey = ''; cmdKey = ''; computeIncome();
     toast(`${BUILD_DEFS[e.type].name} torn down. Plot ${e.slot + 1} is free.`); sfx('bld_work', { prov: p });
     return true;
   }
   if (what === 'road') { const m = S.selected.find(v => v.kind === MASON), q = m && masonBorder(m); if (m && q !== null) startLink(m, q, 'road'); return true; }
-  if (what === 'inspect') { const a = S.selected.find(v => v.kind === 'army'); if (a) showInspect(a); return true; }
-  if (what === 'retrofit') { const a = S.selected.find(v => v.kind === 'army'); if (a) showRetrofit(a); return true; }
+  if (what === 'inspect') { const a = S.selected.find(v => v.kind === 'army'); if (a) openInspect(a); return true; }
+  if (what === 'retrofit') { const a = S.selected.find(v => v.kind === 'army'); if (!a) return true; if (restSite(a) < 0) { sfx('ui_error'); toast('Retrofitting needs one of your Barracks, and none can be reached.', true); return true; } showRetrofit(a); return true; }
+  if (what === 'rest') { const as = S.selected.filter(v => v.kind === 'army' && v.owner === ME && !v.battle); for (const a of as) sendToRest(a); return true; }
   if (what === 'xpath') { const c = selCaster(); if (!c) return true; pathAim = c; cv.style.cursor = 'crosshair'; toast('Click a neighboring province to open a path to it. Right-click or Esc cancels.'); return true; }
   return false;
 }
@@ -155,7 +157,7 @@ function tearDownWall(p, q) {
   const i = [...S.walls].find(i => { const e = world.edges[i]; return (e.a === p && e.b === q) || (e.a === q && e.b === p); });
   if (i === undefined) return;
   const e = world.edges[i], V = world.vertices, a = V[e.v[0]], b = V[e.v[1]], mid = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-  e.open = true; e.style = 'open'; S.walls.delete(i); delete S.wallHp[i]; S.gates.delete(linkKey(p, q));
+  e.open = true; e.style = 'open'; S.walls.delete(i); delete S.wallHp[i]; S.gateOwn.delete(linkKey(p, q)); wallsVer++;
   openNbr[e.a].push({ q: e.b, m: mid }); openNbr[e.b].push({ q: e.a, m: mid });
   G.crossings.push({ x: mid[0], y: mid[1], ang: Math.atan2(b[1] - a[1], b[0] - a[0]), len: Math.hypot(b[0] - a[0], b[1] - a[1]) });
   cacheDirty = true; fogDirty = true; hoverPath = undefined; territory = null;
@@ -182,7 +184,7 @@ function showInspect(a) {
     return `<div class="bm-item insp"><img alt="" src="${portrait(k)}"><span class="bm-name">${n} × ${d ? d.name : k}<small>${gear}${s ? ` · Attack ${s.atk}, health ${s.hp}, armor ${Math.round(s.red * 100)}%, speed ${s.speed}` : ''} · upkeep ${Object.entries(d ? d.upkeep : {}).map(([r, v]) => v * n + ' ' + r).join(', ') || 'none'}</small></span></div>`;
   }).join('');
   const up = {}; for (const [k, n] of Object.entries(a.troops)) for (const [r, v] of Object.entries((UNIT_DEFS[k] || {}).upkeep || {})) up[r] = (up[r] || 0) + v * n;
-  popNearCard(`<div class="bm-head"><b>${a.name}</b><span>${troopCount(a)} soldiers · ${a.battle ? 'in battle' : a.moving ? 'on the move' : 'standing'} in ${provName(a.prov)}${a.wounds ? ' · wounded' : ''}</span></div>${rows}<p class="bm-note">Total upkeep every 10 s: ${Object.entries(up).map(([r, v]) => v + ' ' + r).join(', ') || 'none'}.</p><button type="button" class="bm-item bm-move" data-insp-close="1"><span class="bm-name">Close</span></button>`);
+  popNearCard(`<div class="bm-head"><b>${a.name}</b><span>${troopCount(a)} soldiers · power ${powerOf(a)} · ${a.battle ? 'in battle' : a.moving ? 'on the move' : 'standing'} in ${provName(a.prov)}${a.wounds ? ' · wounded' : ''}</span></div>${rows}<p class="bm-note">Total upkeep every 10 s: ${Object.entries(up).map(([r, v]) => v + ' ' + r).join(', ') || 'none'}.</p><button type="button" class="bm-item bm-move" data-insp-close="1"><span class="bm-name">Close</span></button>`);
 }
 const retroCost = (from, to) => { const a = UNIT_DEFS[from].cost || {}, b = UNIT_DEFS[to].cost || {}, c = {}; for (const r of RES) { const d = (b[r] || 0) - (a[r] || 0); if (d > 0) c[r] = d; } return c; };
 function retroPlan(armies, to) {
@@ -190,14 +192,29 @@ function retroPlan(armies, to) {
   for (const a of armies) for (const [k, c] of Object.entries(a.troops)) { if (k === to || k === MAGE || !DSTATS[k] || !!DSTATS[k].cav !== cav || !c) continue; n += c; const rc = retroCost(k, to); for (const r in rc) total[r] = (total[r] || 0) + rc[r] * c; }
   return { n, cost: total };
 }
-function retrofitArmies(armies, to) {
-  const plan = retroPlan(armies, to); if (!plan.n) return toast('No soldiers to retrofit.', true);
-  if (!canAfford(plan.cost)) return toast(`Retrofitting needs ${costText(plan.cost)}.`, true);
-  for (const r in plan.cost) S.stock[r] -= plan.cost[r];
-  const cav = !!DSTATS[to].cav;
-  for (const a of armies) for (const k of Object.keys(a.troops)) { if (k === to || k === MAGE || !DSTATS[k] || !!DSTATS[k].cav !== cav) continue; a.troops[to] = (a.troops[to] || 0) + a.troops[k]; delete a.troops[k]; }
+// the swap itself, once the army has spent its time at the Barracks
+function retrofitNow(a, to) {
+  const cav = !!DSTATS[to].cav; let n = 0;
+  for (const k of Object.keys(a.troops)) { if (k === to || k === MAGE || !DSTATS[k] || !!DSTATS[k].cav !== cav) continue; n += a.troops[k]; a.troops[to] = (a.troops[to] || 0) + a.troops[k]; delete a.troops[k]; }
   computeIncome(); cmdKey = ''; armKey = '';
-  toast(`${plan.n} soldier${plan.n > 1 ? 's' : ''} retrofitted to ${UNIT_DEFS[to].name}${Object.keys(plan.cost).length ? ' (−' + costText(plan.cost) + ')' : ''}.`);
+  return n;
+}
+// GPC14: retrofitting takes 10 s per soldier at a Barracks (with a Stable for cavalry); the army walks to the nearest one first
+function retrofitArmies(armies, to) {
+  let none = 0, sent = 0, began = 0;
+  for (const a of armies) {
+    const plan = retroPlan([a], to); if (!plan.n) continue;
+    const dest = retroSite(a, to);
+    if (dest < 0) { none++; continue; }
+    if (a.retro) cancelRetro(a, true);
+    a.retroWant = { to, prov: dest };
+    if (a.prov === dest && !a.moving) { if (beginRetro(a)) began++; }
+    else if (order(a, dest, true)) { sent++; }
+    else { a.retroWant = null; none++; }
+  }
+  if (none) { sfx('ui_error'); toast(`No Barracks${DSTATS[to].cav ? ' with a Stable' : ''} of yours can be reached to retrofit ${none > 1 ? none + ' armies' : 'that army'}.`, true); }
+  if (sent) toast(`${sent > 1 ? sent + ' armies march' : 'The army marches'} to the nearest Barracks${DSTATS[to].cav ? ' with a Stable' : ''} to retrofit.`);
+  cmdKey = '';
 }
 function showRetrofit(a) {
   const why = extraCmdInfo('retrofit').why; if (why) return toast('Retrofit: ' + why + '.', true);
@@ -209,7 +226,7 @@ function showRetrofit(a) {
   popNearCard(`<div class="bm-head"><b>Retrofit ${a.name}</b><span>Pick a design of the same kind</span></div>${rows || '<p class="bm-note">No other designs of this kind. Make one in the Armory (G).</p>'}<button type="button" class="bm-item bm-move" data-insp-close="1"><span class="bm-name">Close</span></button>`);
 }
 // the Armory can retrofit every army standing in your own land to the design being edited
-function armoryRetroArmies() { return S.units.filter(v => v.kind === 'army' && v.owner === ME && !v.battle && !v.moving && owned(v.prov)); }
+function armoryRetroArmies() { return S.units.filter(v => v.kind === 'army' && v.owner === ME && !v.battle && !v.exiting); }
 $q('#armory').addEventListener('click', e => {
   const b = e.target.closest('[data-ar="retro"]'); if (!b) return; e.stopImmediatePropagation();
   if (draft && draft.id && designById(draft.id)) retrofitArmies(armoryRetroArmies(), draft.id);
@@ -275,10 +292,10 @@ $q('#uiReset').addEventListener('click', () => setUISize(1));
 setUISize(UI.z, false);
 
 // ---------- Armies tab in the outliner ----------
-function armyStatus(a) { return a.battle && !a.retreating ? 'in battle' : a.retreating ? 'retreating' : a.exiting ? 'marching home' : a.moving ? 'marching' : 'standing'; }
+function armyStatus(a) { return a.battle && !a.retreating ? 'in battle' : a.retreatHome ? 'retreating home' : a.retreating ? 'retreating' : a.exiting ? 'marching home' : a.sieging != null ? 'battering a wall' : a.retro ? 'retrofitting' : a.rest ? 'resting' : a.moving ? 'marching' : 'standing'; }
 function armiesTabHTML() {
   const list = S.units.filter(v => v.kind === 'army' && v.owner === ME), mages = S.units.filter(v => v.kind === MAGE && v.owner === ME);
-  const row = a => { const m = a.troops[MAGE] || 0, horde = hordeActive(a); return `<button type="button" class="ro-u${isSel(a) ? ' on' : ''}" data-uid="${a.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(Object.keys(a.troops).find(k => a.troops[k] && k !== MAGE) || (m ? MAGE : 'd-sword'))}"><span><b>${a.name}</b><small><i class="${a.battle ? 'idle' : 'busy'}" style="${a.battle ? 'background:#c7362b' : ''}"></i>${troopCount(a) - m}${m ? ` + ${m} Mage${m > 1 ? 's' : ''}` : ''}${horde ? ' · Horde' : ''} · ${armyStatus(a)} · ${S.explored.has(a.prov) ? provName(a.prov) : 'fog'}</small></span></button>`; };
+  const row = a => { const m = a.troops[MAGE] || 0, horde = hordeActive(a); return `<button type="button" class="ro-u${isSel(a) ? ' on' : ''}" data-uid="${a.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(Object.keys(a.troops).find(k => a.troops[k] && k !== MAGE) || (m ? MAGE : 'd-sword'))}"><span><b>${escHTML(a.name)}</b><small><i class="${a.battle ? 'idle' : 'busy'}" style="${a.battle ? 'background:#c7362b' : ''}"></i>${troopCount(a) - m}${m ? ` + ${m} Mage${m > 1 ? 's' : ''}` : ''}${horde ? ' · Horde' : ''} · ${armyStatus(a)} · ${S.explored.has(a.prov) ? provName(a.prov) : 'fog'}</small></span><em class="ro-pow" title="Army power">⚔ ${powerOf(a)}</em></button>`; };
   const mrow = u => `<button type="button" class="ro-u${isSel(u) ? ' on' : ''}" data-uid="${u.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(MAGE)}"><span><b>${u.name}</b><small><i class="${u.cast ? 'busy' : u.moving ? 'busy' : 'idle'}"></i>${u.cast ? 'casting' : u.moving ? 'walking' : 'idle'} · ${S.explored.has(u.prov) ? provName(u.prov) : 'fog'}</small></span></button>`;
   const total = unitTotal(MAGE), cap = mageCap(), inArmies = list.reduce((n, a) => n + (a.troops[MAGE] || 0), 0);
   const mageSec = `<div class="ro-sec" title="Mages you have, counting those in armies and in training, out of the Mage limit. Mage Academy raises the limit.">Mages <span class="${total >= cap ? 'full' : ''}">${total}/${cap}</span></div>` +
@@ -292,7 +309,7 @@ function barracksSec() {
   const row = bk => { const Q = S.queues['barracks:' + bk.p] || [], on = S.selKind === 'barracks' && S.selBuilding === bk.p; return `<button type="button" class="ro-u${on ? ' on' : ''}" data-bk="${bk.p}@${bk.slot}" title="Click to select and train, double-click to go to"><img alt="" src="${buildThumb('barracks')}"><span><b>${provName(bk.p)}</b><small><i class="${Q.length ? 'busy' : 'idle'}"></i>${Q.length ? `training ${Q.length}` : 'idle'} · ${bk.stable ? 'infantry and cavalry' : 'infantry'}</small></span></button>`; };
   return `<div class="ro-sec">Barracks <span>${list.length}</span></div>` + (list.length ? list.map(row).join('') : '<div class="ro-none">None yet</div>');
 }
-const armiesKey = () => myBarracks().map(bk => bk.p + (bk.stable ? 's' : '') + ':' + (S.queues['barracks:' + bk.p] || []).length).join(',') + (S.selKind === 'barracks' ? '@' + S.selBuilding : '') + '#' + S.units.filter(v => (v.kind === 'army' || v.kind === MAGE) && v.owner === ME).map(a => a.id + ':' + (a.kind === 'army' ? troopCount(a) + ':' + (a.troops[MAGE] || 0) + armyStatus(a) + hordeActive(a) : (a.cast ? 'c' : '') + (a.moving ? 'm' : '')) + a.prov + (isSel(a) ? '*' : '')).join('|') + '#' + unitTotal(MAGE) + '/' + mageCap();
+const armiesKey = () => myBarracks().map(bk => bk.p + (bk.stable ? 's' : '') + ':' + (S.queues['barracks:' + bk.p] || []).length).join(',') + (S.selKind === 'barracks' ? '@' + S.selBuilding : '') + '#' + S.units.filter(v => (v.kind === 'army' || v.kind === MAGE) && v.owner === ME).map(a => a.id + a.name + ':' + (a.kind === 'army' ? troopCount(a) + ':' + (a.troops[MAGE] || 0) + armyStatus(a) + hordeActive(a) + powerOf(a) : (a.cast ? 'c' : '') + (a.moving ? 'm' : '')) + a.prov + (isSel(a) ? '*' : '')).join('|') + '#' + unitTotal(MAGE) + '/' + mageCap();
 
 // ---------- grid hotkeys: each command-card cell has a key, laid out like the grid ----------
 //   Q W E R
@@ -305,7 +322,8 @@ function gridLabels() {
   const kids = $q('#cmdGrid').children;
   for (let i = 0; i < kids.length && i < 16; i++) {
     const b = kids[i]; if (!b.matches('button.cmd-btn')) continue;
-    const want = GRID_KEYS[i].toUpperCase(); let k = b.querySelector('kbd');
+    const del = b.dataset.cmd === 'dismiss' || b.dataset.cmd === 'destroy';   // IC03: deleting a unit or building is on the Delete key
+    const want = del ? 'Del' : GRID_KEYS[i].toUpperCase(); let k = b.querySelector('kbd');
     if (!k) { k = document.createElement('kbd'); b.appendChild(k); }
     if (k.textContent !== want) k.textContent = want;
   }
@@ -315,9 +333,10 @@ window.addEventListener('keydown', e => {
   if (!S.started || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
   if (!$q('#settings').hidden || armOpen) return;
+  if (e.key === 'Delete') { const d = $q('#cmdGrid [data-cmd="dismiss"], #cmdGrid [data-cmd="destroy"]'); if (d) { e.preventDefault(); e.stopImmediatePropagation(); d.click(); } return; }
   const i = GRID_KEYS.indexOf(e.key.toLowerCase()); if (i < 0) return;
   const b = $q('#cmdGrid').children[i];
-  if (!b || !b.matches('button.cmd-btn')) return;
+  if (!b || !b.matches('button.cmd-btn') || b.dataset.cmd === 'dismiss' || b.dataset.cmd === 'destroy') return;
   e.preventDefault(); e.stopImmediatePropagation();
   b.click();
 }, true);

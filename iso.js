@@ -526,12 +526,14 @@ function humanoid(g, s, R, t, seated) {
   add(0, () => torso(g, s, R));
   if (s.back === 'rucksack') add(0.4, () => straps(g, s, R));
   add(1, () => head(g, s, R, t));
-  const hands = { r: s.rightPose === 'raised' ? [-24, 10, -58] : [-24, 5, -28], l: [24, 5, -28] };
+  // castPose (v78): both hands lifted over the head, the staff held high, lightning crackling at its tip in the school's color
+  const cast = s.castPose;
+  const hands = cast ? { r: [-12, 10, -82], l: [13, 8, -76] } : { r: s.rightPose === 'raised' ? [-24, 10, -58] : [-24, 5, -28], l: [24, 5, -28] };
   for (const sd of ['r', 'l']) {
     const sh = [sd === 'r' ? -17 : 17, 0, -46], hd = hands[sd];
     const name = sd === 'r' ? s.right : s.left, isShield = name && SHIELDS.includes(name);
     const d = R.D(hd[0], hd[1]), armD = d > 0 ? d + 1 : d - 0.5;
-    const ang = sd === 'r' ? (s.angF || 0) * R.c + (s.angS || 0) * R.s : 0;
+    const ang = cast ? 0.08 * R.s : sd === 'r' ? (s.angF || 0) * R.c + (s.angS || 0) * R.s : 0;
     add(armD, () => {
       const sx = R.X(sh[0], sh[1]), hx = R.X(hd[0], hd[1]), hy = hd[2] + R.D(hd[0], hd[1]) * TILT * 0.4;
       if (name && !isShield) item(g, name, hx, hy, ang, t, R.s < -0.25);
@@ -549,8 +551,26 @@ function humanoid(g, s, R, t, seated) {
       });
     }
   }
+  if (cast) { const hd = hands.r, hx = R.X(hd[0], hd[1]), hy = hd[2] + R.D(hd[0], hd[1]) * TILT * 0.4; const tip = { stave: 72, grandstave: 88, 'staff-crystal': 88, mythicstave: 80, wand: 33, crypticwand: 37, enigmaticwand: 40 }[s.right] || 72; add(9, () => castBolts(g, hx, hy - tip, t, cast)); }
   parts.sort((a, b) => a.d - b.d);
   for (const p of parts) { if (p.up) { g.save(); g.translate(0, bob); p.f(); g.restore(); } else p.f(); }
+}
+// jagged lightning crackling around a raised staff's tip; col is the school's color (a dark color gets a pale halo so it still reads)
+function castBolts(g, x, y, t, col) {
+  const dark = col === '#1d1a22' || col === '#000' || col === 'black', step = Math.floor(t * 14);
+  let seed = step * 9301 + 49297; const rnd = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+  g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+  glow(g, x, y, 44, dark ? 'rgba(190,150,255,1)' : col, dark ? 0.45 : 0.55);
+  for (let b = 0; b < 4; b++) {
+    const a0 = rnd() * TAU, len = 26 + rnd() * 30, pts = [[x, y]];
+    for (let k = 1; k <= 4; k++) { const f = k / 4, a = a0 + (rnd() - 0.5) * 1.1; pts.push([x + Math.cos(a) * len * f, y + Math.sin(a) * len * f * 0.85]); }
+    g.beginPath(); pts.forEach(([px, py], i) => i ? g.lineTo(px, py) : g.moveTo(px, py));
+    g.lineWidth = 7; g.strokeStyle = dark ? 'rgba(225,205,255,0.85)' : OL; g.stroke();
+    g.lineWidth = 3.6; g.strokeStyle = col; g.stroke();
+    g.lineWidth = 1.3; g.strokeStyle = dark ? '#6b3fa0' : '#fff'; g.stroke();
+  }
+  g.beginPath(); g.arc(x, y, 6, 0, TAU); g.fillStyle = dark ? '#3a2a55' : '#fff'; g.fill(); g.lineWidth = 2.4; g.strokeStyle = col; g.stroke();
+  g.restore(); LB = null;
 }
 
 // ---------- horse ----------

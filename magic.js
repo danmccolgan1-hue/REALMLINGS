@@ -29,8 +29,8 @@ registerMage();
 
 // ---------- schools and spells ----------
 const SCHOOLS = {
-  life:   { name: 'Life',   color: '#3f9b4b', light: '#e3f6e0', blurb: 'Harvests, protective skins, healing, and paths through the forest.', spells: ['Harvest', 'Hardened Skin', 'Mending', 'Speak with the Forest'] },
-  death:  { name: 'Death',  color: '#6b3fa0', light: '#efe6fb', blurb: 'Cursed weapons, the risen dead, tunnels under mountains, and grave riches.', spells: ['Cursed Weapons', 'Risen Dead', 'Underworld Passage', 'Grave Robbing'] },
+  life:   { name: 'Herbomancy', color: '#3f9b4b', light: '#e3f6e0', blurb: 'Harvests, protective skins, healing, and paths through the forest.', spells: ['Harvest', 'Hardened Skin', 'Mending', 'Speak with the Forest'] },
+  death:  { name: 'Necromancy', color: '#6b3fa0', light: '#efe6fb', blurb: 'Cursed weapons, the risen dead, tunnels under mountains, and grave riches.', spells: ['Cursed Weapons', 'Risen Dead', 'Underworld Passage', 'Grave Robbing'] },
   arcane: { name: 'Arcane', color: '#2f6fe0', light: '#e3ecff', blurb: 'Far-seeing towers, reading minds, trading across worlds, traps and rifts.', spells: ['Arcane Scouts', 'Clear Thoughts', 'Interdimensional Trading', 'Stasis Trap', 'Teleportation Rift'] }
 };
 // each spell family's research line, lowest first; its tier is how many of them you know
@@ -227,8 +227,9 @@ const harvestFood = () => {
 };
 const armyDetected = u => u.kind === 'army' && S.detect && (S.detect === 'all' || S.detect.has(u.prov));
 // towers with Arcane Scouts see their neighbors; with Arcane Vision they also spot stealthed units there
-function towerSight(vis) { if (!hasTech('arcscouts')) return; for (const [p, list] of S.extras) if (owned(p) && list.some(e => e.type === 'magetower')) { vis.add(p); for (const q of allNbr[p]) vis.add(q); } }
-function stealthSeen(u) { if (!u.stealth || u.owner === ME) return true; if (!hasTech('arcvision')) return false; for (const [p, list] of S.extras) if (owned(p) && list.some(e => e.type === 'magetower') && (p === u.prov || allNbr[p].includes(u.prov))) return true; return false; }
+// GC17: sight runs only through open passages (not through trees, mountains, ruins or walls)
+function towerSight(vis) { if (!hasTech('arcscouts')) return; for (const [p, list] of S.extras) if (owned(p) && list.some(e => e.type === 'magetower')) { vis.add(p); for (const { q } of openNbr[p]) vis.add(q); } }
+function stealthSeen(u) { if (!u.stealth || u.owner === ME) return true; if (!hasTech('arcvision')) return false; for (const [p, list] of S.extras) if (owned(p) && list.some(e => e.type === 'magetower') && (p === u.prov || openNbr[p].some(n => n.q === u.prov))) return true; return false; }
 
 // ---------- command card ----------
 const SPELL_CELLS = ['harvest', 'mending', 'graverob', 'trading', 'mind', 'stasis', 'rift'];
@@ -242,7 +243,7 @@ const CMD_ARMY = CMD.army;
 Object.defineProperty(CMD, 'army', { configurable: true, get() { const a = S.selected.find(v => v.kind === 'army'); return CMD_ARMY.concat(a && isCaster(a) ? [{ id: 'detach', cell: 2, key: '' }].concat(spellButtons(a, 4)) : []); } });
 Object.defineProperty(CMD, MAGE, { configurable: true, get() { const m = S.selected.find(v => v.kind === MAGE); return (m ? spellButtons(m, 0) : []).concat([{ id: 'join', cell: 12, key: '' }]); } });
 const selCaster = () => { const k = cmdTab; return S.selected.find(v => v.kind === k && isCaster(v)) || S.selected.find(isCaster); };
-function magicCmdKey() { const c = selCaster(); if (!c) return ''; normAuto(c); return [c.id, c.cast ? c.cast.spell + Math.floor((S.t - c.cast.t0) / 2) : '', JSON.stringify(c.auto || {}), Object.keys(S.cd).map(k => k + Math.ceil(cdLeft(k))).join(','), !!S.trap, S.rift ? S.rift.uses : 0, currentSchool(), S.tech.mag.done.length, troopCount(c.kind === 'army' ? c : { troops: {} })].join('|'); }
+function magicCmdKey() { const c = selCaster(); if (!c) return ''; normAuto(c); return [c.id, c.cast ? c.cast.spell + Math.floor((S.t - c.cast.t0) / 2) : '', c.quake ? 'q' + Math.floor((S.t - c.quake.t0) / 2) : '', c.retro ? 'r' : '', c.rest ? 'z' : '', JSON.stringify(c.auto || {}), Object.keys(S.cd).map(k => k + Math.ceil(cdLeft(k))).join(','), !!S.trap, S.rift ? S.rift.uses : 0, currentSchool(), S.tech.mag.done.length, troopCount(c.kind === 'army' ? c : { troops: {} })].join('|'); }
 function magicCmdInfo(id) {
   const [what, k] = id.split(':');
   if (what === 'spell') {
@@ -253,7 +254,7 @@ function magicCmdInfo(id) {
   if (what === 'mauto') {
     const c = selCaster(), on = c && autoOn(c, k), A = AUTO[k];
     const cd = c ? Math.max(0, (c[k + 'Cd'] || 0) - S.t) : 0;
-    return { name: `${A.name()}: autocast ${on ? 'on' : 'off'}`, desc: TECH_BY_ID[lineTech(A.line)].blurb + (k === 'risen' || k === 'curse' ? ' One Mage can keep Cursed Weapons or Risen Dead ready, not both; an army with two Mages can use both.' : '') + (c && c.kind !== 'army' ? ' The Mage must be in an army for this to fire.' : '') + (cd ? ` Ready again in ${Math.ceil(cd)} s.` : ''), cost: null, why: null, ok: on ? 'Click to turn off' : 'Click to turn on', icon: techIcon(lineTech(A.line)), off: !on };
+    return { name: `${A.name()}: autocast ${on ? 'on' : 'off'}`, desc: TECH_BY_ID[lineTech(A.line)].blurb + (k === 'risen' || k === 'curse' ? ' One Mage can keep Cursed Weapons or Risen Dead ready, not both; an army with two Mages can use both.' : '') + (c && c.kind !== 'army' ? ' The Mage must be in an army for this to fire.' : '') + (cd ? ` Ready again in ${Math.ceil(cd)} s.` : ''), cost: null, why: null, ok: on ? 'Click to turn off' : 'Click to turn on', glow: !!on, icon: techIcon(lineTech(A.line)), off: !on };
   }
   if (what === 'join') {
     const m = S.selected.find(v => v.kind === MAGE), a = m && S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === m.prov && !v.battle);
@@ -302,10 +303,23 @@ function drawMagic(g, t) {
   if (S.rift && S.explored.has(S.rift.prov)) { const c = G.provs[S.rift.prov].ic, x = c[0] - 70, y = c[1] + 110; g.save(); const gr = g.createRadialGradient(x, y, 2, x, y, 30); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.4, '#b48cff'); gr.addColorStop(1, 'rgba(90,40,180,0)'); g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, 22, 32, 0, 0, Math.PI * 2); g.fill(); g.translate(x, y); g.rotate(t * 2); g.lineWidth = 3; g.strokeStyle = '#6b3fa0'; for (let k = 0; k < 3; k++) { g.beginPath(); g.ellipse(0, 0, 14 + k * 5, 22 + k * 5, k, 0, 4); g.stroke(); } g.restore(); }
   for (const u of S.units) {
     if (u.cast && (u.owner === ME || S.visible.has(u.prov))) {
-      const r = u.kind === 'army' ? 30 : 18, col = SCHOOLS[currentSchool() || 'arcane'].color;
-      g.save(); g.translate(u.x, u.y); g.scale(1, 0.45); g.rotate(t * 1.2); g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.lineWidth = 4; g.strokeStyle = col; g.setLineDash([7, 5]); g.stroke(); g.restore();
-      if (isFinite(u.cast.dur)) { const f = Math.min(1, (S.t - u.cast.t0) / u.cast.dur), y = u.y - (u.kind === 'army' ? 62 : 48); g.beginPath(); g.arc(u.x, y, 9, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); g.lineWidth = 4; g.strokeStyle = col; g.stroke(); g.beginPath(); g.arc(u.x, y, 9, 0, 7); g.lineWidth = 1.6; g.strokeStyle = OL; g.stroke(); }
-      for (let k = 0; k < 3; k++) { const q = t * 2 + k * 2.1; g.fillStyle = col; g.globalAlpha = 0.7; g.beginPath(); g.arc(u.x + Math.cos(q) * r, u.y - 10 + Math.sin(q) * r * 0.4, 2.6, 0, 7); g.fill(); g.globalAlpha = 1; }
+      // GC08: a bright casting circle on the ground, bigger for long casts: a glowing disc, two rings with runes turning opposite ways
+      const long = !isFinite(u.cast.dur) || u.cast.dur >= 30, K = UKK, col = schoolColor(u.owner), r = (u.kind === 'army' ? 40 : 26) * K * (long ? 1.25 : 1);
+      const pulse = 1 + Math.sin(t * 3) * 0.05;
+      g.save(); g.translate(u.x, u.y + 2); g.scale(1, 0.42);
+      const gr = g.createRadialGradient(0, 0, r * 0.2, 0, 0, r * 1.25); gr.addColorStop(0, col); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.globalAlpha = 0.42 + Math.sin(t * 4) * 0.08; g.fillStyle = gr; g.beginPath(); g.arc(0, 0, r * 1.25, 0, Math.PI * 2); g.fill(); g.globalAlpha = 1;
+      g.beginPath(); g.arc(0, 0, r * pulse, 0, Math.PI * 2); g.lineWidth = 9; g.strokeStyle = OL; g.stroke(); g.lineWidth = 5; g.strokeStyle = col; g.stroke();
+      g.beginPath(); g.arc(0, 0, r * pulse, 0, Math.PI * 2); g.lineWidth = 1.6; g.strokeStyle = 'rgba(255,255,255,0.8)'; g.stroke();
+      g.save(); g.rotate(t * 1.2); g.beginPath(); g.arc(0, 0, r * 0.72, 0, Math.PI * 2); g.lineWidth = 3; g.strokeStyle = col; g.setLineDash([10, 7]); g.stroke(); g.setLineDash([]);
+      for (let k = 0; k < 6; k++) { const q = k * Math.PI / 3; g.save(); g.translate(Math.cos(q) * r * 0.86, Math.sin(q) * r * 0.86); g.rotate(q); g.beginPath(); g.moveTo(-4, -4); g.lineTo(4, 4); g.moveTo(4, -4); g.lineTo(-4, 4); g.moveTo(0, -5); g.lineTo(0, 5); g.lineWidth = 2.4; g.strokeStyle = '#fff'; g.stroke(); g.restore(); }
+      g.restore();
+      g.save(); g.rotate(-t * 0.8); for (let k = 0; k < 3; k++) { const q = k * Math.PI * 2 / 3; g.beginPath(); g.moveTo(Math.cos(q) * r * 0.72, Math.sin(q) * r * 0.72); g.lineTo(Math.cos(q + Math.PI * 2 / 3) * r * 0.72, Math.sin(q + Math.PI * 2 / 3) * r * 0.72); g.lineWidth = 2; g.strokeStyle = col; g.globalAlpha = 0.8; g.stroke(); } g.restore();
+      g.restore();
+      // motes rising from the circle
+      for (let k = 0; k < 6; k++) { const f = (t * 0.6 + k / 6) % 1, q = k * 1.7 + t * 0.4; g.globalAlpha = 0.85 * (1 - f); g.fillStyle = col; g.beginPath(); g.arc(u.x + Math.cos(q) * r * 0.8, u.y + Math.sin(q) * r * 0.32 - f * 46 * K, 2.6 * K, 0, 7); g.fill(); }
+      g.globalAlpha = 1;
+      if (isFinite(u.cast.dur)) { const f = Math.min(1, (S.t - u.cast.t0) / u.cast.dur), y = u.y - (u.kind === 'army' ? 90 : 66) * K; g.beginPath(); g.arc(u.x, y, 10 * K, 0, 7); g.fillStyle = 'rgba(250,241,220,0.95)'; g.fill(); g.beginPath(); g.arc(u.x, y, 10 * K, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); g.lineWidth = 4.5 * K; g.strokeStyle = col; g.stroke(); g.beginPath(); g.arc(u.x, y, 10 * K, 0, 7); g.lineWidth = 1.8; g.strokeStyle = OL; g.stroke(); }
     }
     if (u.kind === 'army' && !S.visible.has(u.prov) && armyDetected(u) && u.owner !== ME) { g.save(); g.translate(u.x, u.y); g.scale(1, 0.45); g.beginPath(); g.arc(0, 0, 30, 0, Math.PI * 2); g.lineWidth = 5; g.strokeStyle = 'rgba(160,110,255,' + (0.6 + Math.sin(t * 4) * 0.3).toFixed(2) + ')'; g.stroke(); g.restore(); }
     if (u.stasisUntil && u.stasisUntil > S.t && S.visible.has(u.prov)) { g.save(); g.globalAlpha = 0.35; g.beginPath(); g.ellipse(u.x, u.y - 14, 30, 26, 0, 0, Math.PI * 2); g.fillStyle = '#8fd0ff'; g.fill(); g.globalAlpha = 1; g.lineWidth = 2; g.strokeStyle = '#4fa6e8'; g.stroke(); g.restore(); }
@@ -344,4 +358,4 @@ function abandonSchool() {
 }
 $q('#schoolPick').addEventListener('pointerdown', e => e.stopPropagation());
 $q('#schoolPick').addEventListener('click', e => { const b = e.target.closest('[data-school]'); if (!b) return; if (b.dataset.school === 'later') closeSchoolPopup(); else pickSchool(b.dataset.school); });
-window.__realm2 = ({ stepTyranny, abandonFarthest, tyrannyNeed, splitHalf, connectedPick, seizeWhy, outpostLimit, outpostCount, outpostWhy, soldierCount, techCostMult, techCost, stepExhaustion, warBattleCheck, normAuto, mageCount, autoOn });
+window.__realm2 = ({ splitHalf, connectedPick, seizeWhy, outpostLimit, outpostCount, outpostWhy, soldierCount, techCostMult, techCost, stepExhaustion, warBattleCheck, normAuto, mageCount, autoOn });

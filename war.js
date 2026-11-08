@@ -9,7 +9,7 @@ const WAR = {
   occTimes: [60, 40, 20],      // seconds to occupy or retake: 1 soldier / 2–5 soldiers / 6 or more
   occCapital: 2,               // capitals take twice as long
   tickEvery: 10,               // every 10 s the side that is ahead gains +1
-  truce: 300,                  // 5 minute truce after any peace deal
+  truce: 480,                  // 8 minute truce after any peace deal
   goldTerm: 300,               // gold taken by the "Take gold" term
   occVal: [5, 10, 25],         // warscore for holding an outpost / fort / capital
   kill: 1, wipe: 5,
@@ -68,7 +68,7 @@ function provName(p) {
       used.add(n); provNames[i] = n;
     });
   }
-  return provNames[p];
+  return (S.provRename && S.provRename.get(p)) || provNames[p];   // T03: provinces can be renamed
 }
 // hop distances over open borders (or any border with nbr = allNbr) from one or more provinces
 function hopsFrom(src, nbr = openNbr) {
@@ -90,11 +90,17 @@ function declareWhy(att, def) {
   if (atWar(att, def)) return 'Already at war';
   if (allied(att, def)) return 'Allies can’t go to war with each other';
   const tl = truceLeft(att, def); if (tl > 0) return `Truce: ${fmtTime(tl)} left`;
+  if (!nationsBorder(att, def)) return att === ME ? 'You can only declare war on a nation that borders you' : 'They don’t border each other';
   const join = allyOf(def), pairs = [[att, def]];
   if (join && join !== att && !atWar(att, join)) pairs.push([att, join]);
   if (capBreak(pairs)) return att === ME ? `At most ${WAR.maxVsPlayer} nations can be at war with you at once` : `${PLAYERS[ME].name} already faces ${WAR.maxVsPlayer} enemies`;
   const st = stockOf(att), short = Object.keys(WAR.declareCost).filter(k => st[k] < WAR.declareCost[k]);
   return short.length ? 'Need ' + short.map(k => WAR.declareCost[k] + ' ' + k).join(', ') : '';
+}
+// two nations border each other when a province of one touches a province of the other
+function nationsBorder(a, b) {
+  for (const [p, bl] of S.buildings) if (bl.owner === a && allNbr[p].some(q => nationOf(q) === b)) return true;
+  return false;
 }
 function newWar(att, def, parent) {
   const w = { id: ++S.warSeq, a: att, b: def, by: att, base: 0, since: S.t, nextTick: S.t + WAR.tickEvery, battles: 0, active: false, winStart: S.t, peak: 0, parent, demandAt: S.t + 30 };
@@ -122,6 +128,8 @@ function occScore(w) {
   for (const [p, o] of S.occ) { const b = S.buildings.get(p); if (!b) continue; if (b.owner === w.b && o === w.a) s += WAR.occVal[b.stage]; else if (b.owner === w.a && o === w.b) s -= WAR.occVal[b.stage]; }
   return s;
 }
+// a province occupied by a third nation can't be handed over in a peace deal
+const takeable = (p, winner) => { const o = S.occ.get(p); return o === undefined || o === winner; };
 const clampWS = n => Math.max(-100, Math.min(100, n));
 // warscore of a war seen from one side (positive = that side is winning)
 const warscore = (w, side) => { if (!w) return 0; const s = clampWS(Math.round(w.base + occScore(w))); return side === w.b ? -s : s; };
@@ -182,6 +190,8 @@ function stepWar(t) {
 function stepOneWar(w, t) {
   // Total Victory happens on its own the moment a war reaches 100 warscore
   { const s = warscore(w, w.a); if (Math.abs(s) >= WAR.total) { makePeace(w, s > 0 ? w.a : w.b, { kind: 'total' }); return; } }
+  // a nation with every province occupied and no army left has lost: the warscore goes straight to 100 (GPC27)
+  for (const L of [w.a, w.b]) if (brokenNation(L)) { const win = foeOf(w, L); addScore(w, win, 200); if (w.a === ME || w.b === ME) toast(L === ME ? `Every province you hold is occupied and you have no army left: the ${PLAYERS[win].name} wins the war.` : `The ${PLAYERS[L].name} is fully occupied and has no army left: warscore 100%.`, L === ME); makePeace(w, win, { kind: 'total' }); return; }
   // the time tick only runs once the war has turned serious: a fort or capital occupied, or a battle that cost a side 10% of its army
   while (t >= w.nextTick) { const s = warscore(w, w.a); if (s && w.active) addScore(w, s > 0 ? w.a : w.b, 1); w.nextTick += WAR.tickEvery; }
   // a war where neither side gets past 10 warscore in 5 minutes ends in white peace
@@ -196,6 +206,10 @@ function stepOneWar(w, t) {
   if (w.a !== ME && w.b !== ME) aiPeace(w, t);
 }
 // between two AI nations, the side that is ahead dictates the peace
+function brokenNation(o) {
+  const own = provsOf(o); if (!own.length || !own.every(p => S.occ.has(p))) return false;
+  return !S.units.some(v => v.kind === 'army' && v.owner === o && troopCount(v) > 0);
+}
 function aiPeace(w, t) {
   const s = warscore(w, w.a), lead = s > 0 ? w.a : w.b, loser = foeOf(w, lead), sc = Math.abs(s);
   if (sc >= WAR.provs && t >= w.demandAt) {
@@ -217,6 +231,7 @@ function peaceCheck(w, kind, provs) {
     if (!provs || !provs.length) return 'Pick at least one province';
     if (provs.length > WAR.maxProvs) return `At most ${WAR.maxProvs} provinces`;
     if (provs.some(p => nationOf(p) !== foe || S.buildings.get(p).stage === 2)) return 'Capitals can’t be demanded';
+    { const held = provs.filter(p => !takeable(p, ME)); if (held.length) return `${held.map(provName).join(', ')} ${held.length > 1 ? 'are' : 'is'} occupied by another nation`; }
     return seizeWhy(ME, foe, provs);
   }
   return 'Unknown term';
@@ -244,7 +259,7 @@ function seizeWhy(winner, loser, provs) {
 // the up-to-5 provinces a winner takes: nearest first, each one touching the winner's capital land (or one already taken)
 function connectedPick(winner, loser, n = WAR.maxProvs) {
   const land = capitalLand(winner), cap = capitalOf(loser), out = [];
-  const cand = provsOf(loser).filter(p => p !== cap);
+  const cand = provsOf(loser).filter(p => p !== cap && takeable(p, winner));
   while (out.length < n) {
     const ok = cand.filter(p => !out.includes(p) && allNbr[p].some(q => land.has(q)));
     if (!ok.length) break;
@@ -259,7 +274,7 @@ function totalPick(winner, loser, n = WAR.maxProvs) {
   const out = connectedPick(winner, loser, n), cap = capitalOf(loser), mine = provsOf(winner);
   const d = mine.length ? hopsFrom(mine, allNbr) : null;
   while (out.length < n) {
-    const left = provsOf(loser).filter(p => p !== cap && !out.includes(p)); if (!left.length) break;
+    const left = provsOf(loser).filter(p => p !== cap && !out.includes(p) && takeable(p, winner)); if (!left.length) break;
     const touching = left.filter(p => allNbr[p].some(q => out.includes(q)));
     const pool = touching.length ? touching : left;
     pool.sort((a, b) => (d ? d[a] - d[b] : 0) || a - b);
@@ -267,7 +282,8 @@ function totalPick(winner, loser, n = WAR.maxProvs) {
   }
   return out;
 }
-function totalTerms(loser) { return provsOf(loser).length <= WAR.maxProvs ? 'annex' : 'split'; }
+// annexing the whole country is only possible when no third nation occupies any of it
+function totalTerms(loser, winner) { const own = provsOf(loser); return own.length <= WAR.maxProvs && (winner === undefined || own.every(p => takeable(p, winner))) ? 'annex' : 'split'; }
 function transferProv(p, to) {
   const b = S.buildings.get(p); if (!b) return;
   // conquered land is demoted to an outpost (a capital or fort loses its walls); every building stays
@@ -287,7 +303,7 @@ function evictArmies() {
     const n = nationOf(a.prov);
     if (!n || n === a.owner || hostile(a.owner, n) || allied(a.owner, n)) continue;
     const own = provsOf(a.owner); if (!own.length) continue;
-    a.exiting = true; a.battle = null; a.retreating = false;
+    a.exiting = true; a.battle = null; a.retreating = false; a.retreatHome = false;
     if (a.surveyQueue) a.surveyQueue = []; a.survey = null; a.aiSurvey = null; a.scouting = null; a.pendingSurvey = -1; if (a.pending) a.pending = null; if (a.build) cancelBuild(a);
     if (a.cast && typeof cancelCast === 'function') cancelCast(a);
     const d = hopsFrom(a.prov), dest = own.sort((x, y) => d[x] - d[y])[0];
@@ -322,7 +338,7 @@ function makePeace(w, winner, terms) {
     ls.gold -= g; ws.gold += g;
     lines.push(winner === ME ? `You take ${g} gold` : loser === ME ? `You pay ${g} gold` : `The ${W} takes ${g} gold`);
   } else if (terms.kind === 'provs') {
-    const provs = terms.provs.filter(p => nationOf(p) === loser);
+    const provs = terms.provs.filter(p => nationOf(p) === loser && takeable(p, winner));
     provs.forEach(p => transferProv(p, winner));
     lines.push(winner === ME ? `You gain ${provs.length} province${provs.length > 1 ? 's' : ''}: ${provs.map(provName).join(', ')}` : loser === ME ? `You cede ${provs.length} province${provs.length > 1 ? 's' : ''}: ${provs.map(provName).join(', ')}` : `The ${W} takes ${provs.length} province${provs.length > 1 ? 's' : ''}`);
   } else if (terms.kind === 'total') {
@@ -332,7 +348,7 @@ function makePeace(w, winner, terms) {
     const g = Math.min(Math.floor(ls.gold), Math.max(0, Math.round(inc * 60 / TICK)));
     ls.gold -= g; ws.gold += g;
     let taken;
-    if (totalTerms(loser) === 'annex') { taken = provsOf(loser); taken.forEach(p => transferProv(p, winner)); if (loser === ME) fallen = true; else annexed = loser; }
+    if (totalTerms(loser, winner) === 'annex') { taken = provsOf(loser); taken.forEach(p => transferProv(p, winner)); if (loser === ME) fallen = true; else annexed = loser; }
     else { taken = totalPick(winner, loser); taken.forEach(p => transferProv(p, winner)); }
     const trees = grantResearch(winner, WAR.totalResearch);
     const spoils = `${taken.length} province${taken.length === 1 ? '' : 's'}${annexed ? ' (the whole country)' : ''}, ${g} gold${trees ? ` and ${WAR.totalResearch} research points in ${trees}` : ''}`;
@@ -398,7 +414,7 @@ function aiDemand(w, total) {
   else { const mine = connectedPick(foe, ME); terms = mine.length ? { kind: 'provs', provs: mine } : { kind: 'gold' }; }
   S.demand = { ...terms, war: w.id, from: foe };
   const el = $q('#demand'); el.hidden = false;
-  const what = terms.kind === 'total' ? (totalTerms(ME) === 'annex' ? 'the annexation of your entire realm' : `${splitHalf(ME, foe).length} of your provinces`)
+  const what = terms.kind === 'total' ? (totalTerms(ME, foe) === 'annex' ? 'the annexation of your entire realm' : `${splitHalf(ME, foe).length} of your provinces`)
     : terms.kind === 'provs' ? `${terms.provs.length} of your provinces: ${terms.provs.map(provName).join(', ')}` : `${Math.min(WAR.goldTerm, S.stock.gold)} gold`;
   el.innerHTML = `<div class="dm-head">${dot(foe)}<b>${PLAYERS[foe].name}</b></div>` +
     `<p>${total ? 'Warscore has reached −100. They enforce total victory:' : 'They are winning the war and demand peace. They want'} <b>${what}</b>.</p>` +
@@ -593,7 +609,7 @@ function dipListHTML() {
 }
 function dipNationHTML(o, w) {
   const R = PLAYERS[o], N = NATIONS[o];
-  const head = `<div class="dp-head"><button type="button" class="dp-x dp-back" data-dp="back" aria-label="Back to all nations">‹</button><img class="dp-flag" alt="" src="${flagOf(o)}"><span class="dp-ttl"><b>${R.name}</b><small>${provsOf(o).length} provinces · ${S.units.filter(v => v.owner === o && v.kind === 'army').length} armies · ${DIFF_NAME[N.diff]}</small></span><button type="button" class="dp-x" data-dp="close" aria-label="Close diplomacy">×</button></div>`;
+  const head = `<div class="dp-head"><button type="button" class="dp-x dp-back" data-dp="back" aria-label="Back to all nations">‹</button><img class="dp-flag" alt="" src="${flagOf(o)}"><span class="dp-ttl"><b>${R.name}</b><small>${provsOf(o).length} provinces · ${S.units.filter(v => v.owner === o && v.kind === 'army').length} armies (power ${nationPower(o)}; yours ${nationPower(ME)}) · ${DIFF_NAME[N.diff]}</small></span><button type="button" class="dp-x" data-dp="close" aria-label="Close diplomacy">×</button></div>`;
   if (!N.alive) return head + `<p class="dp-p">This nation has fallen.</p>`;
   if (!w) {
     const why = declareWhy(ME, o), aw = allyWhy(ME, o), al = allied(ME, o);
@@ -608,8 +624,8 @@ function dipNationHTML(o, w) {
   const occVal = (by, owner) => [...S.occ].filter(([p, x]) => x === by && nationOf(p) === owner).reduce((n, [p]) => n + WAR.occVal[S.buildings.get(p).stage], 0);
   const occMe = occVal(ME, o), occThem = occVal(o, ME);
   const term = (k, name, need, desc) => { const why = peaceCheck(w, k, k === 'provs' ? [...S.dipPick] : null), locked = why && why.startsWith('Needs'); return `<label class="dp-term${dipTerm === k ? ' on' : ''}${locked ? ' locked' : ''}"><input type="radio" name="dpt" value="${k}"${dipTerm === k ? ' checked' : ''}${locked ? ' disabled' : ''}><span><b>${name}</b><small>${desc}</small></span><em>${need}</em></label>`; };
-  const n = provsOf(o).length, tt = totalTerms(o);
-  const cap = capitalOf(o), pickable = provsOf(o).filter(p => p !== cap && S.explored.has(p));
+  const n = provsOf(o).length, tt = totalTerms(o, ME);
+  const cap = capitalOf(o), pickable = provsOf(o).filter(p => p !== cap && S.explored.has(p) && takeable(p, ME));
   const pick = dipTerm === 'provs' ? `<div class="dp-pick"><div class="dp-pick-h">Choose up to ${WAR.maxProvs} <span>${S.dipPick.size}/${WAR.maxProvs}</span></div>` + (pickable.length ? pickable.map(p => { const b = S.buildings.get(p), on = S.dipPick.has(p), full = !on && S.dipPick.size >= WAR.maxProvs; return `<label class="dp-prov${on ? ' on' : ''}" data-prov="${p}"><input type="checkbox" value="${p}"${on ? ' checked' : ''}${full ? ' disabled' : ''}><i style="background:${TER[G.provs[p].terrain].base}"></i><span>${provName(p)}</span><small>${STAGE_WORD[b.stage]}${S.occ.get(p) === ME ? ' · occupied' : ''}</small></label>`; }).join('') : '<small>None of their provinces you know of can be taken.</small>') + '</div>' : '';
   const why = peaceCheck(w, dipTerm, dipTerm === 'provs' ? [...S.dipPick] : null);
   return head +

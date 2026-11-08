@@ -8,13 +8,17 @@ const roadTier = () => hasTech('roads3') ? 3 : hasTech('roads2') ? 2 : 1;
 const ROAD_BONUS = [0, 0.25, 0.35, 0.5], ROAD_LOOK = [null, { name: 'dirt', edge: '#8a6a3e', fill: '#c9a46b', mark: 'rgba(120,85,45,0.55)' }, { name: 'gravel', edge: '#6f6a62', fill: '#b9b3a6', mark: 'rgba(80,76,70,0.55)' }, { name: 'cobblestone', edge: '#55504b', fill: '#8f8a84', mark: 'rgba(235,230,220,0.75)' }];
 const roadSpeed = () => 1 + ROAD_BONUS[roadTier()];
 const WALL_COST = { gold: 100, wood: 150 }, WALL_TIME = 12;
-const GATE_COST = { gold: 150, wood: 100 }, GATE_TIME = 10;
 // wall strength, for when walls can be attacked: a stone wall is three times as strong as a palisade
 const WALL_HP = { wood: 400, stone: 1200 };
 const wallKind = () => hasTech('walls2') ? 'stone' : 'wood';
-const FORT_LIMIT = [3, 5, 7, 9];
-const ARROW = { every: 2, dmg: [0, 3, 5] };   // seconds between volleys; damage per volley from a fort / a capital
-S.roads = new Set(); S.walls = new Set(); S.gates = new Set(); S.wallHp = {}; S.arrowAt = {};
+const FORT_LIMIT = [1, 3, 5, 7];   // you start allowed a single fort (GPC10a)
+// GPC28: one volley every 10 s, strong enough to kill one baseline infantryman (a Footman) through his armor
+const ARROW = { every: 10 };
+const arrowDmg = () => { const s = DSTATS['d-sword']; return s ? s.hp / Math.max(0.05, (1 - s.red) * (1 - (s.parry || 0))) + 0.01 : 30; };
+S.roads = new Set(); S.walls = new Set(); S.wallHp = {}; S.arrowAt = {};
+// every wall has a gate (GPC10c): linkKey -> { home, owner }. Whoever controls the home province (its owner, or its occupier) may pass;
+// a wall with no home province (raised on unclaimed land) belongs to the nation that raised it
+S.gateOwn = new Map(); let wallsVer = 0;
 const linkKey = (a, b) => a < b ? a + '_' + b : b + '_' + a;
 
 // ---------- storage ----------
@@ -48,43 +52,35 @@ function linkWhy(type, m, q) {
   const p = m.prov;
   if (type === 'road' && !hasTech('roads')) return 'Research Dirt Roads first';
   if (type === 'wall' && !hasTech('walls')) return 'Research Wooden Walls first';
-  if (type === 'gate') {
-    if (!hasTech('gates')) return 'Research Wall Gates first';
-    if (p === q || !allNbr[p].includes(q)) return 'The Mason must stand next door';
-    if (!wallBetween(p, q)) return 'There is no wall on that border';
-    if (S.gates.has(linkKey(p, q))) return 'There is already a gate';
-    if (!owned(p) || !owned(q)) return 'You must own both provinces';
-    if (m.moving) return 'He is walking';
-    if (m.build) return 'He is already building';
-    return lackText(GATE_COST);
-  }
   if (p === q) return 'Pick a neighboring province';
   if (!allNbr[p].includes(q)) return `The Mason must stand next door`;
   if (!openBetween(p, q)) return 'That border is already closed';
   if (!S.explored.has(q)) return 'Explore it first';
+  if (type === 'road' && (!owned(p) || !owned(q))) return 'A road must join two of your own provinces';   // GPC17
   if (!owned(p) && !owned(q)) return 'One side must be your land';
   if (m.moving) return 'He is walking';
   if (m.build) return 'He is already building';
-  if (S.units.some(u => u.build && (u.build.type === 'road' || u.build.type === 'wall') && linkKey(u.build.prov, u.build.to) === linkKey(p, q))) return 'Already under way';
+  if (S.units.some(u => u.build && (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall') && linkKey(u.build.prov, u.build.to) === linkKey(p, q))) return 'Already under way';
   if (type === 'road') { if (S.roads.has(linkKey(p, q))) return 'There is already a road'; return lackText(ROAD_COST); }
-  // a wall may not cut off either province: each needs another open border left
-  if (openNbr[p].filter(n => n.q !== q).length < 1) return `It would cut off ${provName(p)}`;
-  if (openNbr[q].filter(n => n.q !== p).length < 1) return `It would cut off ${provName(q)}`;
   return lackText(WALL_COST);
 }
 function startLink(m, q, type) {
   const why = linkWhy(type, m, q); if (why) return toast(`Can’t build a ${type} there: ${why.toLowerCase()}.`, true);
-  const cost = type === 'road' ? ROAD_COST : type === 'gate' ? GATE_COST : WALL_COST;
+  const cost = type === 'road' ? ROAD_COST : type === 'rewall' ? REWALL_COST : WALL_COST;
   for (const k in cost) S.stock[k] -= cost[k];
   m.surveyQueue = []; m.pending = null;
-  m.build = { prov: m.prov, to: q, type, t0: S.t, paid: { ...cost }, dur: type === 'road' ? ROAD_TIME : type === 'gate' ? GATE_TIME : WALL_TIME };
-  toast(`Building a ${type} to ${provName(q)}… (−${costText(cost)}, ${m.build.dur} s)`);
+  m.build = { prov: m.prov, to: q, type, t0: S.t, paid: { ...cost }, dur: type === 'road' ? ROAD_TIME : WALL_TIME, owner: m.owner };
+  toast(`${type === 'rewall' ? 'Rebuilding the wall' : 'Building a ' + type} to ${provName(q)}… (−${costText(cost)}, ${m.build.dur} s)`);
 }
 function finishLink(b) {
   const { prov: p, to: q, type } = b;
   if (type === 'road') { S.roads.add(linkKey(p, q)); toast(`Road finished between ${provName(p)} and ${provName(q)}. Units move ${Math.round(ROAD_BONUS[roadTier()] * 100)}% faster along it.`); return; }
-  if (type === 'gate') { S.gates.add(linkKey(p, q)); hoverPath = undefined; toast(`Gate finished between ${provName(p)} and ${provName(q)}. Only your units can pass.`); return; }
-  if (!openBetween(p, q)) return;
+  const o = b.owner || ME;
+  if (raiseWall(p, q, o, nationOf(p) === o ? p : nationOf(q) === o ? q : -1)) toast(`${wallKind() === 'stone' ? 'Stone wall' : 'Palisade'} finished between ${provName(p)} and ${provName(q)}. Its gate lets only your units through.`);
+}
+// close an open border with a wall and its gate; returns false if the border was already closed
+function raiseWall(p, q, owner, home) {
+  if (!openBetween(p, q)) return false;
   world.edges.forEach((e, i) => {
     if (!e.open || !((e.a === p && e.b === q) || (e.a === q && e.b === p))) return;
     e.open = false; e.style = 'wall'; S.walls.add(i); S.wallHp[i] = WALL_HP[wallKind()];
@@ -92,7 +88,7 @@ function finishLink(b) {
     G.crossings = G.crossings.filter(x => Math.hypot(x.x - mx, x.y - my) > 1);
   });
   openNbr[p] = openNbr[p].filter(n => n.q !== q); openNbr[q] = openNbr[q].filter(n => n.q !== p);
-  S.roads.delete(linkKey(p, q));
+  S.roads.delete(linkKey(p, q)); S.gateOwn.set(linkKey(p, q), { home, owner }); S.brokenWalls.delete(linkKey(p, q)); wallsVer++;
   cacheDirty = true; fogDirty = true; hoverPath = undefined;
   // anyone marching through that border finds another way
   for (const u of S.units) {
@@ -103,7 +99,7 @@ function finishLink(b) {
     const fin = u.final; u.path = []; u.moving = false;
     if (fin === undefined || !order(u, fin, true)) { u.slot = freeSlot(u.prov, u); const [x, y] = slotPos(u.prov, u.slot); u.path = [{ x, y, slot: true }]; u.moving = true; }
   }
-  toast(`${wallKind() === 'stone' ? 'Stone wall' : 'Palisade'} finished between ${provName(p)} and ${provName(q)}. That border is now closed.`);
+  return true;
 }
 // is a unit walking along a road right now?
 function onRoad(u, wp) {
@@ -111,14 +107,27 @@ function onRoad(u, wp) {
   if (wp.enter !== undefined) return S.roads.has(linkKey(u.prov, wp.enter));
   return u.lastProv !== undefined && S.roads.has(linkKey(u.lastProv, u.prov));
 }
-// gates: a wall edge between two provinces that only the builder's units may cross
+// gates: every wall has one; only the units of whoever controls the gate may cross. Armies at war with that nation can batter the wall down.
 function wallBetween(p, q) { for (const i of S.walls) { const e = world.edges[i]; if ((e.a === p && e.b === q) || (e.a === q && e.b === p)) return e; } return null; }
-function gateNbr(a) {
-  const out = [];
-  for (const k of S.gates) { const [p, q] = k.split('_').map(Number); if (p !== a && q !== a) continue; const e = wallBetween(p, q); if (!e) continue; const V = world.vertices, x = V[e.v[0]], y = V[e.v[1]]; out.push({ q: p === a ? q : p, m: [(x[0] + y[0]) / 2, (x[1] + y[1]) / 2] }); }
+function gateCtl(k) {
+  const g = S.gateOwn.get(k); if (!g) return 0;
+  if (g.home >= 0) { const b = S.buildings.get(g.home); if (b) { const o = S.occ.get(g.home); return o !== undefined ? o : b.owner; } }
+  return g.owner;
+}
+const edgeKey = i => { const e = world.edges[i]; return linkKey(e.a, e.b); };
+// the walls touching each province, rebuilt whenever a wall goes up or comes down
+let wallAdj = null, wallAdjVer = -1;
+function wallsAt(a) {
+  if (wallAdjVer !== wallsVer || !wallAdj) { wallAdj = new Map(); wallAdjVer = wallsVer; const V = world.vertices; for (const i of S.walls) { const e = world.edges[i], x = V[e.v[0]], y = V[e.v[1]], m = [(x[0] + y[0]) / 2, (x[1] + y[1]) / 2]; for (const [s, o] of [[e.a, e.b], [e.b, e.a]]) { if (!wallAdj.has(s)) wallAdj.set(s, []); wallAdj.get(s).push({ q: o, m, i }); } } }
+  return wallAdj.get(a) || [];
+}
+// neighbors a unit may walk to from province a: open borders, its own gates, and (for armies, when `siege` is set) hostile walls to batter down
+function pathNbr(u, a, siege) {
+  const ws = S.walls.size ? wallsAt(a) : null; if (!ws || !ws.length) return openNbr[a];
+  const out = openNbr[a].slice();
+  for (const w of ws) { const c = gateCtl(edgeKey(w.i)); if (c === u.owner) out.push({ q: w.q, m: w.m }); else if (siege && u.kind === 'army' && troopCount(u) >= SIEGE_MIN && c && hostile(u.owner, c)) out.push({ q: w.q, m: w.m, siege: w.i }); }
   return out;
 }
-const pathNbr = (u, a) => u.owner === ME && S.gates.size ? openNbr[a].concat(gateNbr(a)) : openNbr[a];
 function roadPath(p, q) {
   const n = openNbr[p].find(x => x.q === q), a = G.provs[p].ic, b = G.provs[q].ic;
   const m = n ? n.m : [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
@@ -133,9 +142,8 @@ function strokeRoad(g, pts, f = 1) {
   g.lineCap = 'round'; g.lineJoin = 'round';
   g.lineWidth = 14; g.strokeStyle = OL; g.stroke();
   g.lineWidth = 10; g.strokeStyle = RL.fill; g.stroke();
-  if (RL.name === 'dirt') { g.lineWidth = 1.6; g.strokeStyle = RL.mark; g.setLineDash([6, 9]); g.stroke(); }
-  else if (RL.name === 'gravel') { g.lineWidth = 2.4; g.strokeStyle = RL.mark; g.setLineDash([1, 5]); g.stroke(); }
-  else { g.lineWidth = 7; g.strokeStyle = RL.mark; g.setLineDash([4, 3]); g.lineCap = 'butt'; g.stroke(); g.lineWidth = 1.2; g.strokeStyle = RL.edge; g.setLineDash([]); g.stroke(); }
+  // GC07: no dotted center line; a soft lighter crown down the middle instead (folk walk along it, see roadWalkerItems)
+  g.lineWidth = 4; g.strokeStyle = 'rgba(255,255,255,0.18)'; g.stroke();
   g.setLineDash([]); g.lineCap = 'round';
 }
 // a wooden palisade: a row of sharpened stakes with a rail
@@ -149,9 +157,9 @@ function strokePalisade(g, a, b, f = 1) {
     g.fillStyle = 'rgba(255,255,255,0.25)'; g.fillRect(x - 3, y - h + 1, 1.6, h);
   }
 }
-function drawGate(g, a, b) {
+function drawGate(g, a, b, col = '#3f72d9') {
   const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-  for (const s of [-1, 1]) { const L = Math.hypot(b[0] - a[0], b[1] - a[1]), x = mx + (b[0] - a[0]) / L * 16 * s, y = my + (b[1] - a[1]) / L * 16 * s; g.beginPath(); g.rect(x - 7, y - 30, 14, 32); g.fillStyle = '#d8d2c4'; g.fill(); g.lineWidth = 2.6; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.moveTo(x - 9, y - 30); g.lineTo(x, y - 40); g.lineTo(x + 9, y - 30); g.closePath(); g.fillStyle = '#3f72d9'; g.fill(); g.stroke(); }
+  for (const s of [-1, 1]) { const L = Math.hypot(b[0] - a[0], b[1] - a[1]), x = mx + (b[0] - a[0]) / L * 16 * s, y = my + (b[1] - a[1]) / L * 16 * s; g.beginPath(); g.rect(x - 7, y - 30, 14, 32); g.fillStyle = '#d8d2c4'; g.fill(); g.lineWidth = 2.6; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.moveTo(x - 9, y - 30); g.lineTo(x, y - 40); g.lineTo(x + 9, y - 30); g.closePath(); g.fillStyle = col; g.fill(); g.stroke(); }
   g.beginPath(); g.moveTo(mx - 9, my + 2); g.lineTo(mx - 9, my - 14); g.quadraticCurveTo(mx, my - 24, mx + 9, my - 14); g.lineTo(mx + 9, my + 2); g.closePath(); g.fillStyle = '#7b5029'; g.fill(); g.lineWidth = 2.4; g.strokeStyle = OL; g.stroke();
   g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(mx, my + 2); g.lineTo(mx, my - 18); g.stroke();
 }
@@ -169,9 +177,14 @@ function drawLinks(g, t) {
   for (const k of S.roads) { const [p, q] = k.split('_').map(Number); if (S.explored.has(p) || S.explored.has(q)) strokeRoad(g, roadPath(p, q)); }
   for (const u of S.units) if (u.build && u.build.type === 'road') strokeRoad(g, roadPath(u.build.prov, u.build.to), Math.min(1, (t - u.build.t0) / u.build.dur));
   const V = world.vertices;
-  for (const i of S.walls) { const e = world.edges[i]; if (S.explored.has(e.a) || S.explored.has(e.b)) { drawWallEdge(g, V[e.v[0]], V[e.v[1]], 1, t); if (S.gates.has(linkKey(e.a, e.b))) drawGate(g, V[e.v[0]], V[e.v[1]]); } }
-  for (const u of S.units) if (u.build && u.build.type === 'wall') world.edges.forEach(e => { if (e.open && ((e.a === u.build.prov && e.b === u.build.to) || (e.b === u.build.prov && e.a === u.build.to))) drawWallEdge(g, V[e.v[0]], V[e.v[1]], Math.min(1, (t - u.build.t0) / u.build.dur), t); });
-  for (const u of S.units) if (u.build && u.build.type === 'gate') { const e = wallBetween(u.build.prov, u.build.to); if (e && Math.sin(t * 8) > -0.2) { g.save(); g.globalAlpha = 0.4 + 0.6 * Math.min(1, (t - u.build.t0) / u.build.dur); drawGate(g, V[e.v[0]], V[e.v[1]]); g.restore(); } }
+  for (const i of S.walls) { const e = world.edges[i]; if (S.explored.has(e.a) || S.explored.has(e.b)) { drawWallEdge(g, V[e.v[0]], V[e.v[1]], 1, t); const c = gateCtl(linkKey(e.a, e.b)); drawGate(g, V[e.v[0]], V[e.v[1]], c && PLAYERS[c] ? PLAYERS[c].color : '#9aa3b2'); const full = WALL_HP[wallKind()]; if (S.wallHp[i] < full) drawWallHp(g, V[e.v[0]], V[e.v[1]], S.wallHp[i] / full); } }
+  for (const u of S.units) if (u.build && (u.build.type === 'wall' || u.build.type === 'rewall')) world.edges.forEach(e => { if (e.open && ((e.a === u.build.prov && e.b === u.build.to) || (e.b === u.build.prov && e.a === u.build.to))) drawWallEdge(g, V[e.v[0]], V[e.v[1]], Math.min(1, (t - u.build.t0) / u.build.dur), t); });
+}
+// a battered wall shows how much of it is left
+function drawWallHp(g, a, b, f) {
+  const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2 - 58, w = 70, h = 9;
+  g.save(); g.lineJoin = 'round'; g.fillStyle = '#faf1dc'; g.strokeStyle = OL; g.lineWidth = 3; g.beginPath(); g.rect(mx - w / 2, my, w, h); g.fill(); g.stroke();
+  g.fillStyle = '#c7362b'; g.fillRect(mx - w / 2 + 1.5, my + 1.5, (w - 3) * Math.max(0, f), h - 3); g.restore();
 }
 
 // ---------- automated Wayfinders ----------
@@ -204,13 +217,13 @@ function autoSurvey(u, t) {
 // ---------- arrowslits ----------
 function stepArrows(t) {
   for (const [p, b] of S.buildings) {
-    if (b.stage < 1 || !isNation(b.owner) || !techOf(b.owner, 'arrowslits') || S.battles.some(x => x.prov === p)) continue;
+    if (b.stage < 1 || !isNation(b.owner) || !techOf(b.owner, 'arrowslits') || S.occ.has(p) || S.battles.some(x => x.prov === p)) { delete S.arrowAt[p]; continue; }   // an occupied fort no longer shoots
     const foes = S.units.filter(v => v.kind === 'army' && hostile(v.owner, b.owner) && v.prov === p && !v.moving && !v.retreating && !v.battle && troopCount(v) > 0);
     if (!foes.length) { delete S.arrowAt[p]; continue; }
     if (S.arrowAt[p] === undefined) { S.arrowAt[p] = t + ARROW.every; if (S.visible.has(p) && (b.owner === ME || foes.some(a => a.owner === ME))) toast(`The ${b.stage === 2 ? 'capital' : 'fort'} at ${provName(p)} looses arrows at the invaders!`); continue; }
     if (t < S.arrowAt[p]) continue;
     S.arrowAt[p] = t + ARROW.every;
-    applyDamage({ prov: p, lost: {} }, foes, ARROW.dmg[b.stage], t);
+    applyDamage({ prov: p, lost: {} }, foes, arrowDmg(), t);
     const c = G.provs[p].ic, top = [c[0], c[1] - (b.stage === 2 ? 110 : 75)];
     for (const a of foes) for (let k = 0; k < 3; k++) S.fx.push({ kind: 'arrow', prov: p, owner: a.owner, x0: top[0] + (k - 1) * 8, y0: top[1], x1: a.x + (k - 1) * 6, y1: a.y - 8, t0: t + k * 0.08 });
     for (const a of foes) if (troopCount(a) <= 0) { removeArmy(a); if (a.owner === ME || b.owner === ME) toast(`${a.name} was shot down by the arrowslits.`); }
@@ -239,32 +252,35 @@ const SCOUT_MARK = 15, SCOUT_RESCUE = 5;
 function stepScouts(t) {
   stepWallUpgrade();
   for (const u of S.units.slice()) {
-    if (u.kind !== WAYFINDER) continue;
+    if (u.kind !== WAYFINDER && u.kind !== MASON) continue;   // Masons run from enemies the same way (GPC05)
     const mine = u.owner === ME;
     if (mine && u.stealth && !hasTech('stealth')) u.stealth = false;
     if (u.stealth) continue;
     // reached safety after running: the 15-second mark starts now
     if (u.warFlee && !u.fleeing && !u.moving) { u.warFlee = false; u.markUntil = t + SCOUT_MARK; }
-    const foe = S.units.find(v => v.kind === 'army' && !v.bandit && hostile(v.owner, u.owner) && v.prov === u.prov && !v.retreating && troopCount(v) > 0);   // Bandit Gangs never catch a Wayfinder
+    const foe = S.units.find(v => v.kind === 'army' && (!v.bandit || u.kind === MASON) && hostile(v.owner, u.owner) && v.prov === u.prov && !v.retreating && troopCount(v) > 0);   // Bandit Gangs never catch a Wayfinder (Masons run from them too)
+    if (foe && foe.bandit && mine) foe.seen = true;
     const guard = foe && S.units.some(v => v.kind === 'army' && v.owner === u.owner && v.prov === u.prov && troopCount(v) > 0);
     if (!foe || guard) { if (u.doomAt) { u.doomAt = 0; if (mine) toast(guard ? `${u.name} is safe: your army reached him.` : `${u.name} got away.`); } continue; }
     if (u.fleeing) continue;   // already running
     if (u.doomAt) {
       if (t < u.doomAt) continue;
       S.units = S.units.filter(v => v !== u); S.selected = S.selected.filter(v => v !== u);
-      if (S.visible.has(u.prov)) S.fx.push({ kind: 'fall', prov: u.prov, owner: u.owner, unit: WAYFINDER, t0: t, r: 0.5 });
-      if (mine) { computeIncome(); cmdKey = ''; rosterKey = ''; toast(`${u.name} was caught by ${foe.name} and killed.${hasTech('stealth') ? ' Sneaking Wayfinders can’t be seen.' : ''}`, true); }
+      if (S.visible.has(u.prov)) S.fx.push({ kind: 'fall', prov: u.prov, owner: u.owner, unit: u.kind, t0: t, r: 0.5 });
+      if (u.build) cancelBuild(u);
+      if (mine) { computeIncome(); cmdKey = ''; rosterKey = ''; toast(`${u.name} was caught by ${foe.name} and killed.${hasTech('stealth') && u.kind === WAYFINDER ? ' Sneaking Wayfinders can’t be seen.' : ''}`, true); }
       continue;
     }
     // still marked, or nowhere to run: a friendly army has 5 seconds to save him
     const back = u.lastProv;
     if (t < (u.markUntil || 0) || back === undefined || back === u.prov) {
-      u.doomAt = t + SCOUT_RESCUE; u.path = []; u.moving = false;
+      u.doomAt = t + SCOUT_RESCUE; u.path = []; u.moving = false; if (u.build) cancelBuild(u); u.pending = null; u.aiJob = null;
       if (mine) { toast(`${u.name} is cornered by ${foe.name} at ${provName(u.prov)}! Get an army there within ${SCOUT_RESCUE} seconds to save him.`, true); sfx('wn_enemy'); }
       continue;
     }
     // first sight of the enemy: run back the way he came
     u.path = []; u.moving = false; u.scouting = null; u.survey = null; u.aiSurvey = null; u.aiTarget = undefined; if (u.surveyQueue) u.surveyQueue = []; u.pendingSurvey = -1; u.autoWalk = null;
+    if (u.build) cancelBuild(u); u.pending = null; u.aiJob = null;
     u.fleeing = false;
     if (!order(u, back, true)) { u.doomAt = t + SCOUT_RESCUE; if (mine) toast(`${u.name} is cornered by ${foe.name} at ${provName(u.prov)}! Get an army there within ${SCOUT_RESCUE} seconds to save him.`, true); continue; }
     u.fleeing = true; u.warFlee = true;
@@ -309,33 +325,3 @@ function stepExhaustion(short) {
   } else S.exhaustOk = 0;
 }
 
-// ---------- tyranny exhaustion ----------
-// past 10 provinces the locals need watching: you need at least one soldier per province you hold.
-// Every payout short of that adds 1; at 15 the province farthest from the capital is abandoned (settlement and buildings lost)
-// and the count starts over. Every 10 s without falling short takes 1 away.
-const TYRANNY_FREE = 10, TYRANNY_MAX = 15;
-S.tyranny = 0; S.tyrannyOk = 0;
-function tyrannyNeed() { const n = [...S.buildings.values()].filter(b => b.owner === ME).length; return n > TYRANNY_FREE ? n : 0; }
-function stepTyranny() {
-  const need = tyrannyNeed(), have = soldierCount();
-  if (need && have < need) {
-    S.tyranny++; S.tyrannyOk = 0;
-    if (S.tyranny >= TYRANNY_MAX) { S.tyranny = 0; abandonFarthest(); }
-    else if (S.tyranny === 1 || S.tyranny % 5 === 0) { if (S.tyranny % 5 === 0) sfx('wn_exhaust'); } if (S.tyranny > 0 && (S.tyranny === 1 || S.tyranny % 5 === 0)) toast(`Tyranny Exhaustion ${S.tyranny}/${TYRANNY_MAX}: your ${need} provinces need ${need} soldiers to keep order (you have ${have}). At ${TYRANNY_MAX} the farthest province is abandoned.`, true);
-    return;
-  }
-  if (S.tyranny > 0 && ++S.tyrannyOk >= 1) { S.tyrannyOk = 0; S.tyranny--; }
-}
-function abandonFarthest() {
-  const cap = S.capital, d = hopsFrom(cap, allNbr);
-  const mine = [...S.buildings].filter(([p, b]) => b.owner === ME && p !== cap).map(([p]) => p);
-  if (!mine.length) return;
-  const p = mine.sort((a, b) => (d[b] === Infinity ? 999 : d[b]) - (d[a] === Infinity ? 999 : d[a]))[0];
-  const lost = extrasIn(p).length;
-  for (const u of S.units) { if (u.build && u.build.prov === p) cancelBuild(u); if (u.pending && u.pending.prov === p) u.pending = null; }
-  S.buildings.delete(p); S.extras.delete(p); S.upgrades.delete(p); for (const k of [...S.xup.keys()]) if (k.startsWith(p + '@')) S.xup.delete(k); S.occ.delete(p);
-  if (S.selBuilding === p) S.selBuilding = -1;
-  territory = null; cacheDirty = true; fogDirty = true; computeIncome();
-  sfx('wn_unrest');
-  toast(`Tyranny Exhaustion! The people of ${provName(p)} have thrown you out: the ${lost ? 'outpost and its ' + lost + ' building' + (lost > 1 ? 's are' : ' is') : 'outpost is'} lost.`, true);
-}

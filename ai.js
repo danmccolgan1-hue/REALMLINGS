@@ -1,7 +1,7 @@
 
 // ================= AI nations =================
 // Computer nations play by the player's rules: the same yields, costs, build and training times, upkeep, storage,
-// outpost and fort limits, Tyranny and Army Exhaustion, research trees and the 3 Wayfinder / 3 Mason limit.
+// outpost and fort limits, Army Exhaustion, research trees and the 3 Wayfinder / 3 Mason limit.
 // Their Wayfinders, Masons and armies are real units on the map. They treat the player like any other nation.
 const DIFF_NAME = { easy: 'Easy', moderate: 'Moderate', difficult: 'Difficult' };
 const AI_IDS = [4, 5, 6, 7, 8, 9, 10];
@@ -48,7 +48,7 @@ function spawnAINations(slots) {
     PLAYERS[id] = { name, color: c, light: l };
     const N = NATIONS[id] = {
       id, diff, name, emblem: emblems[k % emblems.length] || FLAG_EMBLEMS[k % FLAG_EMBLEMS.length], alive: true, capital: cap,
-      stock: { ...START_STOCK }, rep: {}, surveyed: new Set([cap]), exhaust: 0, tyranny: 0, ups: new Map(), xups: new Map(),
+      stock: { ...START_STOCK }, rep: {}, surveyed: new Set([cap]), exhaust: 0, ups: new Map(), xups: new Map(),
       tech: Object.fromEntries(TREE_KEYS.map(t => [t, { cur: null, prog: 0, bank: 0, opts: [], done: [], tier: 0, sticky: [] }])),
       queue: [], think: S.t + 1 + i * 0.37, nextOutpost: 0, phase: 'grow', stuckSince: null, warCheck: S.t + 60 + r() * 60,
       family: AI_DIFF[diff].family || ['sword', 'pole', 'blunt'][Math.floor(r() * 3)], armorLine: AI_DIFF[diff].armor,
@@ -111,7 +111,7 @@ function aiUpkeep(N) {
 function aiIncome(N) {
   const gross = { gold: 0, wood: 0, food: 0 }, up = aiUpkeep(N);
   for (const [p, b] of S.buildings) if (b.owner === N.id && !S.occ.has(p)) { const y = aiProvIncome(N, p, b); for (const k of RES) gross[k] += y[k]; }
-  // Harvest (Life magic): a Mage at home makes every Farm give more food
+  // Harvest (Herbomancy): a Mage at home makes every Farm give more food
   if (N.school === 'life' && aiHas(N, 'harvest') && aiMages(N)) { const lv = ['harvest', 'bountiful', 'magnificent'].filter(id => aiHas(N, id)).length; const farmFood = aiExtraList(N).filter(([, e]) => e.type === 'farm').length * (aiGives(N, 'farm').food || 0); gross.food += Math.round(farmFood * (HARVEST_PCT[lv] + 0.02 * aiRep(N, 'rep-harvest'))); }
   const inc = {}; for (const k of RES) inc[k] = gross[k] - up[k];
   return inc;
@@ -136,7 +136,7 @@ function aiPayday() {
     const inc = N.income = aiIncome(N);
     const short = N.stock.food + inc.food < 0;
     for (const k of RES) N.stock[k] = Math.min(aiStorage(N, k), Math.max(0, N.stock[k] + inc[k]));
-    aiExhaustion(N, short); aiTyranny(N);
+    aiExhaustion(N, short);
     aiTechPayday(N);
     aiSpells(N);
   }
@@ -148,24 +148,6 @@ function aiExhaustion(N, short) {
     return;
   }
   if (N.exhaust > 0 && N.income.food >= 0 && N.stock.food > 0) N.exhaust--;
-}
-// Tyranny Exhaustion: past 10 provinces a nation needs one soldier per province, or its farthest province revolts at 15
-function aiTyranny(N) {
-  const n = aiProvCount(N), need = n > TYRANNY_FREE ? n : 0;
-  if (need && soldierCount(N.id) < need) {
-    if (++N.tyranny >= TYRANNY_MAX) { N.tyranny = 0; aiAbandonFarthest(N); }
-    return;
-  }
-  if (N.tyranny > 0) N.tyranny--;
-}
-function aiAbandonFarthest(N) {
-  const cap = capitalOf(N.id), d = hopsFrom(cap >= 0 ? cap : N.capital, allNbr);
-  const mine = provsOf(N.id).filter(p => p !== cap); if (!mine.length) return;
-  const p = mine.sort((a, b) => (d[b] === Infinity ? 999 : d[b]) - (d[a] === Infinity ? 999 : d[a]))[0];
-  for (const u of S.units) { if (u.build && u.build.prov === p) cancelBuild(u); if (u.aiJob && u.aiJob.prov === p) u.aiJob = null; }
-  S.buildings.delete(p); S.extras.delete(p); N.ups.delete(p); for (const k of [...N.xups.keys()]) if (k.startsWith(p + '@')) N.xups.delete(k); S.occ.delete(p);
-  territory = null; cacheDirty = true; fogDirty = true;
-  if (knows(N.id)) toast(`The people of ${provName(p)} threw out the ${PLAYERS[N.id].name}.`);
 }
 // resource spells: a nation with a Mage casts its school's money spell over and over (3 minutes casting, 3 minutes waiting)
 function aiSpells(N) {
@@ -192,14 +174,14 @@ function aiTier(N, tree) {
   const lv = aiExtraList(N).filter(([, e]) => e.type === (tree === 'mil' ? 'forge' : 'magetower')).map(([, e]) => e.level || 1);
   return lv.length ? Math.max(...lv) : 0;
 }
-const aiTechCost = (N, x) => Math.round(x.cost * (x.rep ? Math.pow(REP_STEP, aiRep(N, x.id)) : 1) * (x.tree === 'gov' ? GOV_COST_MULT : 1) * techCostMult(aiProvCount(N)));
+const aiTechCost = (N, x) => Math.round(x.cost * (x.rep && !FLAT_REPS.has(x.id) ? Math.pow(REP_STEP, aiRep(N, x.id)) : 1) * treeCostMult(x.tree) * techCostMult(aiProvCount(N)));
 function aiTechsLeft(N, tree) {
   const st = N.tech[tree], sc = tree === 'mag' ? N.school : null;
   return TECHS.filter(x => x.tree === tree && !x.rep && !st.done.includes(x.id) && x.id !== 'abandon' && !(tree === 'mag' && (x.id.startsWith('school-') ? !!sc : sc && x.school !== '*' && x.school !== sc))).length;
 }
 function aiDrawOptions(N, tree) {
   const st = N.tech[tree], T = aiTier(N, tree), n = TECH_OPTIONS + (aiHas(N, 'retained') ? 1 : 0) + (aiHas(N, 'retained2') ? 1 : 0), rep = aiTechsLeft(N, tree) < REP_LEFT;
-  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st) && (!x.rep || rep) && x.id !== 'abandon');
+  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st, N.tech) && forgeReady(x, st) && (!x.rep || rep) && x.id !== 'abandon');
   if (tree === 'mag') avail = N.school ? avail.filter(x => !x.id.startsWith('school-') && (x.school === '*' || x.school === N.school)) : avail.filter(x => x.id.startsWith('school-'));
   const weight = x => x.id === 'forge' && aiHasBuilding(N, 'barracks') ? 1.5 : 1;
   const sh = avail.map(x => ({ x, k: Math.pow(Math.random(), 1 / weight(x)) })).sort((a, b) => b.k - a.k).map(o => o.x), top = sh.filter(x => x.tier === T && !x.rep), opts = [];
@@ -235,7 +217,7 @@ function aiTechWeight(N, tree, id) {
   if (id.startsWith('school-')) return id === 'school-' + N.wantSchool ? 100 : 1;
   const P = AI_MAGIC_PREFS[N.school] || {};
   if (id === 'sanctum' || id === 'arcanum') return 8;
-  if (id === 'rep-magecap') return 6;
+  if (id === 'rep-magecap' || id === 'apprentice') return 6;
   return P[id] || (x.rep ? 2 : 3);
 }
 function aiPick(N, tree) {
@@ -291,9 +273,8 @@ function aiPlan(N) {
     P.maxProvs = N.phase === 'grow2' ? 20 : 10;
   }
   if (N.diff === 'easy') P.maxProvs = Math.min(P.maxProvs, 10);
-  // soldiers wanted: a small guard, one per province past 10 (Tyranny), and enough to meet an enemy
+  // soldiers wanted: a small guard and enough to meet an enemy
   let army = n < 4 ? 3 : N.diff === 'easy' ? 3 + Math.floor(n / 4) : N.diff === 'moderate' ? 5 + Math.round(n * 0.5) : 4 + Math.round(n * 0.35);
-  if (n >= TYRANNY_FREE) army = Math.max(army, n + 2);
   if (threat) army = Math.max(army, Math.round(enemyMax * (N.diff === 'easy' ? 0.7 : 1.1)));
   if (N.diff === 'moderate' && (N.phase === 'grow2' || N.stuckSince !== null)) army = Math.max(army, Math.round(n * 1.2) + 6);
   P.army = army;
@@ -325,13 +306,14 @@ function stepAI(t) {
     aiMasons(N, P);
     aiWayfinders(N, P);
     aiArmyOrders(N, P, t);
-    if (AI_DIFF[N.diff].war && t >= N.warCheck) { N.warCheck = t + 15 + Math.random() * 10; aiConsiderWar(N, P); }
+    aiQuake(N, t);
+    if (N.diff !== 'easy' && t >= N.warCheck) { N.warCheck = t + 15 + Math.random() * 10; aiConsiderWar(N, P); }
   }
 }
-// training: one unit at a time per training building, 5 s each, paid up front
+// training: paid up front; 12 s for Wayfinders and Masons, 18 s for soldiers, 30 s for Mages
 function aiQueueStep(N, t) {
   for (const q of N.queue.slice()) {
-    if (t - q.t0 < TRAIN_TIME) continue;
+    if (t - q.t0 < trainTime(q.kind)) continue;
     N.queue = N.queue.filter(x => x !== q);
     if (!S.buildings.has(q.prov) || nationOf(q.prov) !== N.id) continue;
     if (q.kind === WAYFINDER || q.kind === MASON) { const u = mkUnit(S.nextId++, q.kind, '', q.prov, 0); u.owner = N.id; u.slot = freeSlot(q.prov, u); [u.x, u.y] = slotPos(q.prov, u.slot); u.born = t; S.units.push(u); continue; }
@@ -346,13 +328,13 @@ function aiTrain(N, P) {
   if (cap >= 0 && !aiBusyAt(N, cap)) {
     for (const [kind, want] of [[MASON, P.masons], [WAYFINDER, P.wf]]) {
       const have = aiUnits(N, kind).length + aiQueued(N, kind);
-      if (have < Math.min(want, UNIT_LIMIT[kind]) && st.gold >= UNIT_DEFS[kind].cost.gold + reserve) { pay(st, UNIT_DEFS[kind].cost); N.queue.push({ kind, prov: cap, t0: S.t }); break; }
+      if (have < Math.min(want, UNIT_LIMIT[kind] + aiRep(N, kind === MASON ? 'rep-masons' : 'rep-wayfinders')) && st.gold >= UNIT_DEFS[kind].cost.gold + reserve) { pay(st, UNIT_DEFS[kind].cost); N.queue.push({ kind, prov: cap, t0: S.t }); break; }
     }
   }
   // Mages, up to the nation's Mage limit (1 + Mage Academy)
   if (N.school) {
     const towers = aiExtraList(N).filter(([, e]) => e.type === 'magetower').map(([p]) => p).filter(p => !aiBusyAt(N, p));
-    if (towers.length && aiMages(N) < 1 + aiRep(N, 'rep-magecap') && canPay(st, UNIT_DEFS[MAGE].cost) && N.income.food >= 2) { pay(st, UNIT_DEFS[MAGE].cost); N.queue.push({ kind: MAGE, prov: towers[0], t0: S.t }); }
+    if (towers.length && aiMages(N) < 1 + (aiHas(N, 'apprentice') ? 1 : 0) + aiRep(N, 'rep-magecap') && canPay(st, UNIT_DEFS[MAGE].cost) && N.income.food >= 2) { pay(st, UNIT_DEFS[MAGE].cost); N.queue.push({ kind: MAGE, prov: towers[0], t0: S.t }); }
   }
   // soldiers, while the army is short and food allows
   const soldiers = soldierCount(N.id) + N.queue.filter(q => MILITARY.has(q.kind)).length;
@@ -467,8 +449,6 @@ function aiMasons(N, P) {
   const n = aiProvCount(N), D = AI_DIFF[N.diff];
   const free = aiUnits(N, MASON).filter(u => !u.aiJob && !u.build && !u.moving && !u.exiting);
   if (!free.length) return;
-  // Tyranny: past 10 provinces, only grow while there are soldiers for every province
-  const tyrOk = n < TYRANNY_FREE || soldierCount(N.id) >= n + 1;
   const pend = aiPendingOutposts(N), skip = new Set();
   let freeLand = false, grew = 0;
   for (const u of free) {
@@ -476,7 +456,7 @@ function aiMasons(N, P) {
     const b = aiNextBuilding(N, P, skip);
     if (b && !b.wait && b.urgent && (n >= 4 || b.type === 'lumber' || N.income.food < 0)) job = b;
     else if (b && b.wait && N.diff !== 'easy' && KEY_BUILDINGS.has(b.type)) { /* saving up for a key building: don't spend wood on outposts */ if (n >= 4 && N.income.wood >= 3 && N.stock.wood < BUILD_DEFS[b.type].cost.wood + OUTPOST_COST.wood) continue; }
-    const wantGrow = !job && n + pend + grew < P.maxProvs && tyrOk && S.t >= N.nextOutpost;
+    const wantGrow = !job && n + pend + grew < P.maxProvs && S.t >= N.nextOutpost;
     if (wantGrow) {
       const d = aiReach(u, 14), taken = new Set(S.units.filter(v => v.aiJob || (v.build && v.build.type === 'outpost')).map(v => v.aiJob ? v.aiJob.prov : v.build.prov));
       let best = -1, bs = -Infinity;
@@ -588,7 +568,7 @@ function aiArmyOrders(N, P, t) {
       if (rawStrength([a]) < 0.35 * rawStrength(foes) && retreatTo(a) >= 0) retreat(a);
       continue;
     }
-    if (a.retreating || a.exiting) continue;
+    if (a.retreating || a.exiting || a.retreatHome) continue;
     if (!enemies.length) {
       // peacetime: clear a Bandit Gang next door when strong enough, otherwise stand at the capital
       const goal = N.diff !== 'easy' ? aiBanditGoal(N, a) : -1;
@@ -630,14 +610,24 @@ function aiWarGoal(N, a, enemies) {
   for (const g of goals) { const v = d.get(g.p) + g.w * 3; if (v < bd) { bd = v; best = g.p; } }
   return best;
 }
-// Moderate nations: war only with a 2-to-1 advantage, against the weakest neighbor they can find (the player included, like anyone)
+// GPC12b: a nation whose armies are at least twice as strong (by estimated power, not head count) as a bordering
+// opponent's (with its ally) thinks it over for a minute, then declares war if it still holds
+const AI_WAR_THINK = 60;
 function aiConsiderWar(N, P) {
-  if (enemiesOf(N.id).length || N.phase === 'grow' && N.stuckSince === null) return;
-  if (soldierCount(N.id) < 8 || N.stock.gold < WAR.declareCost.gold + 50) return;
-  const near = hopsFrom(provsOf(N.id), allNbr), myPow = armyPower(N.id);
-  const cands = liveNations().filter(o => o !== N.id && !allied(N.id, o) && provsOf(o).some(p => near[p] <= 2) && !declareWhy(N.id, o));
+  if (enemiesOf(N.id).length) { N.warPlan = null; return; }
+  const myPow = armyPower(N.id), ok = o => o !== N.id && aliveNation(o) && !allied(N.id, o) && nationsBorder(N.id, o) && !declareWhy(N.id, o) && myPow >= 2 * Math.max(1, defPower(o));
+  if (N.warPlan) {
+    if (S.t < N.warPlan.at) { N.warCheck = N.warPlan.at; return; }
+    const t = N.warPlan.target; N.warPlan = null;
+    if (ok(t)) declareWar(N.id, t);
+    return;
+  }
+  if (myPow <= 0 || N.stock.gold < WAR.declareCost.gold + 20) return;
+  const cands = liveNations().filter(ok);
   if (!cands.length) return;
   const t = cands.sort((x, y) => defPower(x) - defPower(y))[0];
-  if (myPow >= 2 * Math.max(1, defPower(t))) declareWar(N.id, t);
+  N.warPlan = { target: t, at: S.t + AI_WAR_THINK };
+  N.warCheck = N.warPlan.at;
+  if (t === ME && knows(N.id)) toast(`The ${PLAYERS[N.id].name} is gathering its armies on your border…`, true);
 }
 window.__ai = { aiNextBuilding, aiBuildWhy, aiReach, aiMasons, aiUnits, step: secs => { for (let i = 0; i < secs * 10; i++) update(S.last + 0.1); S.last = performance.now() / 1000; }, NATIONS, spawnAINations, aiPlan, aiIncome, aiTechRate, armyPower, defPower, declareWhy, aiConsiderWar, stepAlliances, allyWhy, commonThreat };

@@ -145,9 +145,11 @@ function equipButton(kind, key, item, on, why) {
 function lockWhy(item) { return item.tech && !hasTech(item.tech) ? 'Research ' + TECH_BY_ID[item.tech].name : null; }
 function renderArmory() {
   if (!armOpen || !draft) return;
-  const key = JSON.stringify(draft) + '|' + S.designs.length + '|' + S.designs.map(d => d.name).join(',') + '|' + TREE_KEYS.map(t => S.tech[t].done.length).join(',');
+  const key = JSON.stringify({ ...draft, name: undefined }) + '|' + S.designs.length + '|' + S.designs.map(d => d.name).join(',') + '|' + TREE_KEYS.map(t => S.tech[t].done.length).join(',');
   if (key !== armKey) {
     armKey = key;
+    const ae = document.activeElement, caret = ae && ae.id === 'armName' ? ae.selectionStart : null;
+    if (caret !== null) queueMicrotask(() => { const nm = $q('#armName'); if (nm) { nm.focus({ preventScroll: true }); nm.setSelectionRange(caret, caret); } });
     const st = draft.type === 'mage' ? null : designStats(draft), W = WEAPONS[draft.weapon];
     const list = ['inf', 'cav'].map(type => `<div class="ar-group"><div class="ar-gh">${UNIT_BASE[type].name}</div>` + S.designs.filter(d => d.type === type).map(d => { const s = DSTATS[d.id]; return `<button type="button" class="ar-d${armSel === d.id ? ' on' : ''}" data-design="${d.id}"><img alt="" src="${portrait(d.id)}"><span><b>${d.name}</b><small>⚔${s.atk} ♥${s.hp} 🛡${Math.round(s.red * 100)}% ➜${s.speed}</small></span></button>`; }).join('') + `<button type="button" class="ar-new" data-new="${type}">＋ New ${type === 'cav' ? 'cavalry' : 'infantry'} design</button></div>`).join('') + (() => { const ms = DSTATS[MAGE]; return `<div class="ar-group"><div class="ar-gh">Mages</div><button type="button" class="ar-d${armSel === 'mage' ? ' on' : ''}" data-design="mage"><img alt="" src="${portrait(MAGE)}"><span><b>Mage gear</b><small>⚔${ms.atk} ♥${ms.hp} 🛡${Math.round(ms.red * 100)}% ➜${ms.speed.toFixed(2)}</small></span></button></div>`; })();
     if (draft.type === 'mage') { renderMageEditor(list); return drawArmPreview(); }
@@ -184,7 +186,7 @@ const armEl = $q('#armory');
 armEl.addEventListener('pointerdown', e => e.stopPropagation());
 armEl.addEventListener('wheel', e => e.stopPropagation());
 armEl.addEventListener('keydown', e => e.stopPropagation());
-armEl.addEventListener('input', e => { if (e.target.id === 'armName' && draft) draft.name = e.target.value; });
+armEl.addEventListener('input', e => { if (e.target.id === 'armName' && draft) draft.name = e.target.value; });   // IC06: the panel's redraw key leaves the name out, so the box keeps its focus while you type
 armEl.addEventListener('click', e => {
   const t = e.target.closest('[data-design],[data-new],[data-eq],[data-ar]'); if (!t) return;
   if (t.dataset.design) { editDesign(t.dataset.design); return; }
