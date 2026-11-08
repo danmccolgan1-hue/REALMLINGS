@@ -331,9 +331,9 @@ function drawMagic(g, t) {
 function openSchoolPopup() {
   if (currentSchool()) return;
   const el = $q('#schoolPick'), cur = S.tech.mag.cur;
-  el.innerHTML = `<div class="sp-head"><b>Choose a school of magic</b><span>Your first Mage Tower stands. Your first Magic research will be the school you pick; you can switch before it finishes. Abandoning a school later is costly.</span></div><div class="sp-cards">` +
+  el.innerHTML = `<button type="button" class="pop-x" data-school="later" aria-label="Dismiss" title="Dismiss">×</button><div class="sp-head"><b>Choose a school of magic</b><span>Your first Mage Tower stands. Your first Magic research will be the school you pick; you can switch before it finishes. Abandoning a school later is costly.</span></div><div class="sp-cards">` +
     Object.entries(SCHOOLS).map(([k, sc]) => `<button type="button" class="sp-card${cur === 'school-' + k ? ' on' : ''}" data-school="${k}" style="--c:${sc.color};--l:${sc.light}"><img alt="" src="${techIcon('school-' + k)}"><b>${sc.name}</b><span>${sc.blurb}</span><ul>${sc.spells.map(n => `<li>${n}</li>`).join('')}</ul><em>${cur === 'school-' + k ? 'Researching' : 'Choose ' + sc.name}</em></button>`).join('') +
-    `</div><button type="button" class="sp-later" data-school="later">Decide later (Research panel)</button>`;
+    `</div><div class="dm-btns"><button type="button" class="sp-later" data-school="look">Show me</button><button type="button" class="sp-later" data-school="later">Decide later (Research panel)</button></div>`;
   el.hidden = false;
 }
 function closeSchoolPopup() { $q('#schoolPick').hidden = true; }
@@ -357,5 +357,9 @@ function abandonSchool() {
   setTimeout(openSchoolPopup, 60);
 }
 $q('#schoolPick').addEventListener('pointerdown', e => e.stopPropagation());
-$q('#schoolPick').addEventListener('click', e => { const b = e.target.closest('[data-school]'); if (!b) return; if (b.dataset.school === 'later') closeSchoolPopup(); else pickSchool(b.dataset.school); });
+$q('#schoolPick').addEventListener('click', e => {
+  const b = e.target.closest('[data-school]'); if (!b) return;
+  if (b.dataset.school === 'look') { const p = [...S.extras].find(([q, l]) => owned(q) && l.some(x => x.type === 'magetower')); if (p) lookAtProv(p[0]); return; }   // the choice stays open
+  if (b.dataset.school === 'later') closeSchoolPopup(); else pickSchool(b.dataset.school);
+});
 window.__realm2 = ({ splitHalf, connectedPick, seizeWhy, outpostLimit, outpostCount, outpostWhy, soldierCount, techCostMult, techCost, stepExhaustion, warBattleCheck, normAuto, mageCount, autoOn });

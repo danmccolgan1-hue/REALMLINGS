@@ -280,9 +280,9 @@ function queueFind(f) { findQueue.push(f); }
 function showNextFind() {
   const el = $q('#findPop'); if (!el.hidden || !findQueue.length || !$q('#spPop').hidden) return;
   const f = findQueue.shift();
-  el.innerHTML = `<h2 id="findPopT">${f.icon ? `<img class="sp-ico" alt="" src="${f.icon}">` : ''}Discovery!<span>${f.title} at ${escHTML(provName(f.p))}</span></h2><p class="sp-said">${f.said}</p>${f.note ? `<p>${f.note}</p>` : ''}<div class="dm-btns"><button type="button" data-fp="look">Show me</button><button type="button" data-fp="ok">OK</button></div>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-fp="ok" aria-label="Dismiss" title="Dismiss">×</button><h2 id="findPopT">${f.icon ? `<img class="sp-ico" alt="" src="${f.icon}">` : ''}Discovery!<span>${f.title} at ${escHTML(provName(f.p))}</span></h2><p class="sp-said">${f.said}</p>${f.note ? `<p>${f.note}</p>` : ''}<div class="dm-btns"><button type="button" data-fp="look">Show me</button><button type="button" data-fp="ok">OK</button></div>`;
   el.dataset.prov = f.p; el.hidden = false; sfx('wn_ally');
-  const ok = el.querySelector('[data-fp="ok"]'); if (ok) ok.focus({ preventScroll: true });
+  const ok = el.querySelector('.dm-btns [data-fp="ok"]'); if (ok) ok.focus({ preventScroll: true });
 }
 {
   const el = $q('#findPop');
@@ -414,10 +414,10 @@ function showTravPop(B) {
   const canFeed = (S.stock.food || 0) >= food;
   if (!S.paused) { togglePause(); travPausedByMe = true; }
   $q('#paused').hidden = true;
-  el.innerHTML = `<h2 id="travPopT">A lost band of travelers<span>at ${escHTML(provName(B.prov))}</span></h2><p>${B.n} weary travelers have lost their way. They are hungry, and ask if you can spare them some food. Fed, they would gladly take up arms for you.</p>
-  <div class="dm-btns trav-btns"><button type="button" data-tv="feed"${canFeed ? '' : ' disabled'} title="${canFeed ? '' : 'Not enough food'}">Share ${food} food<small>${B.n} Footmen join you</small></button><button type="button" data-tv="rob"${army ? '' : ' disabled'} title="${army ? '' : 'You need an army in this province'}">Rob them<small>+${gold} gold${army ? '' : ' · needs an army here'}</small></button><button type="button" data-tv="leave">Leave them be<small>They ask again next time</small></button></div>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-tv="leave" aria-label="Dismiss" title="Dismiss">×</button><h2 id="travPopT">A lost band of travelers<span>at ${escHTML(provName(B.prov))}</span></h2><p>${B.n} weary travelers have lost their way. They are hungry, and ask if you can spare them some food. Fed, they would gladly take up arms for you.</p>
+  <div class="dm-btns trav-btns"><button type="button" data-tv="feed"${canFeed ? '' : ' disabled'} title="${canFeed ? '' : 'Not enough food'}">Share ${food} food<small>${B.n} Footmen join you</small></button><button type="button" data-tv="rob"${army ? '' : ' disabled'} title="${army ? '' : 'You need an army in this province'}">Rob them<small>+${gold} gold${army ? '' : ' · needs an army here'}</small></button><button type="button" data-tv="leave">Leave them be<small>They ask again next time</small></button></div><div class="dm-btns"><button type="button" data-tv="look">Show me</button><button type="button" data-tv="leave">OK</button></div>`;
   el.hidden = false; sfx('wn_ally');
-  setTimeout(() => { const b = el.querySelector('[data-tv="leave"]'); if (b) b.focus({ preventScroll: true }); }, 30);
+  setTimeout(() => { const b = el.querySelector('.dm-btns [data-tv="leave"]'); if (b) b.focus({ preventScroll: true }); }, 30);
 }
 function closeTravPop() {
   $q('#travPop').hidden = true; travBand = null;
@@ -446,7 +446,11 @@ function travelersChoose(how) {
   const el = $q('#travPop');
   el.addEventListener('pointerdown', e => e.stopPropagation());
   el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') travelersChoose('leave'); });
-  el.addEventListener('click', e => { const b = e.target.closest('[data-tv]'); if (b && !b.disabled) travelersChoose(b.dataset.tv); });
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-tv]'); if (!b || b.disabled) return;
+    if (b.dataset.tv === 'look') { const B = travBand; if (B) flyTo({ x: B.x, y: B.y, z: Math.max(cam.z, fitZ * 2.6 * WORLD_K) }); return; }   // the choice stays open
+    travelersChoose(b.dataset.tv);
+  });
 }
 
 // bandits and monsters wander along the edges of their own province; they stand and fight when an enemy army comes in
@@ -880,6 +884,47 @@ const quickQueueOn = () => !!VIEW.quickQueue;
   const sync = () => { b.setAttribute('aria-pressed', quickQueueOn() ? 'true' : 'false'); b.querySelector('span').textContent = quickQueueOn() ? 'On' : 'Off'; };
   b.addEventListener('click', e => { e.stopPropagation(); VIEW.quickQueue = !quickQueueOn(); viewSave(); sync(); });
   sync();
+}
+
+// ---------- popups: Show me ----------
+function lookAtProv(p) { const P = G.provs[p]; if (P) flyTo({ x: P.ic[0], y: P.ic[1], z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) }); }
+// a nation: its capital, or failing that the province of theirs nearest to your capital
+function lookAtNation(o) {
+  const ps = [...S.buildings].filter(([, b]) => b.owner === o); if (!ps.length) return;
+  const cap = ps.find(([, b]) => b.stage === 2), me = G.provs[S.capital] ? G.provs[S.capital].ic : [0, 0];
+  const p = cap ? cap[0] : ps.map(([q]) => q).sort((a, b) => Math.hypot(G.provs[a].ic[0] - me[0], G.provs[a].ic[1] - me[1]) - Math.hypot(G.provs[b].ic[0] - me[0], G.provs[b].ic[1] - me[1]))[0];
+  if (S.explored.has(p) || S.reveal) lookAtProv(p); else toast('You haven’t explored their land yet.', true);
+}
+
+// ---------- move orders: a golden X pulses once where you sent the units, then fades over 1 s ----------
+const moveMarks = [];
+{
+  const _og = orderGroup; let depth = 0;
+  orderGroup = (target, append, pt) => {
+    depth++;
+    try { return _og(target, append, pt); }
+    finally {
+      depth--;
+      if (!depth && S.selected.some(u => u.owner === ME)) { const c = G.provs[target]; if (c) { const [x, y] = pt || c.ic; moveMarks.push({ x, y, t0: performance.now() / 1000 }); if (moveMarks.length > 8) moveMarks.shift(); } }
+    }
+  };
+}
+function drawMoveMarks(g) {
+  const now = performance.now() / 1000;
+  for (let i = moveMarks.length - 1; i >= 0; i--) {
+    const m = moveMarks[i], a = now - m.t0;
+    if (a >= 1) { moveMarks.splice(i, 1); continue; }
+    // one quick swell (0.6 → 1.2 → 1.0 in the first 0.3 s), then a fade to nothing at 1 s
+    const sw = a < 0.18 ? 0.6 + (a / 0.18) * 0.6 : a < 0.3 ? 1.2 - ((a - 0.18) / 0.12) * 0.2 : 1, alpha = a < 0.3 ? 1 : 1 - (a - 0.3) / 0.7;
+    const r = 16 * UKK * sw;   // about one footman across
+    g.save(); g.translate(m.x, m.y); g.scale(1, 0.62); g.globalAlpha = Math.max(0, alpha); g.lineCap = 'round';
+    if (a < 0.45) { g.beginPath(); g.arc(0, 0, r * (1 + a * 2.2), 0, 7); g.lineWidth = 3; g.strokeStyle = `rgba(255,214,90,${0.8 * (1 - a / 0.45)})`; g.stroke(); }
+    g.beginPath(); g.moveTo(-r, -r); g.lineTo(r, r); g.moveTo(r, -r); g.lineTo(-r, r);
+    g.lineWidth = 10 * Math.sqrt(UKK); g.strokeStyle = OL; g.stroke();
+    g.lineWidth = 6 * Math.sqrt(UKK); g.strokeStyle = '#ffc93c'; g.stroke();
+    g.lineWidth = 2 * Math.sqrt(UKK); g.strokeStyle = '#fff3b8'; g.stroke();
+    g.restore();
+  }
 }
 
 // ---------- every frame, and at the start of a game ----------

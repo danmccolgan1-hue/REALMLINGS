@@ -393,8 +393,9 @@ function gameOver(winner) {
   for (const w of warsOf(ME)) endWar(w);
   S.allies = S.allies.filter(A => A.a !== ME && A.b !== ME);
   const el = $q('#gameover'); el.hidden = false;
-  el.innerHTML = `<b>Your realm has fallen</b><p>${winner && PLAYERS[winner] ? `The ${PLAYERS[winner].name} annexed every province you held.` : 'You hold no land.'}</p><button type="button" id="goAgain">Start over</button>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-go="ok" aria-label="Dismiss" title="Dismiss">×</button><b>Your realm has fallen</b><p>${winner && PLAYERS[winner] ? `The ${PLAYERS[winner].name} annexed every province you held.` : 'You hold no land.'}</p><div class="dm-btns"><button type="button" data-go="look">Show me</button><button type="button" data-go="ok">OK</button></div><button type="button" id="goAgain">Start over</button>`;
   $q('#goAgain').onclick = () => location.reload();
+  el.onclick = e => { const b = e.target.closest('[data-go]'); if (!b) return; if (b.dataset.go === 'look' && S.capital >= 0) lookAtProv(S.capital); el.hidden = true; };
 }
 
 // ---------- AI demands to the player ----------
@@ -416,9 +417,9 @@ function aiDemand(w, total) {
   const el = $q('#demand'); el.hidden = false;
   const what = terms.kind === 'total' ? (totalTerms(ME, foe) === 'annex' ? 'the annexation of your entire realm' : `${splitHalf(ME, foe).length} of your provinces`)
     : terms.kind === 'provs' ? `${terms.provs.length} of your provinces: ${terms.provs.map(provName).join(', ')}` : `${Math.min(WAR.goldTerm, S.stock.gold)} gold`;
-  el.innerHTML = `<div class="dm-head">${dot(foe)}<b>${PLAYERS[foe].name}</b></div>` +
+  el.innerHTML = `<button type="button" class="pop-x" data-dm="x" aria-label="Dismiss" title="Dismiss">×</button><div class="dm-head">${dot(foe)}<b>${PLAYERS[foe].name}</b></div>` +
     `<p>${total ? 'Warscore has reached −100. They enforce total victory:' : 'They are winning the war and demand peace. They want'} <b>${what}</b>.</p>` +
-    (total ? `<div class="dm-btns"><button type="button" data-dm="yes">Accept</button></div>` : `<div class="dm-btns"><button type="button" data-dm="yes">Accept</button><button type="button" data-dm="no">Refuse</button></div>`);
+    (total ? `<div class="dm-btns"><button type="button" data-dm="look">Show me</button><button type="button" data-dm="yes">Accept</button></div>` : `<div class="dm-btns"><button type="button" data-dm="look">Show me</button><button type="button" data-dm="yes">Accept</button><button type="button" data-dm="no">Refuse</button></div>`);
   toast(total ? `The ${PLAYERS[foe].name} enforces total victory.` : `The ${PLAYERS[foe].name} demands peace.`, true);
 }
 function answerDemand(yes) {
@@ -432,9 +433,9 @@ function offerAlliance(from, vs) {
   if (S.allyOffer || S.demand) return false;
   S.allyOffer = { from, vs, t: S.t };
   const el = $q('#demand'); el.hidden = false;
-  el.innerHTML = `<div class="dm-head">${dot(from)}<b>${PLAYERS[from].name}</b></div>` +
+  el.innerHTML = `<button type="button" class="pop-x" data-ao="no" aria-label="Dismiss" title="Dismiss">×</button><div class="dm-head">${dot(from)}<b>${PLAYERS[from].name}</b></div>` +
     `<p>They fear the ${PLAYERS[vs].name} (${provsOf(vs).length} provinces) and propose an <b>alliance</b>: if anyone declares war on one of you, the other joins the war.</p>` +
-    `<div class="dm-btns"><button type="button" data-ao="yes">Ally</button><button type="button" data-ao="no">Decline</button></div>`;
+    `<div class="dm-btns"><button type="button" data-ao="look">Show me</button><button type="button" data-ao="yes">Ally</button><button type="button" data-ao="no">Decline</button></div>`;
   sfx('wn_ally'); return true;
 }
 function answerAlliance(yes) {
@@ -445,8 +446,16 @@ function answerAlliance(yes) {
 }
 $q('#demand').addEventListener('pointerdown', e => e.stopPropagation());
 $q('#demand').addEventListener('click', e => {
-  const b = e.target.closest('[data-dm]'); if (b) return answerDemand(b.dataset.dm === 'yes');
-  const a = e.target.closest('[data-ao]'); if (a) answerAlliance(a.dataset.ao === 'yes');
+  const b = e.target.closest('[data-dm]');
+  if (b) {
+    const d = S.demand;
+    if (b.dataset.dm === 'look') { if (d) { if (d.provs && d.provs.length) lookAtProv(d.provs[0]); else lookAtNation(d.from); } return; }
+    // the X: a demand you can refuse is refused; total victory can't be refused, so it only steps aside and comes back
+    if (b.dataset.dm === 'x') { if (d && d.kind === 'total') { $q('#demand').hidden = true; S.demand = null; const w = S.wars.find(x => x.id === d.war); if (w) setTimeout(() => { if (S.wars.includes(w) && !S.demand) aiDemand(w, true); }, 20000); toast('Total victory is enforced: the demand returns shortly.', true); return; } return answerDemand(false); }
+    return answerDemand(b.dataset.dm === 'yes');
+  }
+  const a = e.target.closest('[data-ao]');
+  if (a) { if (a.dataset.ao === 'look') { if (S.allyOffer) lookAtNation(S.allyOffer.from); return; } answerAlliance(a.dataset.ao === 'yes'); }
 });
 
 // ---------- alliances ----------
@@ -546,11 +555,11 @@ function showMet() {
   if (!S.paused) { togglePause(); metPausedByMe = true; }
   $q('#paused').hidden = true;
   const N = NATIONS[o], n = provsOf(o).length, al = allyOf(o);
-  el.innerHTML = `<img class="mp-flag" alt="" src="${flagOf(o)}"><h2><span>You have met</span>the ${PLAYERS[o].name}</h2>` +
+  el.innerHTML = `<button type="button" class="pop-x" data-mp="ok" aria-label="Dismiss" title="Dismiss">×</button><img class="mp-flag" alt="" src="${flagOf(o)}"><h2><span>You have met</span>the ${PLAYERS[o].name}</h2>` +
     `<p>${n} province${n === 1 ? '' : 's'} · ${DIFF_NAME[N.diff]}${al ? ` · allied with ${al === ME ? 'you' : 'the ' + PLAYERS[al].name}` : ''}${atWar(ME, o) ? ' · at war with you' : ''}. You can see them now in Diplomacy.</p>` +
-    `<div class="dm-btns"><button type="button" data-mp="ok">Continue</button><button type="button" data-mp="dip">Open Diplomacy</button></div>`;
+    `<div class="dm-btns"><button type="button" data-mp="look">Show me</button><button type="button" data-mp="dip">Open Diplomacy</button><button type="button" data-mp="ok">OK</button></div>`;
   el.hidden = false; sfx('wn_ally');
-  setTimeout(() => { const b = el.querySelector('[data-mp="ok"]'); if (b) b.focus(); }, 30);
+  setTimeout(() => { const b = el.querySelector('.dm-btns [data-mp="ok"]'); if (b) b.focus(); }, 30);
 }
 function closeMet(openD) {
   const o = metQueue.shift(); $q('#metPop').hidden = true;
@@ -561,7 +570,11 @@ function closeMet(openD) {
 }
 $q('#metPop').addEventListener('pointerdown', e => e.stopPropagation());
 $q('#metPop').addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.stopPropagation(); } }, true);
-$q('#metPop').addEventListener('click', e => { const b = e.target.closest('[data-mp]'); if (b) closeMet(b.dataset.mp === 'dip'); });
+$q('#metPop').addEventListener('click', e => {
+  const b = e.target.closest('[data-mp]'); if (!b) return;
+  if (b.dataset.mp === 'look') { const o = metQueue[0]; closeMet(false); if (o !== undefined) lookAtNation(o); return; }
+  closeMet(b.dataset.mp === 'dip');
+});
 function relation(o) {
   const w = warBetween(ME, o);
   if (w) { const s = warscore(w, ME); return { cls: 'war', html: `⚔ War <b class="dp-s ${s > 0 ? 'up' : s < 0 ? 'down' : ''}">${sgn(s)}</b>` }; }

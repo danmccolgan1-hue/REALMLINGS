@@ -710,6 +710,12 @@ body.in-menu .gtime { display: none; }
 .cw-none { margin: 4px 0 0; color: var(--muted); font-weight: 600; font-size: 13px; }
 .nation { cursor: pointer; } .nation:hover { background: var(--chip-hi); }
 .sp-pop .sp-said { color: var(--chip-text); font-size: 14px; }
+/* every popup has an X in its corner */
+.pop-x { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; font: 700 18px/1 var(--font-ui); border: 1px solid var(--ink); background: var(--chip-hi); color: var(--chip-text); cursor: pointer; z-index: 1; }
+.pop-x:hover { background: #f3c1b8; }
+.demand .dm-head { padding-right: 30px; }
+#gameover .dm-btns { margin: 6px 0; }
+.school-pick .dm-btns { justify-content: center; }
 /* SMA01: the travelers' three choices */
 .trav-pop h2 { color: #6d4426; }
 .trav-btns { flex-wrap: wrap; }

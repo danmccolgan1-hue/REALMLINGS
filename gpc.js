@@ -373,9 +373,9 @@ function showSetpiecePop(p, u) {
   S.spFound.add(p);
   const D = SETPIECES[id], el = $q('#spPop'), who = u && u.name ? u.name : 'Your Wayfinder';
   const said = (SP_FOUND_TEXT[id] || '').replace('%%%', `<b>${escHTML(who)}</b>`).replace('$$$', `<b>${escHTML(provName(p))}</b>`);
-  el.innerHTML = `<h2 id="spPopT"><img class="sp-ico" alt="" src="${rpIcon(D.tree)}">Discovery!<span>${D.name} at ${escHTML(provName(p))}</span></h2><p class="sp-said">${said}</p><p>${D.blurb} While you hold this province it gives +${D.pts} ${TECH_TREES[D.tree].name} research every 10 s${D.need ? ' (you also need ' + D.need + ')' : ''}.</p><div class="dm-btns"><button type="button" data-sp="look">Show me</button><button type="button" data-sp="ok">OK</button></div>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-sp="ok" aria-label="Dismiss" title="Dismiss">×</button><h2 id="spPopT"><img class="sp-ico" alt="" src="${rpIcon(D.tree)}">Discovery!<span>${D.name} at ${escHTML(provName(p))}</span></h2><p class="sp-said">${said}</p><p>${D.blurb} While you hold this province it gives +${D.pts} ${TECH_TREES[D.tree].name} research every 10 s${D.need ? ' (you also need ' + D.need + ')' : ''}.</p><div class="dm-btns"><button type="button" data-sp="look">Show me</button><button type="button" data-sp="ok">OK</button></div>`;
   el.dataset.prov = p; el.hidden = false; sfx('wn_ally');
-  const ok = el.querySelector('[data-sp="ok"]'); if (ok) ok.focus({ preventScroll: true });
+  const ok = el.querySelector('.dm-btns [data-sp="ok"]'); if (ok) ok.focus({ preventScroll: true });
 }
 {
   const el = $q('#spPop');

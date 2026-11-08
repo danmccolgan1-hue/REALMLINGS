@@ -108,9 +108,9 @@ function banditFlee(u) {
 // the "Bandits!" popup
 function showBanditPop(p, back, u) {
   const el = $q('#banditPop'), mon = S.units.find(v => v.bandit && v.monster && v.prov === p), M = mon ? MONSTERS[mon.monster] : null;
-  el.innerHTML = mon ? `<h2 id="banditPopT">${M.cry}<span>at ${provName(p)}</span></h2><p>${u.name} ran into ${M.found} and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats them (${lootText(M.loot)} for each one killed).</p>` : `<h2 id="banditPopT">Bandits!<span>at ${provName(p)}</span></h2><p>${u.name} ran into a Bandit Gang and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats the gang (${BANDIT.bounty} gold bounty).</p><div class="dm-btns"><button type="button" data-bp="look">Show me</button><button type="button" data-bp="ok">OK</button></div>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-bp="ok" aria-label="Dismiss" title="Dismiss">×</button>` + (mon ? `<h2 id="banditPopT">${M.cry}<span>at ${provName(p)}</span></h2><p>${u.name} ran into ${M.found} and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats them (${lootText(M.loot)} for each one killed).</p><div class="dm-btns"><button type="button" data-bp="look">Show me</button><button type="button" data-bp="ok">OK</button></div>` : `<h2 id="banditPopT">Bandits!<span>at ${provName(p)}</span></h2><p>${u.name} ran into a Bandit Gang and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats the gang (${BANDIT.bounty} gold bounty).</p><div class="dm-btns"><button type="button" data-bp="look">Show me</button><button type="button" data-bp="ok">OK</button></div>`);
   el.dataset.prov = p; el.hidden = false;
-  const ok = el.querySelector('[data-bp="ok"]'); if (ok) ok.focus({ preventScroll: true });
+  const ok = el.querySelector('.dm-btns [data-bp="ok"]'); if (ok) ok.focus({ preventScroll: true });
 }
 {
   const el = $q('#banditPop');

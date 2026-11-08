@@ -710,6 +710,12 @@ body.in-menu .gtime { display: none; }
 .cw-none { margin: 4px 0 0; color: var(--muted); font-weight: 600; font-size: 13px; }
 .nation { cursor: pointer; } .nation:hover { background: var(--chip-hi); }
 .sp-pop .sp-said { color: var(--chip-text); font-size: 14px; }
+/* every popup has an X in its corner */
+.pop-x { position: absolute; top: 6px; right: 6px; width: 26px; height: 26px; padding: 0; display: grid; place-items: center; font: 700 18px/1 var(--font-ui); border: 1px solid var(--ink); background: var(--chip-hi); color: var(--chip-text); cursor: pointer; z-index: 1; }
+.pop-x:hover { background: #f3c1b8; }
+.demand .dm-head { padding-right: 30px; }
+#gameover .dm-btns { margin: 6px 0; }
+.school-pick .dm-btns { justify-content: center; }
 /* SMA01: the travelers' three choices */
 .trav-pop h2 { color: #6d4426; }
 .trav-btns { flex-wrap: wrap; }
@@ -5299,6 +5305,7 @@ function drawGame(g, t) {
   for (const b of S.battles) if (S.visible.has(b.prov)) items.push({ y: battleCenter(b.prov)[1] - 4, f: () => drawBattle(g, b, t) });
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
   for (const [p, at] of S.surveyed) if (S.explored.has(p) && !S.battles.some(b => b.prov === p)) drawYieldBadge(g, p, t - at);
+  drawMoveMarks(g);       // a golden X where units were just sent
   drawProvLabels(g, t);   // GC04 / GC05: province names under their resources, your nation's name over its land
   drawSetpieces(g, t);
   for (const b of S.battles) if (S.visible.has(b.prov)) drawBattleBar(g, b, t);
@@ -6705,8 +6712,9 @@ function gameOver(winner) {
   for (const w of warsOf(ME)) endWar(w);
   S.allies = S.allies.filter(A => A.a !== ME && A.b !== ME);
   const el = $q('#gameover'); el.hidden = false;
-  el.innerHTML = `<b>Your realm has fallen</b><p>${winner && PLAYERS[winner] ? `The ${PLAYERS[winner].name} annexed every province you held.` : 'You hold no land.'}</p><button type="button" id="goAgain">Start over</button>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-go="ok" aria-label="Dismiss" title="Dismiss">×</button><b>Your realm has fallen</b><p>${winner && PLAYERS[winner] ? `The ${PLAYERS[winner].name} annexed every province you held.` : 'You hold no land.'}</p><div class="dm-btns"><button type="button" data-go="look">Show me</button><button type="button" data-go="ok">OK</button></div><button type="button" id="goAgain">Start over</button>`;
   $q('#goAgain').onclick = () => location.reload();
+  el.onclick = e => { const b = e.target.closest('[data-go]'); if (!b) return; if (b.dataset.go === 'look' && S.capital >= 0) lookAtProv(S.capital); el.hidden = true; };
 }
 
 // ---------- AI demands to the player ----------
@@ -6728,9 +6736,9 @@ function aiDemand(w, total) {
   const el = $q('#demand'); el.hidden = false;
   const what = terms.kind === 'total' ? (totalTerms(ME, foe) === 'annex' ? 'the annexation of your entire realm' : `${splitHalf(ME, foe).length} of your provinces`)
     : terms.kind === 'provs' ? `${terms.provs.length} of your provinces: ${terms.provs.map(provName).join(', ')}` : `${Math.min(WAR.goldTerm, S.stock.gold)} gold`;
-  el.innerHTML = `<div class="dm-head">${dot(foe)}<b>${PLAYERS[foe].name}</b></div>` +
+  el.innerHTML = `<button type="button" class="pop-x" data-dm="x" aria-label="Dismiss" title="Dismiss">×</button><div class="dm-head">${dot(foe)}<b>${PLAYERS[foe].name}</b></div>` +
     `<p>${total ? 'Warscore has reached −100. They enforce total victory:' : 'They are winning the war and demand peace. They want'} <b>${what}</b>.</p>` +
-    (total ? `<div class="dm-btns"><button type="button" data-dm="yes">Accept</button></div>` : `<div class="dm-btns"><button type="button" data-dm="yes">Accept</button><button type="button" data-dm="no">Refuse</button></div>`);
+    (total ? `<div class="dm-btns"><button type="button" data-dm="look">Show me</button><button type="button" data-dm="yes">Accept</button></div>` : `<div class="dm-btns"><button type="button" data-dm="look">Show me</button><button type="button" data-dm="yes">Accept</button><button type="button" data-dm="no">Refuse</button></div>`);
   toast(total ? `The ${PLAYERS[foe].name} enforces total victory.` : `The ${PLAYERS[foe].name} demands peace.`, true);
 }
 function answerDemand(yes) {
@@ -6744,9 +6752,9 @@ function offerAlliance(from, vs) {
   if (S.allyOffer || S.demand) return false;
   S.allyOffer = { from, vs, t: S.t };
   const el = $q('#demand'); el.hidden = false;
-  el.innerHTML = `<div class="dm-head">${dot(from)}<b>${PLAYERS[from].name}</b></div>` +
+  el.innerHTML = `<button type="button" class="pop-x" data-ao="no" aria-label="Dismiss" title="Dismiss">×</button><div class="dm-head">${dot(from)}<b>${PLAYERS[from].name}</b></div>` +
     `<p>They fear the ${PLAYERS[vs].name} (${provsOf(vs).length} provinces) and propose an <b>alliance</b>: if anyone declares war on one of you, the other joins the war.</p>` +
-    `<div class="dm-btns"><button type="button" data-ao="yes">Ally</button><button type="button" data-ao="no">Decline</button></div>`;
+    `<div class="dm-btns"><button type="button" data-ao="look">Show me</button><button type="button" data-ao="yes">Ally</button><button type="button" data-ao="no">Decline</button></div>`;
   sfx('wn_ally'); return true;
 }
 function answerAlliance(yes) {
@@ -6757,8 +6765,16 @@ function answerAlliance(yes) {
 }
 $q('#demand').addEventListener('pointerdown', e => e.stopPropagation());
 $q('#demand').addEventListener('click', e => {
-  const b = e.target.closest('[data-dm]'); if (b) return answerDemand(b.dataset.dm === 'yes');
-  const a = e.target.closest('[data-ao]'); if (a) answerAlliance(a.dataset.ao === 'yes');
+  const b = e.target.closest('[data-dm]');
+  if (b) {
+    const d = S.demand;
+    if (b.dataset.dm === 'look') { if (d) { if (d.provs && d.provs.length) lookAtProv(d.provs[0]); else lookAtNation(d.from); } return; }
+    // the X: a demand you can refuse is refused; total victory can't be refused, so it only steps aside and comes back
+    if (b.dataset.dm === 'x') { if (d && d.kind === 'total') { $q('#demand').hidden = true; S.demand = null; const w = S.wars.find(x => x.id === d.war); if (w) setTimeout(() => { if (S.wars.includes(w) && !S.demand) aiDemand(w, true); }, 20000); toast('Total victory is enforced: the demand returns shortly.', true); return; } return answerDemand(false); }
+    return answerDemand(b.dataset.dm === 'yes');
+  }
+  const a = e.target.closest('[data-ao]');
+  if (a) { if (a.dataset.ao === 'look') { if (S.allyOffer) lookAtNation(S.allyOffer.from); return; } answerAlliance(a.dataset.ao === 'yes'); }
 });
 
 // ---------- alliances ----------
@@ -6858,11 +6874,11 @@ function showMet() {
   if (!S.paused) { togglePause(); metPausedByMe = true; }
   $q('#paused').hidden = true;
   const N = NATIONS[o], n = provsOf(o).length, al = allyOf(o);
-  el.innerHTML = `<img class="mp-flag" alt="" src="${flagOf(o)}"><h2><span>You have met</span>the ${PLAYERS[o].name}</h2>` +
+  el.innerHTML = `<button type="button" class="pop-x" data-mp="ok" aria-label="Dismiss" title="Dismiss">×</button><img class="mp-flag" alt="" src="${flagOf(o)}"><h2><span>You have met</span>the ${PLAYERS[o].name}</h2>` +
     `<p>${n} province${n === 1 ? '' : 's'} · ${DIFF_NAME[N.diff]}${al ? ` · allied with ${al === ME ? 'you' : 'the ' + PLAYERS[al].name}` : ''}${atWar(ME, o) ? ' · at war with you' : ''}. You can see them now in Diplomacy.</p>` +
-    `<div class="dm-btns"><button type="button" data-mp="ok">Continue</button><button type="button" data-mp="dip">Open Diplomacy</button></div>`;
+    `<div class="dm-btns"><button type="button" data-mp="look">Show me</button><button type="button" data-mp="dip">Open Diplomacy</button><button type="button" data-mp="ok">OK</button></div>`;
   el.hidden = false; sfx('wn_ally');
-  setTimeout(() => { const b = el.querySelector('[data-mp="ok"]'); if (b) b.focus(); }, 30);
+  setTimeout(() => { const b = el.querySelector('.dm-btns [data-mp="ok"]'); if (b) b.focus(); }, 30);
 }
 function closeMet(openD) {
   const o = metQueue.shift(); $q('#metPop').hidden = true;
@@ -6873,7 +6889,11 @@ function closeMet(openD) {
 }
 $q('#metPop').addEventListener('pointerdown', e => e.stopPropagation());
 $q('#metPop').addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.stopPropagation(); } }, true);
-$q('#metPop').addEventListener('click', e => { const b = e.target.closest('[data-mp]'); if (b) closeMet(b.dataset.mp === 'dip'); });
+$q('#metPop').addEventListener('click', e => {
+  const b = e.target.closest('[data-mp]'); if (!b) return;
+  if (b.dataset.mp === 'look') { const o = metQueue[0]; closeMet(false); if (o !== undefined) lookAtNation(o); return; }
+  closeMet(b.dataset.mp === 'dip');
+});
 function relation(o) {
   const w = warBetween(ME, o);
   if (w) { const s = warscore(w, ME); return { cls: 'war', html: `⚔ War <b class="dp-s ${s > 0 ? 'up' : s < 0 ? 'down' : ''}">${sgn(s)}</b>` }; }
@@ -8387,9 +8407,9 @@ function drawMagic(g, t) {
 function openSchoolPopup() {
   if (currentSchool()) return;
   const el = $q('#schoolPick'), cur = S.tech.mag.cur;
-  el.innerHTML = `<div class="sp-head"><b>Choose a school of magic</b><span>Your first Mage Tower stands. Your first Magic research will be the school you pick; you can switch before it finishes. Abandoning a school later is costly.</span></div><div class="sp-cards">` +
+  el.innerHTML = `<button type="button" class="pop-x" data-school="later" aria-label="Dismiss" title="Dismiss">×</button><div class="sp-head"><b>Choose a school of magic</b><span>Your first Mage Tower stands. Your first Magic research will be the school you pick; you can switch before it finishes. Abandoning a school later is costly.</span></div><div class="sp-cards">` +
     Object.entries(SCHOOLS).map(([k, sc]) => `<button type="button" class="sp-card${cur === 'school-' + k ? ' on' : ''}" data-school="${k}" style="--c:${sc.color};--l:${sc.light}"><img alt="" src="${techIcon('school-' + k)}"><b>${sc.name}</b><span>${sc.blurb}</span><ul>${sc.spells.map(n => `<li>${n}</li>`).join('')}</ul><em>${cur === 'school-' + k ? 'Researching' : 'Choose ' + sc.name}</em></button>`).join('') +
-    `</div><button type="button" class="sp-later" data-school="later">Decide later (Research panel)</button>`;
+    `</div><div class="dm-btns"><button type="button" class="sp-later" data-school="look">Show me</button><button type="button" class="sp-later" data-school="later">Decide later (Research panel)</button></div>`;
   el.hidden = false;
 }
 function closeSchoolPopup() { $q('#schoolPick').hidden = true; }
@@ -8413,7 +8433,11 @@ function abandonSchool() {
   setTimeout(openSchoolPopup, 60);
 }
 $q('#schoolPick').addEventListener('pointerdown', e => e.stopPropagation());
-$q('#schoolPick').addEventListener('click', e => { const b = e.target.closest('[data-school]'); if (!b) return; if (b.dataset.school === 'later') closeSchoolPopup(); else pickSchool(b.dataset.school); });
+$q('#schoolPick').addEventListener('click', e => {
+  const b = e.target.closest('[data-school]'); if (!b) return;
+  if (b.dataset.school === 'look') { const p = [...S.extras].find(([q, l]) => owned(q) && l.some(x => x.type === 'magetower')); if (p) lookAtProv(p[0]); return; }   // the choice stays open
+  if (b.dataset.school === 'later') closeSchoolPopup(); else pickSchool(b.dataset.school);
+});
 window.__realm2 = ({ splitHalf, connectedPick, seizeWhy, outpostLimit, outpostCount, outpostWhy, soldierCount, techCostMult, techCost, stepExhaustion, warBattleCheck, normAuto, mageCount, autoOn });
 
 // ================= main menu =================
@@ -9257,9 +9281,9 @@ function banditFlee(u) {
 // the "Bandits!" popup
 function showBanditPop(p, back, u) {
   const el = $q('#banditPop'), mon = S.units.find(v => v.bandit && v.monster && v.prov === p), M = mon ? MONSTERS[mon.monster] : null;
-  el.innerHTML = mon ? `<h2 id="banditPopT">${M.cry}<span>at ${provName(p)}</span></h2><p>${u.name} ran into ${M.found} and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats them (${lootText(M.loot)} for each one killed).</p>` : `<h2 id="banditPopT">Bandits!<span>at ${provName(p)}</span></h2><p>${u.name} ran into a Bandit Gang and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats the gang (${BANDIT.bounty} gold bounty).</p><div class="dm-btns"><button type="button" data-bp="look">Show me</button><button type="button" data-bp="ok">OK</button></div>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-bp="ok" aria-label="Dismiss" title="Dismiss">×</button>` + (mon ? `<h2 id="banditPopT">${M.cry}<span>at ${provName(p)}</span></h2><p>${u.name} ran into ${M.found} and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats them (${lootText(M.loot)} for each one killed).</p><div class="dm-btns"><button type="button" data-bp="look">Show me</button><button type="button" data-bp="ok">OK</button></div>` : `<h2 id="banditPopT">Bandits!<span>at ${provName(p)}</span></h2><p>${u.name} ran into a Bandit Gang and is scurrying back to ${provName(back)}, unharmed. Wayfinders can’t go back in until an army beats the gang (${BANDIT.bounty} gold bounty).</p><div class="dm-btns"><button type="button" data-bp="look">Show me</button><button type="button" data-bp="ok">OK</button></div>`);
   el.dataset.prov = p; el.hidden = false;
-  const ok = el.querySelector('[data-bp="ok"]'); if (ok) ok.focus({ preventScroll: true });
+  const ok = el.querySelector('.dm-btns [data-bp="ok"]'); if (ok) ok.focus({ preventScroll: true });
 }
 {
   const el = $q('#banditPop');
@@ -10524,9 +10548,9 @@ function showSetpiecePop(p, u) {
   S.spFound.add(p);
   const D = SETPIECES[id], el = $q('#spPop'), who = u && u.name ? u.name : 'Your Wayfinder';
   const said = (SP_FOUND_TEXT[id] || '').replace('%%%', `<b>${escHTML(who)}</b>`).replace('$$$', `<b>${escHTML(provName(p))}</b>`);
-  el.innerHTML = `<h2 id="spPopT"><img class="sp-ico" alt="" src="${rpIcon(D.tree)}">Discovery!<span>${D.name} at ${escHTML(provName(p))}</span></h2><p class="sp-said">${said}</p><p>${D.blurb} While you hold this province it gives +${D.pts} ${TECH_TREES[D.tree].name} research every 10 s${D.need ? ' (you also need ' + D.need + ')' : ''}.</p><div class="dm-btns"><button type="button" data-sp="look">Show me</button><button type="button" data-sp="ok">OK</button></div>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-sp="ok" aria-label="Dismiss" title="Dismiss">×</button><h2 id="spPopT"><img class="sp-ico" alt="" src="${rpIcon(D.tree)}">Discovery!<span>${D.name} at ${escHTML(provName(p))}</span></h2><p class="sp-said">${said}</p><p>${D.blurb} While you hold this province it gives +${D.pts} ${TECH_TREES[D.tree].name} research every 10 s${D.need ? ' (you also need ' + D.need + ')' : ''}.</p><div class="dm-btns"><button type="button" data-sp="look">Show me</button><button type="button" data-sp="ok">OK</button></div>`;
   el.dataset.prov = p; el.hidden = false; sfx('wn_ally');
-  const ok = el.querySelector('[data-sp="ok"]'); if (ok) ok.focus({ preventScroll: true });
+  const ok = el.querySelector('.dm-btns [data-sp="ok"]'); if (ok) ok.focus({ preventScroll: true });
 }
 {
   const el = $q('#spPop');
@@ -10972,9 +10996,9 @@ function queueFind(f) { findQueue.push(f); }
 function showNextFind() {
   const el = $q('#findPop'); if (!el.hidden || !findQueue.length || !$q('#spPop').hidden) return;
   const f = findQueue.shift();
-  el.innerHTML = `<h2 id="findPopT">${f.icon ? `<img class="sp-ico" alt="" src="${f.icon}">` : ''}Discovery!<span>${f.title} at ${escHTML(provName(f.p))}</span></h2><p class="sp-said">${f.said}</p>${f.note ? `<p>${f.note}</p>` : ''}<div class="dm-btns"><button type="button" data-fp="look">Show me</button><button type="button" data-fp="ok">OK</button></div>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-fp="ok" aria-label="Dismiss" title="Dismiss">×</button><h2 id="findPopT">${f.icon ? `<img class="sp-ico" alt="" src="${f.icon}">` : ''}Discovery!<span>${f.title} at ${escHTML(provName(f.p))}</span></h2><p class="sp-said">${f.said}</p>${f.note ? `<p>${f.note}</p>` : ''}<div class="dm-btns"><button type="button" data-fp="look">Show me</button><button type="button" data-fp="ok">OK</button></div>`;
   el.dataset.prov = f.p; el.hidden = false; sfx('wn_ally');
-  const ok = el.querySelector('[data-fp="ok"]'); if (ok) ok.focus({ preventScroll: true });
+  const ok = el.querySelector('.dm-btns [data-fp="ok"]'); if (ok) ok.focus({ preventScroll: true });
 }
 {
   const el = $q('#findPop');
@@ -11106,10 +11130,10 @@ function showTravPop(B) {
   const canFeed = (S.stock.food || 0) >= food;
   if (!S.paused) { togglePause(); travPausedByMe = true; }
   $q('#paused').hidden = true;
-  el.innerHTML = `<h2 id="travPopT">A lost band of travelers<span>at ${escHTML(provName(B.prov))}</span></h2><p>${B.n} weary travelers have lost their way. They are hungry, and ask if you can spare them some food. Fed, they would gladly take up arms for you.</p>
-  <div class="dm-btns trav-btns"><button type="button" data-tv="feed"${canFeed ? '' : ' disabled'} title="${canFeed ? '' : 'Not enough food'}">Share ${food} food<small>${B.n} Footmen join you</small></button><button type="button" data-tv="rob"${army ? '' : ' disabled'} title="${army ? '' : 'You need an army in this province'}">Rob them<small>+${gold} gold${army ? '' : ' · needs an army here'}</small></button><button type="button" data-tv="leave">Leave them be<small>They ask again next time</small></button></div>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-tv="leave" aria-label="Dismiss" title="Dismiss">×</button><h2 id="travPopT">A lost band of travelers<span>at ${escHTML(provName(B.prov))}</span></h2><p>${B.n} weary travelers have lost their way. They are hungry, and ask if you can spare them some food. Fed, they would gladly take up arms for you.</p>
+  <div class="dm-btns trav-btns"><button type="button" data-tv="feed"${canFeed ? '' : ' disabled'} title="${canFeed ? '' : 'Not enough food'}">Share ${food} food<small>${B.n} Footmen join you</small></button><button type="button" data-tv="rob"${army ? '' : ' disabled'} title="${army ? '' : 'You need an army in this province'}">Rob them<small>+${gold} gold${army ? '' : ' · needs an army here'}</small></button><button type="button" data-tv="leave">Leave them be<small>They ask again next time</small></button></div><div class="dm-btns"><button type="button" data-tv="look">Show me</button><button type="button" data-tv="leave">OK</button></div>`;
   el.hidden = false; sfx('wn_ally');
-  setTimeout(() => { const b = el.querySelector('[data-tv="leave"]'); if (b) b.focus({ preventScroll: true }); }, 30);
+  setTimeout(() => { const b = el.querySelector('.dm-btns [data-tv="leave"]'); if (b) b.focus({ preventScroll: true }); }, 30);
 }
 function closeTravPop() {
   $q('#travPop').hidden = true; travBand = null;
@@ -11138,7 +11162,11 @@ function travelersChoose(how) {
   const el = $q('#travPop');
   el.addEventListener('pointerdown', e => e.stopPropagation());
   el.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') travelersChoose('leave'); });
-  el.addEventListener('click', e => { const b = e.target.closest('[data-tv]'); if (b && !b.disabled) travelersChoose(b.dataset.tv); });
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-tv]'); if (!b || b.disabled) return;
+    if (b.dataset.tv === 'look') { const B = travBand; if (B) flyTo({ x: B.x, y: B.y, z: Math.max(cam.z, fitZ * 2.6 * WORLD_K) }); return; }   // the choice stays open
+    travelersChoose(b.dataset.tv);
+  });
 }
 
 // bandits and monsters wander along the edges of their own province; they stand and fight when an enemy army comes in
@@ -11572,6 +11600,47 @@ const quickQueueOn = () => !!VIEW.quickQueue;
   const sync = () => { b.setAttribute('aria-pressed', quickQueueOn() ? 'true' : 'false'); b.querySelector('span').textContent = quickQueueOn() ? 'On' : 'Off'; };
   b.addEventListener('click', e => { e.stopPropagation(); VIEW.quickQueue = !quickQueueOn(); viewSave(); sync(); });
   sync();
+}
+
+// ---------- popups: Show me ----------
+function lookAtProv(p) { const P = G.provs[p]; if (P) flyTo({ x: P.ic[0], y: P.ic[1], z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) }); }
+// a nation: its capital, or failing that the province of theirs nearest to your capital
+function lookAtNation(o) {
+  const ps = [...S.buildings].filter(([, b]) => b.owner === o); if (!ps.length) return;
+  const cap = ps.find(([, b]) => b.stage === 2), me = G.provs[S.capital] ? G.provs[S.capital].ic : [0, 0];
+  const p = cap ? cap[0] : ps.map(([q]) => q).sort((a, b) => Math.hypot(G.provs[a].ic[0] - me[0], G.provs[a].ic[1] - me[1]) - Math.hypot(G.provs[b].ic[0] - me[0], G.provs[b].ic[1] - me[1]))[0];
+  if (S.explored.has(p) || S.reveal) lookAtProv(p); else toast('You haven’t explored their land yet.', true);
+}
+
+// ---------- move orders: a golden X pulses once where you sent the units, then fades over 1 s ----------
+const moveMarks = [];
+{
+  const _og = orderGroup; let depth = 0;
+  orderGroup = (target, append, pt) => {
+    depth++;
+    try { return _og(target, append, pt); }
+    finally {
+      depth--;
+      if (!depth && S.selected.some(u => u.owner === ME)) { const c = G.provs[target]; if (c) { const [x, y] = pt || c.ic; moveMarks.push({ x, y, t0: performance.now() / 1000 }); if (moveMarks.length > 8) moveMarks.shift(); } }
+    }
+  };
+}
+function drawMoveMarks(g) {
+  const now = performance.now() / 1000;
+  for (let i = moveMarks.length - 1; i >= 0; i--) {
+    const m = moveMarks[i], a = now - m.t0;
+    if (a >= 1) { moveMarks.splice(i, 1); continue; }
+    // one quick swell (0.6 → 1.2 → 1.0 in the first 0.3 s), then a fade to nothing at 1 s
+    const sw = a < 0.18 ? 0.6 + (a / 0.18) * 0.6 : a < 0.3 ? 1.2 - ((a - 0.18) / 0.12) * 0.2 : 1, alpha = a < 0.3 ? 1 : 1 - (a - 0.3) / 0.7;
+    const r = 16 * UKK * sw;   // about one footman across
+    g.save(); g.translate(m.x, m.y); g.scale(1, 0.62); g.globalAlpha = Math.max(0, alpha); g.lineCap = 'round';
+    if (a < 0.45) { g.beginPath(); g.arc(0, 0, r * (1 + a * 2.2), 0, 7); g.lineWidth = 3; g.strokeStyle = `rgba(255,214,90,${0.8 * (1 - a / 0.45)})`; g.stroke(); }
+    g.beginPath(); g.moveTo(-r, -r); g.lineTo(r, r); g.moveTo(r, -r); g.lineTo(-r, r);
+    g.lineWidth = 10 * Math.sqrt(UKK); g.strokeStyle = OL; g.stroke();
+    g.lineWidth = 6 * Math.sqrt(UKK); g.strokeStyle = '#ffc93c'; g.stroke();
+    g.lineWidth = 2 * Math.sqrt(UKK); g.strokeStyle = '#fff3b8'; g.stroke();
+    g.restore();
+  }
 }
 
 // ---------- every frame, and at the start of a game ----------

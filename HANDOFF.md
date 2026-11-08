@@ -27,7 +27,7 @@ https://claude.ai/artifact/JDKKiwqrMhuaBoEAdBDMSV.
 
 ### Publishing
 
-- **Current version: v80** (v72 AI nations; v73 lighter bitmap cache; v74 error-proof game loop; v75 province window fix, war, Wayfinder and meeting changes; v76 left column and UI size; v77 the GPC01–GPC31 gameplay list; v78 the GC/IC/T list: graphics, interface and text; v79 the SMA small map additions; v80 Quick queue setting). After each publish, update this line with the version number the publish result reports.
+- **Current version: v81** (v72 AI nations; v73 lighter bitmap cache; v74 error-proof game loop; v75 province window fix, war, Wayfinder and meeting changes; v76 left column and UI size; v77 the GPC01–GPC31 gameplay list; v78 the GC/IC/T list: graphics, interface and text; v79 the SMA small map additions; v80 Quick queue setting; v81 popup buttons and move marker). After each publish, update this line with the version number the publish result reports.
 - Name project zips with that version, e.g. `realmlings_v76.zip`.
 
 - Publish `realmlings_play.html` to the URL above (pass it as `url`; read the artifact first, since it is from an earlier conversation).
@@ -223,3 +223,8 @@ Tested in headless Chromium (screenshots of each feature, 12 minutes fast-forwar
 ## v80: Quick queue setting
 
 Settings has a "Quick queue" toggle (`#qqBtn`, `VIEW.quickQueue`, saved in `realm-view`, off by default). When on, a plain right-click on a province opens the survey / build menu (`openBuildMenu`, from `clickAt` in game.js) if only Wayfinders and Masons are selected; Ctrl+right-click still works as before, and with armies or Mages in the selection right-click still moves. The menu's Explore / Move here entries walk without surveying or building.
+
+## v81: popup buttons and the move marker
+
+- Every popup has an X in its top-right corner (`.pop-x`, it carries the same data attribute as the popup's dismiss action), and Show me / OK buttons: bandit and monster encounters (`#banditPop`, the monster version had no buttons before), set pieces (`#spPop`), discoveries (`#findPop`), travelers (`#travPop`), new nations (`#metPop`: Continue is now OK), the game over box. Decision popups keep their choices instead of an OK: enemy demands (`#demand`: X refuses; a total-victory demand can't be refused, so X hides it and it returns 20 s later), alliance offers (X declines), the school choice (X = decide later). Their Show me leaves the choice open. `lookAtProv` / `lookAtNation` (v78.js) move the camera; a nation is shown at its capital.
+- Move orders: `orderGroup` is wrapped in v78.js; each order from the player drops a golden X (`moveMarks`, `drawMoveMarks`) at the clicked point, about one footman across (scales with `UKK`). It swells once in the first 0.3 s and is gone after 1 s (real time, so it also plays while paused).

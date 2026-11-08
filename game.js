@@ -1259,6 +1259,7 @@ function drawGame(g, t) {
   for (const b of S.battles) if (S.visible.has(b.prov)) items.push({ y: battleCenter(b.prov)[1] - 4, f: () => drawBattle(g, b, t) });
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
   for (const [p, at] of S.surveyed) if (S.explored.has(p) && !S.battles.some(b => b.prov === p)) drawYieldBadge(g, p, t - at);
+  drawMoveMarks(g);       // a golden X where units were just sent
   drawProvLabels(g, t);   // GC04 / GC05: province names under their resources, your nation's name over its land
   drawSetpieces(g, t);
   for (const b of S.battles) if (S.visible.has(b.prov)) drawBattleBar(g, b, t);
