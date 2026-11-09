@@ -1,7 +1,7 @@
 // ================= v78: the GC (graphics), IC (interface) and T (text) list =================
 const escHTML = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 // map view toggles (above the minimap) and the Provinces-tab filter, saved per browser
-const VIEW = { names: false, realm: true, hideFull: false, quickQueue: false };
+const VIEW = { names: false, realm: true, hideFull: false, quickQueue: false, res: true, miniColor: false };
 try { const v = JSON.parse(localStorage.getItem('realm-view') || 'null'); if (v) Object.assign(VIEW, v); } catch (e) {}
 function viewSave() { try { localStorage.setItem('realm-view', JSON.stringify(VIEW)); } catch (e) {} }
 S.warLog = []; S.provRename = new Map(); S.spFound = new Set();
@@ -622,20 +622,25 @@ function roadWalkerItems(g, t, items) {
 }
 
 // ---------- GC04 / GC05: province names under their resources; your nation's name over its land ----------
-let realmLabel = null, realmSig = '';
-function realmLabelOf() {
-  const mine = [...S.buildings].filter(([, b]) => b.owner === ME).map(([p]) => p).sort((a, b) => a - b), sig = mine.join(',') + '|' + PLAYERS[ME].name;
-  if (sig === realmSig) return realmLabel; realmSig = sig; realmLabel = null;
-  if (!mine.length) return null;
-  // the biggest connected block of your provinces carries the name
-  const set = new Set(mine), seen = new Set(); let best = [];
-  for (const s0 of mine) { if (seen.has(s0)) continue; const comp = [], q = [s0]; seen.add(s0); while (q.length) { const a = q.shift(); comp.push(a); for (const n of allNbr[a]) if (set.has(n) && !seen.has(n)) { seen.add(n); q.push(n); } } if (comp.length > best.length) best = comp; }
-  let x0 = Infinity, x1 = -Infinity, sx = 0, sy = 0;
-  for (const p of best) { const P = G.provs[p]; sx += P.ic[0]; sy += P.ic[1]; for (const [x] of P.pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); } }
-  const name = (PLAYERS[ME].name || 'My Realm').toUpperCase(), w = (x1 - x0) * 0.8;
-  realmLabel = { x: sx / best.length, y: sy / best.length - 40, name, fs: Math.max(70, Math.min(420, w / Math.max(4, name.length * 0.78))) };
-  return realmLabel;
+// Z13: a label for your nation and for every nation you have met, over the biggest block of their land you have explored
+let realmLabels = [], realmSig = '';
+function realmLabelsOf() {
+  const who = [ME, ...[...S.met].filter(o => PLAYERS[o] && NATIONS[o] && provsOf(o).length)];
+  const sig = who.map(o => o + ':' + [...S.buildings].filter(([p, b]) => b.owner === o && (o === ME || S.explored.has(p))).map(([p]) => p).join(',') + PLAYERS[o].name).join('|');
+  if (sig === realmSig) return realmLabels; realmSig = sig; realmLabels = [];
+  for (const o of who) {
+    const mine = [...S.buildings].filter(([p, b]) => b.owner === o && (o === ME || S.explored.has(p))).map(([p]) => p);
+    if (!mine.length) continue;
+    const set = new Set(mine), seen = new Set(); let best = [];
+    for (const s0 of mine) { if (seen.has(s0)) continue; const comp = [], q = [s0]; seen.add(s0); while (q.length) { const a = q.shift(); comp.push(a); for (const n of allNbr[a]) if (set.has(n) && !seen.has(n)) { seen.add(n); q.push(n); } } if (comp.length > best.length) best = comp; }
+    let x0 = Infinity, x1 = -Infinity, sx = 0, sy = 0;
+    for (const p of best) { const P = G.provs[p]; sx += P.ic[0]; sy += P.ic[1]; for (const [x] of P.pts) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); } }
+    const name = (PLAYERS[o].name || 'My Realm').toUpperCase(), w = (x1 - x0) * 0.8;
+    realmLabels.push({ o, x: sx / best.length, y: sy / best.length - 40, name, fs: Math.max(70, Math.min(420, w / Math.max(4, name.length * 0.78))) });
+  }
+  return realmLabels;
 }
+const realmLabelOf = () => realmLabelsOf().find(L => L.o === ME) || null;
 function drawProvLabels(g, t) {
   const font = getComputedStyle(document.body).getPropertyValue('--font-display');
   if (VIEW.names) {
@@ -651,31 +656,42 @@ function drawProvLabels(g, t) {
     }
     g.restore();
   }
-  if (VIEW.realm) {
-    const L = realmLabelOf(); if (!L) return;
+  if (VIEW.realm) for (const L of realmLabelsOf()) {
     const px = L.fs * cam.z, zf = f4Z ? (f4Z * 1.7 - cam.z) / (f4Z * 0.6) : 1;   // shown from about the F4 zoom level outward (like a map label), never as giant letters
     const a = Math.max(0, Math.min(0.8, zf, (px - 10) / 8, (220 - px) / 60));
-    if (a <= 0.02) return;
+    if (a <= 0.02) continue;
     g.save(); g.globalAlpha = a; g.font = L.fs + 'px ' + font; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineJoin = 'round';
     const gap = L.fs * 0.18, chars = [...L.name], ws = chars.map(c => g.measureText(c).width), total = ws.reduce((x, y) => x + y, 0) + gap * (chars.length - 1);
     let x = L.x - total / 2;
-    chars.forEach((c, i) => { const cx = x + ws[i] / 2; g.lineWidth = L.fs * 0.09; g.strokeStyle = 'rgba(29,26,34,0.75)'; g.strokeText(c, cx, L.y); g.fillStyle = PLAYERS[ME].light; g.fillText(c, cx, L.y); x += ws[i] + gap; });
+    chars.forEach((c, i) => { const cx = x + ws[i] / 2; g.lineWidth = L.fs * 0.09; g.strokeStyle = 'rgba(29,26,34,0.75)'; g.strokeText(c, cx, L.y); g.fillStyle = PLAYERS[L.o].light || '#fff'; g.fillText(c, cx, L.y); x += ws[i] + gap; });
     g.restore();
   }
 }
+const TG_ICON = {
+  res: `<svg viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="12" rx="9" ry="9" fill="#f4c44f" stroke="#1d1a22" stroke-width="1.8"/><ellipse cx="12" cy="12" rx="6" ry="6" fill="none" stroke="#c99a2c" stroke-width="1.4"/><path d="M12 8.2v7.6M10 10h3.2a1.4 1.4 0 0 1 0 2.8h-2.4a1.4 1.4 0 0 0 0 2.8H14" fill="none" stroke="#8a5e12" stroke-width="1.3" stroke-linecap="round"/></svg>`,
+  names: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5 L16.5 2.8 L21.3 10.2 L18.2 19.4 L8.8 21.2 L2.8 13.6 Z" fill="#9bd95f" stroke="#1d1a22" stroke-width="1.8" stroke-linejoin="round"/><path d="M7.5 11.5h9M7.5 14.5h6" stroke="#1d1a22" stroke-width="1.4" stroke-linecap="round"/></svg>`,
+  color: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" fill="#faf1dc" stroke="#1d1a22" stroke-width="1.8"/><path d="M3 9 L9 3 M3 15 L15 3 M3 21 L21 3 M9 21 L21 9 M15 21 L21 15" stroke="#c7362b" stroke-width="1.8"/><rect x="3" y="3" width="18" height="18" fill="none" stroke="#1d1a22" stroke-width="1.8"/></svg>`
+};
 {
   const mini = $q('#mini'), box = document.createElement('div');
-  box.className = 'mini-togs'; box.innerHTML = `<button type="button" id="tgNames" title="Show each province’s name under its resources">Province names</button><button type="button" id="tgRealm" title="Show your nation’s name over your land">Realm name</button>`;
+  box.className = 'mini-togs';
+  box.innerHTML = `<button type="button" id="tgRes" title="Show or hide each province’s resources" aria-label="Province resources">${TG_ICON.res}</button>` +
+    `<button type="button" id="tgNames" title="Show each province’s name under its resources" aria-label="Province names">${TG_ICON.names}</button>` +
+    `<button type="button" id="tgRealm" title="Show nation names over their land" aria-label="Nation names"><img id="tgArms" alt=""></button>` +
+    `<button type="button" id="tgColor" title="Fill the minimap with each nation’s color" aria-label="Nation colors on the minimap">${TG_ICON.color}</button>`;
   mini.prepend(box);
-  const sync = () => { $q('#tgNames').setAttribute('aria-pressed', VIEW.names); $q('#tgRealm').setAttribute('aria-pressed', VIEW.realm); };
+  const map = { tgRes: 'res', tgNames: 'names', tgRealm: 'realm', tgColor: 'miniColor' };
+  const sync = () => { for (const id in map) $q('#' + id).setAttribute('aria-pressed', VIEW[map[id]] ? 'true' : 'false'); };
   box.addEventListener('pointerdown', e => e.stopPropagation());
-  box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; if (b.id === 'tgNames') VIEW.names = !VIEW.names; else VIEW.realm = !VIEW.realm; viewSave(); sync(); b.blur(); });
+  box.addEventListener('click', e => { const b = e.target.closest('button'); if (!b || !map[b.id]) return; VIEW[map[b.id]] = !VIEW[map[b.id]]; viewSave(); sync(); b.blur(); if (b.id === 'tgColor') miniDirty = true; });
   sync();
 }
+// Z9: the Realm-name toggle shows your coat of arms (refreshed when the game starts)
+function syncArmsToggle() { const im = $q('#tgArms'); if (im && NATION) im.src = flagURL(PLAYERS[ME].color, NATION.emblem); }
 
 // ---------- GC09: each building's color in the action card ----------
 const BUILD_BG = { outpost: '#a3a9b3', farm: '#2aa198', lumber: '#2e6b34', goldmine: '#f0a62e', barracks: '#ef2b2b', stable: '#8c1c3a', market: '#d9bf8f', granary: '#36d6e8', storehouse: '#b58a58', bank: '#ffe62e', forge: '#e8552a', magetower: '#3f6fe0', temple: '#9a5fd6' };
-const cmdBg = id => { const c = id && id.startsWith('build:') ? BUILD_BG[id.slice(6)] : null; return c ? ` style="--bbg:${c}"` : ''; };
+const cmdBg = id => { const t = id && id.startsWith('build:') ? id.slice(6) : null, c = t ? BUILD_BG[t] : null, d = t && BUILD_DEFS[t]; if (d && d.tech && !hasTech(d.tech)) return ''; return c ? ` style="--bbg:${c}"` : ''; };   // Z4: not yet researched → stays gray
 
 // ---------- GC14: is there something to upgrade that you can afford? ----------
 function findUpgradable() {
@@ -927,6 +943,90 @@ function drawMoveMarks(g) {
   }
 }
 
+// ---------- Z5: a retrofitting army shows its progress ----------
+function drawRetroBar(g, u, x, y, w, K) {
+  const f = Math.max(0, Math.min(1, (S.t - u.retro.t0) / u.retro.dur)), h = 4.2 * Math.sqrt(K);
+  g.save();
+  g.beginPath(); g.roundRect(x - w / 2 - 1.5, y - 1.5, w + 3, h + 3, (h + 3) / 2); g.fillStyle = OL; g.fill();
+  g.beginPath(); g.roundRect(x - w / 2, y, w, h, h / 2); g.fillStyle = '#3d3a46'; g.fill();
+  if (f > 0) { g.beginPath(); g.roundRect(x - w / 2, y, Math.max(h, w * f), h, h / 2); g.fillStyle = '#7fb8ff'; g.fill(); }
+  const k = Math.max(1, 0.62 / cam.z); g.font = (8 * k) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-display'); g.textAlign = 'right'; g.textBaseline = 'middle';
+  g.lineWidth = 3 * k; g.strokeStyle = OL; g.strokeText('⚒', x - w / 2 - 3, y + h / 2); g.fillStyle = '#cfe3ff'; g.fillText('⚒', x - w / 2 - 3, y + h / 2);
+  g.restore();
+}
+// ---------- Z6: a design saved over an in-use one counts up: Footman, Footman II, Footman III … ----------
+const toRoman = n => { let s = ''; for (const [v, r] of [[1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'], [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'], [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']]) while (n >= v) { s += r; n -= v; } return s; };
+const fromRoman = s => { const V = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 }; let n = 0; for (let i = 0; i < s.length; i++) { const a = V[s[i]], b = V[s[i + 1]] || 0; n += a < b ? -a : a; } return n; };
+function nextDesignName(name) {
+  const m = name.match(/^(.*?)((?:\s+[IVXLCDM]+)+)$/);
+  const base = m ? m[1] : name, n = m ? Math.max(...m[2].trim().split(/\s+/).map(fromRoman)) : 1;
+  let k = n + 1, out; do { out = (base + ' ' + toRoman(k)).slice(0, 24); k++; } while (S.designs.some(d => d.name === out) && k < 200);
+  return out;
+}
+// ---------- Z2 / Z3: the Mason's cancel button ----------
+{
+  const _info = extraCmdInfo;
+  extraCmdInfo = id => {
+    if (id !== 'cancelbuild') return _info(id);
+    const m = S.selected.find(v => v.kind === MASON), b = m && m.build;
+    const nm = !b ? '' : b.type === 'outpost' ? 'outpost' : b.type === 'road' ? 'road' : b.type === 'wall' || b.type === 'rewall' ? 'wall' : BUILD_DEFS[b.type] ? BUILD_DEFS[b.type].name : 'building';
+    return { name: b ? `Cancel the ${nm}` : 'Cancel construction', desc: b ? `Stop building and get back everything paid (${costText(b.paid || {})}).` : 'When the Mason is building, this stops it and refunds what was paid.', cost: null, why: b ? null : 'He isn’t building anything', ok: 'Click to cancel and get a refund', icon: xIcon('destroy') };
+  };
+}
+// ---------- Z15: Terrascaping (Herbomancy, Tier III): a line of trees along an open border, with a forest path in the middle ----------
+const TERRA_TIME = 300;
+// the plain open border between two provinces (not a river, wall or magic path), or -1
+const openEdgeBetween = (p, q) => world.edges.findIndex((e, i) => ((e.a === p && e.b === q) || (e.a === q && e.b === p)) && e.open && (!e.style || e.style === 'open') && !S.paths[i] && !S.walls.has(i));
+function terraWhy(c, q) {
+  if (!hasTech('terrascape') || currentSchool() !== 'life') return 'Research Terrascaping first';
+  if (!allNbr[c.prov].includes(q)) return 'The Mage must stand next door';
+  if (openEdgeBetween(c.prov, q) < 0) return wallBetween(c.prov, q) ? 'There is a wall on that border' : 'Only on an open border';
+  if (c.moving) return 'Stop moving first';
+  if (c.battle) return 'Not during battle';
+  return castBusy(c);
+}
+function terrascape(p, q) {
+  const i = openEdgeBetween(p, q); if (i < 0) return false;
+  const e = world.edges[i], V = world.vertices, a = V[e.v[0]], b = V[e.v[1]], dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy), nx = -dy / len, ny = dx / len;
+  const swampy = [e.a, e.b].some(x => world.provinces[x].terrain === 'swamp'), r = rngFrom(world.seed + ':terra:' + i);
+  const n = Math.max(3, Math.round(len / 10)), hole = 34 / len;   // the path left open in the middle
+  for (let j = 0; j < n; j++) {
+    const t = (j + 0.5) / n; if (Math.abs(t - 0.5) < hole) continue;
+    const off = (j % 2 ? 6 : -6) + (r() - 0.5) * 3, s = swampy ? 'cypress' + (r() < 0.5 ? 0 : 1) : r() < 0.45 ? 'pine' + (r() < 0.5 ? 0 : 1) : 'tree' + Math.floor(r() * 3);
+    G.sway.push({ x: a[0] + dx * t + nx * off, y: a[1] + dy * t + ny * off + 5, s, ph: r() * 6.28 });
+  }
+  G.sway.sort((u, v) => u.y - v.y);
+  e.style = 'trees'; S.paths[i] = 'forest';   // still open, but only through the path
+  S.roads.delete(linkKey(p, q));
+  cacheDirty = true; fogDirty = true; miniDirty = true; hoverPath = undefined;
+  return true;
+}
+{
+  const _rows = magicRows;
+  magicRows = (c, q) => {
+    const base = _rows(c, q);
+    if (!c || c.owner !== ME || c.prov === q || !allNbr[c.prov].includes(q) || !hasTech('terrascape') || currentSchool() !== 'life') return base;
+    if (openEdgeBetween(c.prov, q) < 0) return base;
+    const why = terraWhy(c, q);
+    const row = `<button type="button" class="bm-item" data-type="terra" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${techIcon('terrascape')}"><span class="bm-name">Terrascape the border with ${escHTML(provName(q))}<small>${why || TERRA_TIME / 60 + ' minutes of casting · trees with a path in the middle'}</small></span></button>`;
+    return base ? base + row : '<div class="bm-sec">Magic</div>' + row;
+  };
+  menuEl.addEventListener('click', e => {
+    const b = e.target.closest('[data-type="terra"]'); if (!b) return;
+    e.stopImmediatePropagation(); if (b.getAttribute('aria-disabled') === 'true') return;
+    const c = S.selected.find(isCaster), q = menuProv; closeBuildMenu(); if (!c) return;
+    const why = terraWhy(c, q); if (why) return toast('Terrascaping: ' + why.toLowerCase() + '.', true);
+    startCast(c, 'terrascape', TERRA_TIME, { to: q });
+    toast(`${c.name} begins Terrascaping the border with ${provName(q)}: ${TERRA_TIME / 60} minutes of casting. Moving or fighting stops it.`); sfx('mg_life', { prov: c.prov });
+  }, true);
+  const _step = stepMagic;
+  stepMagic = (t, dt) => {
+    const done = S.units.filter(c => c.cast && c.cast.spell === 'terrascape' && !c.moving && !c.battle && t - c.cast.t0 >= c.cast.dur).map(c => [c, c.prov, c.cast.to]);
+    _step(t, dt);
+    for (const [c, p, q] of done) if (terrascape(p, q) && c.owner === ME) toast(`Trees rise along the border between ${provName(p)} and ${provName(q)}, with a forest path through the middle.`);
+  };
+}
+
 // ---------- every frame, and at the start of a game ----------
 function stepV78(t, dt) {
   if (!S.paused) { stepPatrols(t, dt); stepTravelers(dt); }
@@ -937,7 +1037,7 @@ function stepV78(t, dt) {
 }
 function setupV78() {
   const cap = S.capital; if (cap >= 0) { const near = fitView(boxOf([cap, ...allNbr[cap]]), 0.95); f4Z = clampZ(near.z / 2); }
-  S.warLog = []; S.provRename = new Map(); S.spFound = new Set(); realmSig = ''; roadFolk.clear();
+  S.warLog = []; S.provRename = new Map(); S.spFound = new Set(); realmSig = ''; roadFolk.clear(); syncArmsToggle();
   if (cap >= 0) S.spFound.add(cap);
   // the map's extras: the Intact Ruins first (nothing else may sit there), then bandits and monsters, then the travelers
   S.finds = new Map(); S.treasureRolled = new Set(); S.travelers = []; findQueue.length = 0;
@@ -946,4 +1046,4 @@ function setupV78() {
   for (const u of S.units) if (u.bandit) skip.add(u.prov);
   placeTravelers(skip);
 }
-window.__v78 = { findSpot, VIEW, unitK, f4Z: () => f4Z, spawnMonster, MONSTERS, spawnLairs, placeRuins, surveyFinds, grantTech, addResearch, showTravPop, travelersChoose, TRAVELERS, LAIR_CHANCE, armyFigures, armyHp, findUpgradable, openInspect, toggleCountry, openSplitMenu, splitKind, openRename, stepPatrols, spKnown, realmLabelOf, castUnitId, drawMonster };
+window.__v78 = { wallBetween, raiseWall, startShock, startQuake, terrascape, openEdgeBetween, nextDesignName, terraWhy, findSpot, VIEW, unitK, f4Z: () => f4Z, spawnMonster, MONSTERS, spawnLairs, placeRuins, surveyFinds, grantTech, addResearch, showTravPop, travelersChoose, TRAVELERS, LAIR_CHANCE, armyFigures, armyHp, findUpgradable, openInspect, toggleCountry, openSplitMenu, splitKind, openRename, stepPatrols, spKnown, realmLabelOf, castUnitId, drawMonster };

@@ -126,7 +126,7 @@ function saveDraft() {
   const cur = draft.id && designById(draft.id);
   if (cur && !cur.builtin && !designInUse(cur.id)) { Object.assign(cur, draft); registerDesign(cur); toast(`${cur.name} saved.`); }
   else {
-    if (cur && (cur.builtin || designInUse(cur.id)) && cur.name === draft.name) draft.name += ' II';
+    if (cur && (cur.builtin || designInUse(cur.id)) && cur.name === draft.name) draft.name = nextDesignName(draft.name);
     const d = addDesign({ ...draft, id: null }); armSel = d.id; draft = { ...d };
     toast(cur ? `${cur.builtin ? 'Starting designs can’t be changed' : cur.name + ' is in use'}: saved as a new design, ${d.name}.` : `${d.name} added to the Armory. Train it at a Barracks${d.type === 'cav' ? ' with a Stable' : ''}.`);
   }

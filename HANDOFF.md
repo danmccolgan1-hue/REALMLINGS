@@ -27,7 +27,7 @@ https://claude.ai/artifact/JDKKiwqrMhuaBoEAdBDMSV.
 
 ### Publishing
 
-- **Current version: v81** (v72 AI nations; v73 lighter bitmap cache; v74 error-proof game loop; v75 province window fix, war, Wayfinder and meeting changes; v76 left column and UI size; v77 the GPC01–GPC31 gameplay list; v78 the GC/IC/T list: graphics, interface and text; v79 the SMA small map additions; v80 Quick queue setting; v81 popup buttons and move marker). After each publish, update this line with the version number the publish result reports.
+- **Current version: v83** (v72 AI nations; v73 lighter bitmap cache; v74 error-proof game loop; v75 province window fix, war, Wayfinder and meeting changes; v76 left column and UI size; v77 the GPC01–GPC31 gameplay list; v78 the GC/IC/T list: graphics, interface and text; v79 the SMA small map additions; v80 Quick queue setting; v81 popup buttons and move marker; v82 the Z list; v83 Earthquake is a 2-minute cast). After each publish, update this line with the version number the publish result reports.
 - Name project zips with that version, e.g. `realmlings_v76.zip`.
 
 - Publish `realmlings_play.html` to the URL above (pass it as `url`; read the artifact first, since it is from an earlier conversation).
@@ -228,3 +228,17 @@ Settings has a "Quick queue" toggle (`#qqBtn`, `VIEW.quickQueue`, saved in `real
 
 - Every popup has an X in its top-right corner (`.pop-x`, it carries the same data attribute as the popup's dismiss action), and Show me / OK buttons: bandit and monster encounters (`#banditPop`, the monster version had no buttons before), set pieces (`#spPop`), discoveries (`#findPop`), travelers (`#travPop`), new nations (`#metPop`: Continue is now OK), the game over box. Decision popups keep their choices instead of an OK: enemy demands (`#demand`: X refuses; a total-victory demand can't be refused, so X hides it and it returns 20 s later), alliance offers (X declines), the school choice (X = decide later). Their Show me leaves the choice open. `lookAtProv` / `lookAtNation` (v78.js) move the camera; a nation is shown at its capital.
 - Move orders: `orderGroup` is wrapped in v78.js; each order from the player drops a golden X (`moveMarks`, `drawMoveMarks`) at the clicked point, about one footman across (scales with `UKK`). It swells once in the first 0.3 s and is gone after 1 s (real time, so it also plays while paused).
+
+## v82: the Z list
+
+- **Z1** `stepFortGates` (gpc.js) walls capitals too (stage ≥ 1) once Wooden Walls is researched.
+- **Z2** Masons have a Cancel construction button (cell 14, `cancelbuild`) that refunds what was paid. A building that can't be placed when it finishes (the province changed hands, or someone claimed the outpost first) is refunded instead of lost. Refunds still respect the storage limit.
+- **Z3** A walking Mason can build: the build button stops him where he stands (`haltUnit`) and he builds there.
+- **Z4** `cmdBg` leaves buildings that still need research gray.
+- **Z5** `drawRetroBar`: a blue progress bar (with a hammer) above a retrofitting army's health bar.
+- **Z6** `nextDesignName` (v78.js): saving over an in-use design counts up in Roman numerals (Footman → II → III …; old names like "Footman II II" become "Footman III").
+- **Z7 / Z8 / Z9 / Z14** The minimap toggles are icon buttons: coin (`VIEW.res`, resource badges), hexagon (`VIEW.names`), your coat of arms (`VIEW.realm`, `syncArmsToggle`), striped square (`VIEW.miniColor`, fills nations' provinces with their colors on the minimap in `renderMiniLayer`).
+- **Z10** `computeFog`: any province one of your armies stands in is added to `S.known` (stays explored).
+- **Z11 / Z12** gpc.js Earthquake section rewritten (`SPELL2`, `startSpell2`, `c.quake.kind`). **Shockwave** (`shock`, every Mage, army cell 10 / Mage cell 11, also in the Ctrl+right-click menu): aim at a neighboring province of a nation at war with the caster; after 120 s the wall on that border is broken (`breakWall`). **Earthquake** (`quake`, tech `earthquake`, Magic Tier III any school, army cell 11 / Mage cell 14): cast in a province your nation occupies; after 120 s (v83; was 30 s) all its buildings (and upgrades / constructions there) and every wall on its borders are destroyed (`quakeStrike`; settlements stay). Enemy casts show the warning flag; the AI casts both (`aiQuake`).
+- **Z13** `realmLabelsOf`: the nation-name toggle labels your nation and every nation you have met (over the biggest block of their land you have explored).
+- **Z15** Terrascaping (tech `terrascape`, Herbomancy Tier III, needs Speak with the Forest): from the Ctrl+right-click menu on a neighbor across a plain open border, 5 minutes of casting; `terrascape(p, q)` adds trees to `G.sway` along the border with a gap in the middle, sets the edge style to `trees` and `S.paths[i] = 'forest'` (the border stays passable only through that forest path; Arboreal Restoration can close it).

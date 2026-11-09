@@ -134,6 +134,8 @@ function techIcon(id) {
     if (id === 'apprentice') { hatIcon(g); ICO.roman(g, '+1', 50, 52); return; }
     if (SKIN_TINT[id]) { ICO.poly(g, [[32, 8], [52, 16], [50, 36], [32, 56], [14, 36], [12, 16]], SKIN_TINT[id]); ICO.poly(g, [[32, 20], [42, 28], [32, 44], [22, 28]], '#ffffff', 2); TIERMARK(g, id); return; }
     if (MAGIC_ICONS[id]) { MAGIC_ICONS[id](g); TIERMARK(g, id); return; }
+    if (id === 'earthquake') { ICO.poly(g, [[6, 40], [58, 40], [58, 58], [6, 58]], '#b08a5a'); ICO.poly(g, [[30, 40], [36, 46], [28, 50], [34, 58], [26, 58], [22, 50], [28, 46], [24, 40]], '#3b2a1a', 2); ICO.poly(g, [[10, 36], [20, 14], [30, 36]], '#cfc8ba'); ICO.poly(g, [[34, 36], [44, 10], [54, 36]], '#cfc8ba'); return; }
+    if (id === 'terrascape') { ICO.poly(g, [[4, 50], [60, 50], [60, 58], [4, 58]], '#9bd95f'); for (const x of [10, 22, 42, 54]) ICO.poly(g, [[x - 8, 44], [x, 14], [x + 8, 44]], '#3f8a3a'); ICO.poly(g, [[28, 58], [36, 58], [34, 38], [30, 38]], '#c9a46b', 2); return; }
     if (['grandstave', 'mythicstave', 'crypticwand', 'enigmaticwand'].includes(id)) return itemIcon(g, id);
     if (id.startsWith('w-')) return itemIcon(g, TECH_EQUIP[id]);
     if (id.startsWith('s-')) return shieldIcon(g, id.slice(2));

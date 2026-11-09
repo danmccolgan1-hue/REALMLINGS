@@ -11,7 +11,7 @@ function flagList() {
   if (flagEmpty >= 0) out.push({ id: 'plots', img: 'empty_plots', tip: 'A Mason is free and a building plot is open: left-click to go there, right-click to dismiss' });
   // GC14: something of yours can be upgraded and you can pay for it
   if (flagUpg) out.push({ id: 'upg', img: 'upgrade', tip: `You can afford to upgrade ${flagUpg.what} in ${provName(flagUpg.p)}: left-click to go there, right-click to dismiss` });
-  for (const q of S.quakes || []) out.push({ id: 'quake:' + q.id, img: 'earthquake', warn: true, tip: `Earthquake at ${provName(q.from)}: left-click to look, right-click to dismiss`, label: `Earthquake at ${provName(q.from)}` });
+  for (const q of S.quakes || []) out.push({ id: 'quake:' + q.id, img: 'earthquake', warn: true, tip: `${q.kind === 'shock' ? 'Shockwave' : 'Earthquake'} at ${provName(q.from)}: left-click to look, right-click to dismiss`, label: `${q.kind === 'shock' ? 'Shockwave' : 'Earthquake'} at ${provName(q.from)}` });
   // a truce with 30 seconds or less to go (GPC23)
   for (const o of aiIds()) { const left = truceLeft(ME, o); if (left > 0 && left <= TRUCE_WARN && aliveNation(o)) out.push({ id: 'truce:' + o, img: 'truce', warn: true, n: Math.ceil(left), tip: `Your truce with the ${PLAYERS[o].name} ends in ${Math.ceil(left)} s: left-click to look at their land, right-click to dismiss`, label: `Truce with the ${PLAYERS[o].name} ending` }); }
   // right-clicked flags stay hidden until their reason goes away and comes back

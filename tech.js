@@ -93,6 +93,7 @@ const MAG_TECHS = [
   ['forest', 1, 'school-life', 'life', 40, 'Speak with the Forest', 'A Mage can open a path through a border of trees after 2 minutes of casting. Lumber Mills are unaffected.'],
   ['commune', 2, 'forest', 'life', 100, 'Commune with Nature', 'Opening a forest path takes 1 minute.'],
   ['arboreal', 3, 'commune', 'life', 200, 'Arboreal Restoration', 'A Mage can close a forest path again with 1 minute of casting.'],
+  ['terrascape', 3, 'forest', 'life', 200, 'Terrascaping', 'A Mage grows a line of trees along an open border, with a forest path left open in the middle: only a path through the trees remains. 5 minutes of casting.'],
   // Necromancy (Death)
   ['curse1', 1, 'school-death', 'death', 40, 'Cursed Weapons I', 'Autocast: when an army with a Mage starts a battle, its weapons deal +5% damage. 5-minute cooldown per army.'],
   ['curse2', 2, 'curse1', 'death', 100, 'Cursed Weapons II', 'Cursed Weapons deal +10% damage; cooldown 3 minutes.'],
@@ -123,6 +124,7 @@ const MAG_TECHS = [
   ['mythicstave', 3, 'grandstave', '*', 200, 'Mythic Staves', 'Mages can carry a Mythic Stave: attack 9.'],
   ['crypticwand', 2, null, '*', 100, 'Cryptic Wands', 'Mages can carry a Cryptic Wand: attack 3 (Wand 2), leaving a hand free for a shield.'],
   ['enigmaticwand', 3, 'crypticwand', '*', 200, 'Enigmatic Wands', 'Mages can carry an Enigmatic Wand: attack 5, with a shield.'],
+  ['earthquake', 3, null, '*', 200, 'Earthquake', 'A Mage standing in an enemy province your army occupies can cast an Earthquake: after 2 minutes every building in that province is destroyed, and every wall on its borders.'],
   ['abandon', 3, null, '*', 300, 'Abandon Magic School', 'Costs 1000 gold to begin. When finished, your school and all of its spells are forgotten, and you can choose a new school.']
 ];
 for (const [id, tier, req, school, cost, name, blurb] of MAG_TECHS) TECHS.push({ id, tree: 'mag', tier, cost, req, school, name, blurb, gold: id === 'abandon' ? 1000 : 0 });

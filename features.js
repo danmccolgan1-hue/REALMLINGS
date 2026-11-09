@@ -33,13 +33,14 @@ function xIcon(kind) {
   else if (kind === 'rest') { g.beginPath(); g.moveTo(18, 70); g.lineTo(18, 40); g.lineTo(44, 20); g.lineTo(70, 40); g.lineTo(70, 70); g.closePath(); g.fillStyle = '#d9a46b'; g.fill(); g.lineWidth = 5; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.rect(36, 42, 16, 16); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 3; g.stroke(); g.beginPath(); g.moveTo(44, 45); g.lineTo(44, 55); g.moveTo(39, 50); g.lineTo(49, 50); g.lineWidth = 4; g.strokeStyle = '#c7362b'; g.stroke(); }
   else if (kind === 'rewall') { for (const [x, y] of [[22, 58], [44, 58], [66, 58], [33, 42], [55, 42], [44, 26]]) { g.beginPath(); g.rect(x - 10, y - 7, 20, 14); g.fillStyle = '#cfc8ba'; g.fill(); g.lineWidth = 3.5; g.strokeStyle = OL; g.stroke(); } g.beginPath(); g.moveTo(62, 14); g.lineTo(76, 28); stroke(5, '#8a6a3a'); }
   else if (kind === 'quake') { g.beginPath(); g.moveTo(10, 60); g.lineTo(78, 60); g.lineWidth = 7; g.strokeStyle = OL; g.stroke(); g.lineWidth = 3; g.strokeStyle = '#8a6a3a'; g.stroke(); g.beginPath(); g.moveTo(44, 60); g.lineTo(38, 48); g.lineTo(48, 40); g.lineTo(40, 26); stroke(4, '#1d1a22'); for (const [x, h] of [[20, 22], [32, 28], [56, 28], [68, 22]]) { g.beginPath(); g.rect(x - 5, 60 - h, 10, h); g.fillStyle = '#cfc8ba'; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke(); } }
+  else if (kind === 'shock') { for (const [x, y] of [[30, 60], [52, 60], [41, 46], [30, 32], [52, 32]]) { g.beginPath(); g.rect(x - 10, y - 6, 20, 12); g.fillStyle = '#cfc8ba'; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke(); } g.beginPath(); g.moveTo(44, 22); g.lineTo(38, 40); g.lineTo(46, 46); g.lineTo(38, 70); stroke(4, '#3b2a1a'); for (const r of [14, 24]) { g.beginPath(); g.arc(14, 46, r, -0.9, 0.9); stroke(4, '#6f8fc9'); } }
   else if (kind === 'path') { for (const [x, s] of [[26, 1], [62, 1]]) { g.beginPath(); g.moveTo(x, 70); g.lineTo(x, 50); stroke(4, '#8a6a3a'); g.beginPath(); g.arc(x, 40, 13 * s, 0, 7); g.fillStyle = '#4ba557'; g.fill(); g.lineWidth = 4; g.strokeStyle = OL; g.stroke(); } g.beginPath(); g.moveTo(44, 76); g.lineTo(44, 26); stroke(5, '#ffc93c'); g.beginPath(); g.moveTo(34, 36); g.lineTo(44, 24); g.lineTo(54, 36); stroke(5, '#ffc93c'); }
   return XICON[kind] = c.toDataURL();
 }
 
 // ---------- command card entries ----------
 CMD[WAYFINDER].push({ id: 'dismiss', cell: 15, key: '' });
-CMD[MASON].push({ id: 'road', cell: 13, key: '' }, { id: 'dismiss', cell: 15, key: '' });
+CMD[MASON].push({ id: 'road', cell: 13, key: '' }, { id: 'cancelbuild', cell: 14, key: '' }, { id: 'dismiss', cell: 15, key: '' });
 CMD_ARMY.push({ id: 'rest', cell: 8, key: '' }, { id: 'inspect', cell: 12, key: '' }, { id: 'retrofit', cell: 13, key: '' }, { id: 'xpath', cell: 14, key: '' }, { id: 'dismiss', cell: 15, key: '' });
 {
   const mageGet = Object.getOwnPropertyDescriptor(CMD, MAGE).get;

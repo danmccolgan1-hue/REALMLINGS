@@ -150,6 +150,7 @@ function freeSlot(prov, u) {
 // unexplored: everything else
 function computeFog() {
   const vis = new Set(), exp = new Set([...S.wf, ...S.known]);
+  for (const u of S.units) if (u.owner === ME && u.kind === 'army' && !S.known.has(u.prov)) { S.known.add(u.prov); exp.add(u.prov); }   // Z10: land your armies enter stays discovered
   for (const u of S.units) if (u.owner === ME && u.scouting !== u.prov) { vis.add(u.prov); if (u.kind === WAYFINDER && hasTech('farsight')) for (const { q } of openNbr[u.prov]) { vis.add(q); if (!S.known.has(q)) { S.known.add(q); exp.add(q); } } }   // far sight explores what it sees, for good (GPC18)
   for (const [p, b] of S.buildings) { if (b.owner !== ME) continue; vis.add(p); for (const n of openNbr[p]) exp.add(n.q); }
   for (const [p, o] of S.occ) if (o === ME) vis.add(p);   // an occupied province stays in view for its occupier
@@ -745,7 +746,7 @@ function startSurvey(u) {
 function startBuild(u) {
   u = u || S.selected.find(v => v.kind === MASON);
   if (!u) return;
-  if (u.moving) return toast('The Mason has to stop walking before he can build.', true);
+  if (u.moving) haltUnit(u);
   if (S.buildings.has(u.prov)) return toast('This province already has a building.', true);
   if (!S.surveyed.has(u.prov)) return toast('Survey this province with a Wayfinder first.', true);
   if (!bordersOwned(u.prov)) return toast('Outposts must border a province you own (one with a capital, fort or outpost).', true);
@@ -818,6 +819,8 @@ function nearestMason(p) {
 }
 
 const costText = c => Object.entries(c).map(([k, v]) => v + ' ' + k).join(', ');
+// stop a unit where it stands, dropping its route and queued orders
+function haltUnit(u) { u.path = []; u.moving = false; u.final = undefined; u.pending = null; u.surveyQueue = []; u.pendingSurvey = -1; u.autoWalk = null; u.slot = -1; }
 function cancelBuild(u) { if (u.build && u.build.paid) { const st = stockOf(u.owner); for (const k in u.build.paid) st[k] += u.build.paid[k]; } u.build = null; }
 function togglePause() { S.paused = !S.paused; $q('#paused').hidden = !S.paused || !$q('#settings').hidden; const pb = $q('#pauseBtn'); if (pb) { pb.setAttribute('aria-pressed', S.paused ? 'true' : 'false'); pb.innerHTML = S.paused ? PLAY_ICON : PAUSE_ICON; pb.setAttribute('aria-label', S.paused ? 'Resume' : 'Pause'); } if (typeof soundPaused === 'function') soundPaused(S.paused); }
 const PAUSE_ICON = '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><rect x="4.5" y="3.5" width="4" height="13" rx="1" fill="currentColor"/><rect x="11.5" y="3.5" width="4" height="13" rx="1" fill="currentColor"/></svg>', PLAY_ICON = '<svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M6 3.5v13l10-6.5z" fill="currentColor"/></svg>';
@@ -886,13 +889,13 @@ function update(realT) {
           if (nationOf(u.prov) === u.owner) {
             const list = S.extras.get(u.prov) || []; list.push({ type: u.build.type, slot: u.build.slot, born: t }); S.extras.set(u.prov, list);
             if (u.owner === ME) { toast(`${BUILD_DEFS[u.build.type].name} built.`); sfx('bld_done', { prov: u.prov }); computeIncome(); }
-          }
+          } else { cancelBuild(u); if (u.owner === ME) toast('The province is no longer yours: construction cancelled, resources refunded.', true); }
         } else if (!S.buildings.has(u.prov)) {
           S.buildings.set(u.prov, { stage: 0, born: t, owner: u.owner });
           territory = null; cacheDirty = true; computeIncome();
           outpostClaimed(u.prov, u.owner);
           if (u.owner === ME) { toast('Outpost built. Its neighbors are now explored.'); sfx('bld_outpost', { prov: u.prov }); }
-        }
+        } else if (u.build.type === 'outpost') { cancelBuild(u); if (u.owner === ME) toast('Someone claimed this province first: outpost cancelled, resources refunded.', true); }
         if (u.owner !== ME) aiBuilt(u);
         u.build = null;
       }
@@ -1258,7 +1261,7 @@ function drawGame(g, t) {
   for (const u of S.units) if ((u.owner === ME || (S.visible.has(u.prov) && stealthSeen(u)) || armyDetected(u) || (u.bandit && u.seen && S.explored.has(u.prov))) && u.x > vx0 && u.x < vx1 && u.y > vy0 && u.y < vy1) items.push({ y: u.y, f: () => drawUnit(g, u, t) });
   for (const b of S.battles) if (S.visible.has(b.prov)) items.push({ y: battleCenter(b.prov)[1] - 4, f: () => drawBattle(g, b, t) });
   items.sort((a, b) => a.y - b.y).forEach(it => it.f());
-  for (const [p, at] of S.surveyed) if (S.explored.has(p) && !S.battles.some(b => b.prov === p)) drawYieldBadge(g, p, t - at);
+  if (VIEW.res) for (const [p, at] of S.surveyed) if (S.explored.has(p) && !S.battles.some(b => b.prov === p)) drawYieldBadge(g, p, t - at);
   drawMoveMarks(g);       // a golden X where units were just sent
   drawProvLabels(g, t);   // GC04 / GC05: province names under their resources, your nation's name over its land
   drawSetpieces(g, t);
@@ -1450,6 +1453,7 @@ function drawArmy(g, u, t) {
   if (!u.monster) drawArmyFlag(g, u, u.x + halfW + 4 * K, u.y + (rows - 1) * gy / 2 + 2, top - 2 * K, t, K);
   // GC12: a thin health bar above the army; GC10: its power below
   drawArmyHealth(g, u, u.x, top - 5 * K, Math.min(56 * K, halfW * 1.6), K);
+  if (u.retro) drawRetroBar(g, u, u.x, top - 14 * K, Math.min(56 * K, halfW * 1.6), K);   // Z5
   drawArmyPower(g, u, u.x, u.y + ry + 6 * K, t);
   drawMagicFx(g, u, u.x, top - 22 * K, t);
   if (hordeActive(u)) drawHordeMark(g, u.x - halfW - 8 * K, top, t);
@@ -1951,7 +1955,7 @@ function cmdInfo(id) {
     return { name: 'Survey', desc: 'Walk a loop around this province to reveal its resources and any Hidden Gold Deposit. To survey elsewhere, Ctrl+right-click a province and pick Survey; hold Shift to queue several.' + (q ? ` ${q} queued.` : ''), cost: null, why: why || (here ? null : 'This province is already surveyed'), icon: surveyIcon };
   }
   const m = S.selected.find(v => v.kind === MASON), d = type === 'outpost' ? { name: 'Outpost', cost: OUTPOST_COST } : BUILD_DEFS[type];
-  let why = !m ? 'No Mason selected' : m.moving ? 'He is walking' : m.build ? 'He is already building' : buildCheck(m.prov, type);
+  let why = !m ? 'No Mason selected' : m.build ? 'He is already building' : buildCheck(m.prov, type);   // Z3: walking is fine, he stops and builds where he is
   const desc = type === 'outpost' ? 'Claims this province. It must be surveyed and border your land.' : d.gives ? 'Adds ' + Object.entries(d.gives).map(([k, v]) => '+' + v + ' ' + k).join(', ') + ' every 10 s.' + (type === 'farm' ? ' Up to 4 per province.' : type === 'lumber' ? ' One per tree border.' : '') + (m && owned(m.prov) && buildCap(m.prov, type) > 1 ? ` ${countOf(m.prov, type)}/${buildCap(m.prov, type)} here.` : '') : type === 'barracks' ? 'Trains the infantry you design in the Armory. With a Stable in the same province, your cavalry designs too.' : type === 'stable' ? 'Lets a Barracks in this province train Cavalry.' : '';
   return { name: d.name, desc: (desc || d.blurb || '') + (d.upkeep ? ' Upkeep every 10 s: ' + Object.entries(d.upkeep).map(([k, v]) => v + ' ' + k).join(', ') + '.' : '') + ' Builds where the Mason stands in ' + buildTime(type) + ' s.', cost: d.cost, why, icon: buildThumb(type) };
 }
@@ -1972,6 +1976,8 @@ function cmdUse(id) {
   if (what === 'combine') { combineArmies(S.selected.filter(v => v.kind === 'army')); return; }
   if (extraCmdUse(id)) return;
   const m = S.selected.find(v => v.kind === MASON); if (!m) return;
+  if (what === 'cancelbuild') { if (m.build) { cancelBuild(m); toast('Construction cancelled. Resources refunded.'); cmdKey = ''; } return; }
+  if (m.moving) haltUnit(m);
   type === 'outpost' ? startBuild(m) : beginExtra(m, type);
 }
 // when a capital or barracks is selected the command card trains units: top row trains, bottom row is the queue
@@ -2228,6 +2234,7 @@ function renderMiniLayer() {
   for (const i of S.explored) {
     const P = G.provs[i]; g.beginPath(); P.pts.forEach(([x, y], j) => j ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath();
     g.fillStyle = TER[P.terrain].base; g.fill();
+    const own = VIEW.miniColor ? nationOf(i) : null; if (own && PLAYERS[own]) { g.fillStyle = PLAYERS[own].color; g.globalAlpha = 0.8; g.fill(); g.globalAlpha = 1; }   // Z14
     if (!S.visible.has(i)) { g.fillStyle = 'rgba(16,24,46,0.28)'; g.fill(); }
     g.lineWidth = 1.2 / k; g.strokeStyle = 'rgba(29,26,34,0.45)'; g.stroke();
   }
