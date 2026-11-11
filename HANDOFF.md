@@ -27,8 +27,9 @@ https://claude.ai/artifact/JDKKiwqrMhuaBoEAdBDMSV.
 
 ### Publishing
 
-- **Current version: v85** (v85 the Y list: menu screens, start paused, alliance flags; see the v85 section at the end)
-- (previously: v84 the Swamplings) (v83) (v72 AI nations; v73 lighter bitmap cache; v74 error-proof game loop; v75 province window fix, war, Wayfinder and meeting changes; v76 left column and UI size; v77 the GPC01–GPC31 gameplay list; v78 the GC/IC/T list: graphics, interface and text; v79 the SMA small map additions; v80 Quick queue setting; v81 popup buttons and move marker; v82 the Z list; v83 Earthquake is a 2-minute cast). After each publish, update this line with the version number the publish result reports.
+- **Current version: v86** (v86 Swampling fixes, queued retrofits, stealth, shared vision, Total Victory picks, spell animations; see the v86 section at the end)
+- (previously: v85 the Y list) (v84 the Swamplings) (v83)
+- **The page is `index.html` (lowercase)**: GitHub Pages only serves that name. (v72 AI nations; v73 lighter bitmap cache; v74 error-proof game loop; v75 province window fix, war, Wayfinder and meeting changes; v76 left column and UI size; v77 the GPC01–GPC31 gameplay list; v78 the GC/IC/T list: graphics, interface and text; v79 the SMA small map additions; v80 Quick queue setting; v81 popup buttons and move marker; v82 the Z list; v83 Earthquake is a 2-minute cast). After each publish, update this line with the version number the publish result reports.
 - Name project zips with that version, e.g. `realmlings_v76.zip`.
 
 - Publish `realmlings_play.html` to the URL above (pass it as `url`; read the artifact first, since it is from an earlier conversation).
@@ -288,3 +289,19 @@ Not play-tested by the user yet. Assembled, `node --check`ed, and driven in head
 - **Y6 Menu**: two screens in the title card: `#mMain` (Music, Sound effects, New Game `#mNew`, How to play) and `#mSetup` (seed, nation, race, color, flag, practice, opponents, Start game, Back `#mBack`; Esc goes back). `menuScreen('main' | 'setup')`. The parade above both follows the chosen race; the race is saved again at game start (`racesSave`).
 - **Y7 Pause audio**: pausing no longer suspends the audio context or mutes sound effects (`sfx` ignores `S.paused`); music plays at half volume while paused (`musicTarget()` in menu.js). The battle clash loop still stops while paused, since battles are frozen.
 - Test hooks: `window.__v85` (`metScout`, `showMetScout`, `meetNation`, `endAlliance`, `nbr`).
+- **GitHub Pages:** the page must be named `index.html` (lowercase). v83–v85 wrote `Index.html`, which GitHub treats as a different file, so the site kept serving the old v81 `index.html`. `assemble_game.py` now writes `index.html`.
+
+## v86: Swampling fixes and general changes
+
+Not play-tested by the user yet. Assembled, `node --check`ed, driven in headless Chromium (outliner, command tabs, two armies retrofitting in one Barracks queue, Ogre retrofit at an Ogre Cave, Total Victory pick, sneaking path into a peaceful nation, allied vision, Fiery Weapons in a real battle, screenshots of each spell effect, 30 minutes fast-forwarded per race, no errors).
+
+- **Outliner** (features.js `armiesTabHTML`): Mage section, army rows and the limit tooltip use `UNIT_DEFS[MAGE].name` (Warlocks). magic.js "joined the army" toast too.
+- **Command tabs / portraits**: `portrait('army')` draws `footmanOf(ME)` (Axe Berserker for Swamplings), so the Army tab and army rows no longer show a Realmling Footman.
+- **Retrofit (gpc.js GPC14, rewritten)**: `RETRO_TIME = 2` s per soldier. The army marches to the nearest site (`retroSite`): Barracks for infantry, Barracks + Stable for Realmling cavalry, **Ogre Cave for Ogres** (`barracksOk(p, o, cav)`; `retroKey` → `'stable:p'` for Swampling cavalry). On arrival `beginRetro` pays and pushes a job `{ kind: design, retro: true, army, n, dur, paid, t0, prov, key }` into that building's **training queue** (`S.queues[key]`); `a.retro` points at the job. One job runs at a time per building; it blocks training there. `stepTraining` calls `finishRetro(q)` when the job ends; `trainTime(kind, q)` returns `q.dur` for jobs. `stepRetrofits` cancels (with refund) when the army moves, fights or leaves, and drops jobs whose army is gone. Cancelling from the queue (`cancelTrain`) clears `a.retro`. The army's bar shows ⏳ while waiting. Resting/healing still happens at a Barracks (`restSite` unchanged).
+- **Fiery Weapons**: it always worked, but v78's battle-magic icon wrapper ran before swamp.js set `a.fiery`, so no icon showed. Now the Fiery icon joins `a.mfx`; each round whose blows land double sets `a.fieryHit` (in `sideStrength`) and `drawPyromancy` draws a flame burst with "🔥 ×2"; the battle-end toast counts the double blows (`a.fieryHits`).
+- **Fire traps**: confirmed province-wide (any hostile army that enters any part of the province springs it, `stepPyromancy`). The trapped province's border now smoulders (dashed orange) while a trap is set; tech text says "any part of that province".
+- **Stealth**: `nationOk` lets a sneaking Wayfinder / Swampstrider (`u.stealth`) enter any nation's land, war or not; `outpostClaimed` doesn't push a sneaking one out.
+- **Allies share vision**: `computeFog` adds every province holding an ally's unit or settlement.
+- **Total Victory** (war.js `totalPick`): the 5 provinces nearest the winner's capital by walking distance (`walkDistFrom`: Dijkstra over `openNbr`, edge = distance between province centers). Unreachable provinces are skipped; the loser's capital is never taken. Annexing (5 or fewer provinces) unchanged.
+- **Spell animations** (gpc.js end): `spellFx(kind, caster, q, edge)` on the strike, drawn by `drawSpellFx` after battle effects: **Fireball** (Swampling Shockwave) arcs to the wall and bursts; **Shockwave** rolls blue rings to the wall, which cracks in a flash; **Earthquake** splits the province with cracks and dust while the ground shakes. While casting, a Warlock's Fireball swells over his head and an Earthquake caster raises occasional dust.
+- Test hooks: `window.__v86` (`findPath`, `computeFog`, `spellFx`, `totalPick`, `walkDistFrom`, `retroSite`, `beginRetro`, `finishRetro`).

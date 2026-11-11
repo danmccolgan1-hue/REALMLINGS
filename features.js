@@ -76,8 +76,8 @@ function extraCmdInfo(id) {
   }
   if (what === 'retrofit') {
     const a = S.selected.find(v => v.kind === 'army' && v.owner === ME);
-    const why = !a ? 'No army selected' : a.battle ? 'Not during battle' : a.retro ? `Retrofitting: ${Math.ceil(a.retro.dur - (S.t - a.retro.t0))} s left` : null;
-    return { name: 'Retrofit', desc: `Re-equip this army’s soldiers with another Armory design of the same kind; you pay the difference in gear cost. It takes ${RETRO_TIME} s per soldier at one of your Barracks (cavalry need a Barracks with a Stable); the army marches to the nearest one by itself.`, cost: null, why, icon: xIcon('retrofit') };
+    const why = !a ? 'No army selected' : a.battle ? 'Not during battle' : a.retro ? (a.retro.t0 === null ? 'Waiting its turn to retrofit' : `Retrofitting: ${Math.ceil(a.retro.dur - (S.t - a.retro.t0))} s left`) : null;
+    return { name: 'Retrofit', desc: `Re-equip this army’s soldiers with another Armory design of the same kind; you pay the difference in gear cost. It takes ${RETRO_TIME} s per soldier ${retroWhere(ME)}; the army marches to the nearest one by itself. Retrofitting is queued like training: each building works on one army at a time.`, cost: null, why, icon: xIcon('retrofit') };
   }
   if (what === 'rest') {
     const a = S.selected.find(v => v.kind === 'army' && v.owner === ME);
@@ -111,7 +111,7 @@ function extraCmdUse(id) {
   }
   if (what === 'road') { const m = S.selected.find(v => v.kind === MASON), q = m && masonBorder(m); if (m && q !== null) startLink(m, q, 'road'); return true; }
   if (what === 'inspect') { const a = S.selected.find(v => v.kind === 'army'); if (a) openInspect(a); return true; }
-  if (what === 'retrofit') { const a = S.selected.find(v => v.kind === 'army'); if (!a) return true; if (restSite(a) < 0) { sfx('ui_error'); toast('Retrofitting needs one of your Barracks, and none can be reached.', true); return true; } showRetrofit(a); return true; }
+  if (what === 'retrofit') { const a = S.selected.find(v => v.kind === 'army'); if (!a) return true; showRetrofit(a); return true; }
   if (what === 'rest') { const as = S.selected.filter(v => v.kind === 'army' && v.owner === ME && !v.battle); for (const a of as) sendToRest(a); return true; }
   if (what === 'xpath') { const c = selCaster(); if (!c) return true; pathAim = c; cv.style.cursor = 'crosshair'; toast('Click a neighboring province to open a path to it. Right-click or Esc cancels.'); return true; }
   return false;
@@ -200,7 +200,7 @@ function retrofitNow(a, to) {
   computeIncome(); cmdKey = ''; armKey = '';
   return n;
 }
-// GPC14: retrofitting takes 10 s per soldier at a Barracks (with a Stable for cavalry); the army walks to the nearest one first
+// GPC14 (v86): retrofitting takes 2 s per soldier, queued at a Barracks (with a Stable for Realmling cavalry; at an Ogre Cave for Ogres); the army walks to the nearest one first
 function retrofitArmies(armies, to) {
   let none = 0, sent = 0, began = 0;
   for (const a of armies) {
@@ -213,8 +213,9 @@ function retrofitArmies(armies, to) {
     else if (order(a, dest, true)) { sent++; }
     else { a.retroWant = null; none++; }
   }
-  if (none) { sfx('ui_error'); toast(`No Barracks${DSTATS[to].cav ? ' with a Stable' : ''} of yours can be reached to retrofit ${none > 1 ? none + ' armies' : 'that army'}.`, true); }
-  if (sent) toast(`${sent > 1 ? sent + ' armies march' : 'The army marches'} to the nearest Barracks${DSTATS[to].cav ? ' with a Stable' : ''} to retrofit.`);
+  const site = retroSiteName(ME, !!DSTATS[to].cav);
+  if (none) { sfx('ui_error'); toast(`No ${site} of yours can be reached to retrofit ${none > 1 ? none + ' armies' : 'that army'}.`, true); }
+  if (sent) toast(`${sent > 1 ? sent + ' armies march' : 'The army marches'} to the nearest ${site} to retrofit.`);
   cmdKey = '';
 }
 function showRetrofit(a) {
@@ -296,10 +297,11 @@ setUISize(UI.z, false);
 function armyStatus(a) { return a.battle && !a.retreating ? 'in battle' : a.retreatHome ? 'retreating home' : a.retreating ? 'retreating' : a.exiting ? 'marching home' : a.sieging != null ? 'battering a wall' : a.retro ? 'retrofitting' : a.rest ? 'resting' : a.moving ? 'marching' : 'standing'; }
 function armiesTabHTML() {
   const list = S.units.filter(v => v.kind === 'army' && v.owner === ME), mages = S.units.filter(v => v.kind === MAGE && v.owner === ME);
-  const row = a => { const m = a.troops[MAGE] || 0, horde = hordeActive(a); return `<button type="button" class="ro-u${isSel(a) ? ' on' : ''}" data-uid="${a.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(Object.keys(a.troops).find(k => a.troops[k] && k !== MAGE) || (m ? MAGE : 'd-sword'))}"><span><b>${escHTML(a.name)}</b><small><i class="${a.battle ? 'idle' : 'busy'}" style="${a.battle ? 'background:#c7362b' : ''}"></i>${troopCount(a) - m}${m ? ` + ${m} Mage${m > 1 ? 's' : ''}` : ''}${horde ? ' · Horde' : ''} · ${armyStatus(a)} · ${S.explored.has(a.prov) ? provName(a.prov) : 'fog'}</small></span><em class="ro-pow" title="Army power">⚔ ${powerOf(a)}</em></button>`; };
+  const MN = UNIT_DEFS[MAGE].name, MNs = MN + 's';   // Mages, or Warlocks for Swamplings
+  const row = a => { const m = a.troops[MAGE] || 0, horde = hordeActive(a); return `<button type="button" class="ro-u${isSel(a) ? ' on' : ''}" data-uid="${a.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(Object.keys(a.troops).find(k => a.troops[k] && k !== MAGE) || (m ? MAGE : 'army'))}"><span><b>${escHTML(a.name)}</b><small><i class="${a.battle ? 'idle' : 'busy'}" style="${a.battle ? 'background:#c7362b' : ''}"></i>${troopCount(a) - m}${m ? ` + ${m} ${m > 1 ? MNs : MN}` : ''}${horde ? ' · Horde' : ''} · ${armyStatus(a)} · ${S.explored.has(a.prov) ? provName(a.prov) : 'fog'}</small></span><em class="ro-pow" title="Army power">⚔ ${powerOf(a)}</em></button>`; };
   const mrow = u => `<button type="button" class="ro-u${isSel(u) ? ' on' : ''}" data-uid="${u.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(MAGE)}"><span><b>${u.name}</b><small><i class="${u.cast ? 'busy' : u.moving ? 'busy' : 'idle'}"></i>${u.cast ? 'casting' : u.moving ? 'walking' : 'idle'} · ${S.explored.has(u.prov) ? provName(u.prov) : 'fog'}</small></span></button>`;
   const total = unitTotal(MAGE), cap = mageCap(), inArmies = list.reduce((n, a) => n + (a.troops[MAGE] || 0), 0);
-  const mageSec = `<div class="ro-sec" title="Mages you have, counting those in armies and in training, out of the Mage limit. Mage Academy raises the limit.">Mages <span class="${total >= cap ? 'full' : ''}">${total}/${cap}</span></div>` +
+  const mageSec = `<div class="ro-sec" title="${MNs} you have, counting those in armies and in training, out of the ${MN} limit. ${MN} Academy raises the limit.">${MNs} <span class="${total >= cap ? 'full' : ''}">${total}/${cap}</span></div>` +
     (mages.length ? mages.map(mrow).join('') : '') + (inArmies ? `<div class="ro-none">${inArmies} in armies</div>` : '') + (!mages.length && !inArmies ? `<div class="ro-none">${total ? 'In training' : 'None yet'}</div>` : '');
   return `<div class="ro-sec">Armies <span>${list.length}</span></div>` + (list.length ? list.map(row).join('') : '<div class="ro-none">No armies yet</div>') + mageSec + barracksSec();
 }
@@ -307,7 +309,7 @@ function armiesTabHTML() {
 const myBarracks = () => { const out = []; for (const [p, l] of S.extras) if (owned(p)) for (const e of l) if (e.type === 'barracks') out.push({ p, slot: e.slot, stable: l.some(x => x.type === 'stable') }); return out; };
 function barracksSec() {
   const list = myBarracks();
-  const row = bk => { const Q = S.queues['barracks:' + bk.p] || [], on = S.selKind === 'barracks' && S.selBuilding === bk.p; return `<button type="button" class="ro-u${on ? ' on' : ''}" data-bk="${bk.p}@${bk.slot}" title="Click to select and train, double-click to go to"><img alt="" src="${buildThumb('barracks')}"><span><b>${provName(bk.p)}</b><small><i class="${Q.length ? 'busy' : 'idle'}"></i>${Q.length ? `training ${Q.length}` : 'idle'} · ${bk.stable ? 'infantry and cavalry' : 'infantry'}</small></span></button>`; };
+  const row = bk => { const Q = S.queues['barracks:' + bk.p] || [], on = S.selKind === 'barracks' && S.selBuilding === bk.p; return `<button type="button" class="ro-u${on ? ' on' : ''}" data-bk="${bk.p}@${bk.slot}" title="Click to select and train, double-click to go to"><img alt="" src="${buildThumb('barracks')}"><span><b>${provName(bk.p)}</b><small><i class="${Q.length ? 'busy' : 'idle'}"></i>${Q.length ? `training ${Q.length}` : 'idle'} · ${Q.some(q => q.retro) ? 'retrofitting · ' : ''}${bk.stable && !isSw(ME) ? 'infantry and cavalry' : 'infantry'}</small></span></button>`; };
   return `<div class="ro-sec">Barracks <span>${list.length}</span></div>` + (list.length ? list.map(row).join('') : '<div class="ro-none">None yet</div>');
 }
 const armiesKey = () => myBarracks().map(bk => bk.p + (bk.stable ? 's' : '') + ':' + (S.queues['barracks:' + bk.p] || []).length).join(',') + (S.selKind === 'barracks' ? '@' + S.selBuilding : '') + '#' + S.units.filter(v => (v.kind === 'army' || v.kind === MAGE) && v.owner === ME).map(a => a.id + a.name + ':' + (a.kind === 'army' ? troopCount(a) + ':' + (a.troops[MAGE] || 0) + armyStatus(a) + hordeActive(a) + powerOf(a) : (a.cast ? 'c' : '') + (a.moving ? 'm' : '')) + a.prov + (isSel(a) ? '*' : '')).join('|') + '#' + unitTotal(MAGE) + '/' + mageCap();

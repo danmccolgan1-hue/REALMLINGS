@@ -139,7 +139,7 @@ const MAG_TECHS = [
   ['fiery2', 2, 'fiery1', 'pyro', 100, 'Fiery Weapons II', 'Fiery Weapons: a 10% chance of a double blow; cooldown 3 minutes.'],
   ['fiery3', 3, 'fiery2', 'pyro', 200, 'Fiery Weapons III', 'Fiery Weapons: a 15% chance of a double blow; cooldown 90 seconds.'],
   ['scoutpyre', 1, 'school-pyro', 'pyro', 40, 'Scouting Pyre', 'A Warlock lights a pyre where he stands (50 wood). For 2 minutes it sees every neighboring province in its line of sight. It is not a building. 1-minute cooldown per Warlock.'],
-  ['firetrap', 1, 'school-pyro', 'pyro', 40, 'Fire Trap', 'A Warlock buries a fire trap in his province. The next enemy army to enter is engulfed in flame: enough to kill 3 Footmen. One trap per Warlock.'],
+  ['firetrap', 1, 'school-pyro', 'pyro', 40, 'Fire Trap', 'A Warlock buries a fire trap in his province. The next enemy army to enter any part of that province is engulfed in flame: enough to kill 3 Footmen. One trap per Warlock.'],
   ['blazetrap', 2, 'firetrap', 'pyro', 100, 'Blazing Trap', 'Fire traps burn hotter: enough to kill 6 Footmen.'],
   ['molttrap', 3, 'blazetrap', 'pyro', 200, 'Molten Trap', 'Fire traps become molten: enough to kill 9 Footmen.'],
   ['sacredpyre', 1, 'school-pyro', 'pyro', 60, 'Sacred Pyre', 'A Warlock can raise a Sacred Pyre on a free building plot where he stands (200 wood, 1 minute). It burns 10 wood every 10 s for 20 gold. It can be built up into a Grand Pyre (600 wood, 1 minute) that burns 20 wood for 50 gold. One per living Warlock.'],

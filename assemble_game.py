@@ -129,5 +129,5 @@ script = "(function () {\n'use strict';\n" + r + "\n" + open('game.js').read().r
 shell=open('game_shell.html').read()
 out = shell + "\n<script>\n" + open('gen.js').read() + "\n</script>\n<script>\n" + open('iso.js').read() + "\n</script>\n<script>\n" + open('buildings.js').read() + "\n</script>\n<script>\n" + open('buildings2.js').read() + "\n</script>\n<script>\n" + open('swampbld.js').read() + "\n</script>\n<script>\n" + script + "\n</script>\n"
 open('realmlings_play.html','w').write(out)
-open('Index.html','w').write(out)   # the same page under the name the project folder uses
+open('index.html','w').write(out)   # the same page as index.html (lowercase: GitHub Pages only serves index.html, and GitHub is case-sensitive)
 print('ok', len(out))

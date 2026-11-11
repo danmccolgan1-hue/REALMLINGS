@@ -28,7 +28,7 @@ const OUTPOST_COST = { wood: 25 };
 const SURVEY_TIME = 30;  // seconds
 const CAPITAL_BONUS = { gold: 5, wood: 5, food: 5 };
 // seconds per unit: Wayfinders and Masons 12 s, soldiers 18 s, Mages 30 s
-const trainTime = kind => kind === 'mage:A' ? 30 : (kind === 'pioneer:B' || kind === 'mason:A') ? 12 : 18;
+const trainTime = (kind, q) => q && q.retro ? q.dur : kind === 'mage:A' ? 30 : (kind === 'pioneer:B' || kind === 'mason:A') ? 12 : 18;   // a retrofit in a Barracks queue takes its own time
 const UNIT_DEFS = {
   'pioneer:B': { name: 'Wayfinder', cost: { gold: 50 }, upkeep: { food: 1 }, blurb: 'Explores fog and surveys land.' },
   'mason:A': { name: 'Mason', cost: { gold: 50 }, upkeep: { food: 1 }, blurb: 'Builds outposts and buildings.' }
@@ -160,6 +160,9 @@ function computeFog() {
   for (const u of S.units) if (u.owner === ME && u.scouting !== u.prov) { vis.add(u.prov); if (u.kind === WAYFINDER && hasTech('farsight')) for (const { q } of openNbr[u.prov]) { vis.add(q); if (!S.known.has(q)) { S.known.add(q); exp.add(q); } } }   // far sight explores what it sees, for good (GPC18)
   for (const [p, b] of S.buildings) { if (b.owner !== ME) continue; vis.add(p); for (const n of openNbr[p]) exp.add(n.q); }
   for (const [p, o] of S.occ) if (o === ME) vis.add(p);   // an occupied province stays in view for its occupier
+  // allies share vision: whatever their units and settlements stand in, you see too
+  for (const u of S.units) if (u.owner !== ME && u.owner > 0 && allied(ME, u.owner)) vis.add(u.prov);
+  for (const [p, b] of S.buildings) if (b.owner !== ME && allied(ME, b.owner)) vis.add(p);
   towerSight(vis); pyreSight(vis);
   if (S.reveal) for (let i = 0; i < G.provs.length; i++) vis.add(i);   // debug: lift the fog
   for (const p of vis) exp.add(p);
@@ -172,7 +175,8 @@ const fogState = i => S.visible.has(i) ? 'visible' : S.explored.has(i) ? 'explor
 // at peace, armies stay out of other nations' land (armies heading home after a peace deal are let through)
 // every unit may only walk through its own land, unclaimed land, the land of a nation it is at war with, or the land of a nation it has a truce with (units marching home after a peace deal excepted)
 // a truce after a peace deal opens the border too (GPC23)
-const nationOk = (u, q) => { if (u.exiting || u.owner === RAIDERS) return true; const n = nationOf(q); return !n || n === u.owner || hostile(u.owner, n) || truceLeft(u.owner, n) > 0; };
+const nationOk = (u, q) => { if (u.exiting || u.owner === RAIDERS || (u.kind === WAYFINDER && u.stealth)) return true;   // a sneaking Wayfinder / Swampstrider may cross anyone's land, war or not
+  const n = nationOf(q); return !n || n === u.owner || hostile(u.owner, n) || truceLeft(u.owner, n) > 0; };
 // at war, any unit may march into unexplored land that belongs to the enemy
 const canEnter = (u, q) => (u.owner !== ME || (u.kind === WAYFINDER && (!u.autoWalk || q === u.autoWalk.to)) || u.exiting || S.explored.has(q) || (S.wars.length && nationOf(q) && hostile(ME, nationOf(q)))) && nationOk(u, q) && !(u.kind === WAYFINDER && u.owner === ME && banditsSeenIn(q)) && !(u.kind === MASON && masonDanger(u, q));
 // Masons won't walk into a province holding a hostile army they know about (GPC05)
@@ -325,7 +329,7 @@ const UNIT_LIMIT = { 'pioneer:B': 3, 'mason:A': 3 };
 // Mages count wherever they are: on their own, inside an army, or in training
 function unitTotal(kind) { return S.units.filter(v => v.owner === ME && v.kind === kind).length + Object.values(S.queues).reduce((n, q) => n + q.filter(e => e.kind === kind).length, 0) + (kind === MAGE ? S.units.reduce((n, v) => n + (v.owner === ME && v.kind === 'army' ? (v.troops[MAGE] || 0) : 0), 0) : 0); }
 const unitLimit = kind => kind === MAGE ? mageCap() : kind === MASON ? UNIT_LIMIT[kind] + repLv('rep-masons') : kind === WAYFINDER ? UNIT_LIMIT[kind] + repLv('rep-wayfinders') : UNIT_LIMIT[kind];
-function limitWhy(kind) { const L = unitLimit(kind); return L && unitTotal(kind) >= L ? `Limit reached: ${L} ${UNIT_DEFS[kind].name}${L > 1 ? 's' : ''}` + (kind === MAGE ? ' · research Mage Academy for more' : '') : null; }
+function limitWhy(kind) { const L = unitLimit(kind); return L && unitTotal(kind) >= L ? `Limit reached: ${L} ${UNIT_DEFS[kind].name}${L > 1 ? 's' : ''}` + (kind === MAGE ? ` · research ${UNIT_DEFS[MAGE].name} Academy for more` : '') : null; }
 function train(kind) {
   const d = UNIT_DEFS[kind], key = srcKey();
   if (!trainable(S.selKind, S.selBuilding).includes(kind)) return;
@@ -340,14 +344,16 @@ function cancelTrain(i) {
   const Q = S.queues[srcKey()] || [], q = Q[i]; if (!q) return;
   for (const k in q.paid) S.stock[k] += q.paid[k];
   Q.splice(i, 1); if (i === 0 && Q[0]) Q[0].t0 = null;
-  toast('Training cancelled. Resources refunded.'); capPanelKey = '';
+  if (q.retro) { const a = S.units.find(v => v.id === q.army); if (a && a.retro === q) a.retro = null; cmdKey = ''; }
+  toast(q.retro ? 'Retrofit cancelled. Resources refunded.' : 'Training cancelled. Resources refunded.'); capPanelKey = '';
 }
 function stepTraining(t) {
   for (const key in S.queues) {
     const Q = S.queues[key], q = Q[0]; if (!q) continue;
     if (q.t0 === null) q.t0 = t;
-    if (t - q.t0 < trainTime(q.kind)) continue;
+    if (t - q.t0 < trainTime(q.kind, q)) continue;
     Q.shift();
+    if (q.retro) { finishRetro(q); capPanelKey = ''; continue; }
     const spot = srcSpot(key), d = UNIT_DEFS[q.kind];
     if (MILITARY.has(q.kind)) {
       let a = S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === spot.prov && !v.moving && !v.battle);
@@ -465,7 +471,7 @@ function sideStrength(armies, prov, defender, foe) {
   const T = TERRAIN_MOD[world.provinces[prov].terrain], cavFrac = foe ? foe.cavFrac : 0;
   // Swamplings in a swamp: +20% damage, and their Ogres don't suffer the cavalry penalty; Fiery Weapons can make a round's blows land twice as hard
   const swampy = world.provinces[prov].terrain === 'swamp';
-  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(a.troops[k], st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (1 + (a.curse || 0)); } }
+  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; if (crit > 1) { a.fieryHit = S.t; a.fieryHits = (a.fieryHits || 0) + 1; } for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(a.troops[k], st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (1 + (a.curse || 0)); } }
   return s;
 }
 const rawStrength = armies => armies.reduce((n, a) => n + Object.entries(a.troops).reduce((m, [k, c]) => { const st = statsOf(k, a.owner); return m + c * st.atk * (hpOf(a, k) / 30) / (1 - st.red); }, 0), 0);
@@ -1286,13 +1292,14 @@ function drawGame(g, t) {
       g.beginPath(); g.ellipse(x, y + 2, rx * pulse, ry * pulse, 0, 0, 7); g.lineWidth = 7; g.strokeStyle = OL; g.stroke(); g.lineWidth = 4; g.strokeStyle = '#ffc93c'; g.stroke();
     }
   }
-  for (const key in S.queues) { const q = S.queues[key][0]; if (q && q.t0 !== null) { const sp = srcSpot(key); if (S.visible.has(sp.prov)) drawProgress(g, { prov: sp.prov, ox: sp.ox, oy: sp.oy, t0: q.t0 }, t, trainTime(q.kind), '#7fb0ff', 'Training', sp.yOff); } }
+  for (const key in S.queues) { const q = S.queues[key][0]; if (q && q.t0 !== null) { const sp = srcSpot(key); if (S.visible.has(sp.prov)) drawProgress(g, { prov: sp.prov, ox: sp.ox, oy: sp.oy, t0: q.t0 }, t, trainTime(q.kind, q), '#7fb0ff', q.retro ? 'Retrofit' : 'Training', sp.yOff); } }
   for (const u of S.units) if (u.survey) drawSurvey(g, u.survey, t);
   drawSurveyQueue(g, t);
   for (const u of S.units) if (u.build && S.visible.has(u.build.prov)) drawProgress(g, u.build, t);
   for (const [p, u] of S.upgrades) if (S.visible.has(p)) drawProgress(g, { prov: p, t0: u.t0 }, t, FORT_UPGRADE.time, '#9be37f', 'Fort', -96);
   drawPops(g, t);
   drawBattleFx(g, t);
+  drawSpellFx(g, t);
   drawArrows(g, t);
 }
 // each province gets one of ten camp layouts, dressed for its terrain
@@ -1838,7 +1845,7 @@ function capPanel(t) {
   panel.querySelectorAll('canvas[data-kind]').forEach(c => { const g = c.getContext('2d'); g.clearRect(0, 0, c.width, c.height); const cav = isCav(c.dataset.kind); RealmIso.drawUnitAt(g, c.dataset.kind, Math.PI / 4, t, 48, cav ? 104 : 98, cav ? 0.5 : 0.85); });
   const Q = S.queues[srcKey()] || [];
   const key = RES.map(k => S.stock[k]).join(',') + '|' + Q.length;
-  const f = Q[0] && Q[0].t0 !== null ? Math.min(1, (t - Q[0].t0) / trainTime(Q[0].kind)) : 0;
+  const f = Q[0] && Q[0].t0 !== null ? Math.min(1, (t - Q[0].t0) / trainTime(Q[0].kind, Q[0])) : 0;
   if (key !== capPanelKey) {
     capPanelKey = key;
     panel.querySelectorAll('[data-train]').forEach(b => { const ok = canAfford(UNIT_DEFS[b.dataset.train].cost); b.disabled = !ok; b.textContent = ok ? 'Train' : 'Not enough'; });
@@ -1896,7 +1903,7 @@ const splitIcon = iconCanvas(g => { miniBanner(g, 30, 34, '#2f6fe0'); arrow(g, 4
 const retreatIcon = iconCanvas(g => { miniBanner(g, 52, 30, '#e3e6ec'); g.beginPath(); g.moveTo(70, 66); g.lineTo(18, 66); g.moveTo(30, 54); g.lineTo(18, 66); g.lineTo(30, 78); g.lineWidth = 11; g.strokeStyle = OL; g.stroke(); g.lineWidth = 6; g.strokeStyle = '#ffc93c'; g.stroke(); });
 const combineIcon = iconCanvas(g => { miniBanner(g, 18, 30, '#7fb0ff'); miniBanner(g, 56, 30, '#7fb0ff'); arrow(g, 20, 70, 40, 82); arrow(g, 66, 70, 48, 82); });
 function portrait(kind) {
-  if (kind === 'army') kind = 'd-sword';
+  if (kind === 'army') kind = footmanOf(ME);   // a Swampling army shows an Axe Berserker
   if (portraitURL[kind]) return portraitURL[kind];
   const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
   const cav = isCav(kind) && !isOgre(kind); drawUnitFor(g, kind, ME, false, Math.PI / 4, 0.4, 32, cav ? 60 : 62, cav ? 0.3 : isOgre(kind) ? 0.36 : 0.5);
@@ -1911,13 +1918,14 @@ function cmdInfo(id) {
     const d = UNIT_DEFS[type], Q = S.queues[srcKey()] || [];
     const lack = Object.keys(d.cost).filter(k => S.stock[k] < d.cost[k]);
     const extra = isOgre(type) ? ' Trained at an Ogre Cave. Joins the army standing in this province.' : isCav(type) ? ` Needs a ${BUILD_DEFS.stable.name} in this province. Joins the army standing here.` : MILITARY.has(type) ? ' Joins the army standing in this province.' : '';
-    const ds = DSTATS[type] ? statsOf(type, ME) : null, r1 = n => Math.round(n * 10) / 10, statLine = (ds ? ` Attack ${r1(ds.atk)}, health ${r1(ds.hp)}, armor ${Math.round(ds.red * 100)}%, speed ${r1(troopSpeed(type, ME) * 100) / 100}.` : '') + (type === MAGE ? ` Mages: ${unitTotal(MAGE)}/${mageCap()} (counting those in armies and in training).` : '');
+    const ds = DSTATS[type] ? statsOf(type, ME) : null, r1 = n => Math.round(n * 10) / 10, statLine = (ds ? ` Attack ${r1(ds.atk)}, health ${r1(ds.hp)}, armor ${Math.round(ds.red * 100)}%, speed ${r1(troopSpeed(type, ME) * 100) / 100}.` : '') + (type === MAGE ? ` ${UNIT_DEFS[MAGE].name}s: ${unitTotal(MAGE)}/${mageCap()} (counting those in armies and in training).` : '');
     return { name: 'Train ' + d.name, desc: `${d.blurb}${statLine}${extra} Takes ${trainTime(type)} s. Upkeep every 10 s: ${Object.entries(d.upkeep).map(([k, v]) => v + ' ' + k).join(', ')}.${Q.length ? ' ' + Q.length + ' already queued.' : ''}`, cost: d.cost, why: limitWhy(type) || (lack.length ? 'Need ' + lack.map(k => d.cost[k] + ' ' + k).join(', ') : null), icon: portrait(type) };
   }
   if (what === 'queue') {
     const q = (S.queues[srcKey()] || [])[+type];
     if (!q) return { name: 'Queue', desc: '', cost: null, why: 'Empty', icon: '' };
-    const left = q.t0 === null ? trainTime(q.kind) : Math.max(0, trainTime(q.kind) - (S.t - q.t0));
+    const left = q.t0 === null ? trainTime(q.kind, q) : Math.max(0, trainTime(q.kind, q) - (S.t - q.t0));
+    if (q.retro) { const a = S.units.find(v => v.id === q.army); return { name: `Retrofit ${a ? a.name : 'army'} to ${UNIT_DEFS[q.kind].name}` + (+type === 0 ? '' : ' (waiting)'), desc: `${q.n} soldier${q.n > 1 ? 's' : ''}, ${RETRO_TIME} s each. ` + (+type === 0 ? `Done in ${Math.ceil(left)} s.` : `Number ${+type + 1} in the queue: one army retrofits at a time.`) + ' Click to cancel and get the resources back.', cost: q.paid, why: null, ok: 'Click to cancel', icon: portrait(q.kind) }; }
     return { name: UNIT_DEFS[q.kind].name + (+type === 0 ? ' (training)' : ' (waiting)'), desc: (+type === 0 ? `Ready in ${Math.ceil(left)} s.` : `Number ${+type + 1} in the queue.`) + ' Click to cancel and get the resources back.', cost: q.paid, why: null, ok: 'Click to cancel', icon: portrait(q.kind) };
   }
   if (what === 'upgrade') return { name: 'Upgrade to Fort', desc: `Rebuild the outpost as a stone fort, opening 4 building plots instead of 2. Takes ${FORT_UPGRADE.time} s; no Mason needed. Forts: ${fortCount()}/${fortLimit()}. Each fort allows 4 more outposts.`, cost: FORT_UPGRADE.cost, why: upgradeWhy(S.selProv), icon: settlementThumb(1) };
@@ -1994,14 +2002,14 @@ function cmdUse(id) {
 // when a capital or barracks is selected the command card trains units: top row trains, bottom row is the queue
 function renderTrainCard() {
   const kinds = trainable(S.selKind, S.selBuilding), Q = S.queues[srcKey()] || [];
-  const key = 'train|' + srcKey() + '|' + (S.selKind === 'market' ? (extraAt(S.selBuilding, S.selPart) || {}).thugs + ':' + denCap(ME) + ':' : '') + kinds.join(',') + '|' + Q.map(q => q.kind).join(',') + '|' + RES.map(k => S.stock[k]).join(',') + '|' + [...S.xup.keys()].join(',') + '|' + extrasIn(S.selBuilding).map(e => e.level || 1).join(',');
+  const key = 'train|' + srcKey() + '|' + (S.selKind === 'market' ? (extraAt(S.selBuilding, S.selPart) || {}).thugs + ':' + denCap(ME) + ':' : '') + kinds.join(',') + '|' + Q.map(q => q.kind + (q.retro ? 'r' + q.army : '')).join(',') + '|' + RES.map(k => S.stock[k]).join(',') + '|' + [...S.xup.keys()].join(',') + '|' + extrasIn(S.selBuilding).map(e => e.level || 1).join(',');
   if (key !== cmdKey) {
     cmdKey = key;
     const tower = S.selKind === 'magetower' && extraAt(S.selBuilding, S.selPart), den = S.selKind === 'market' && extraAt(S.selBuilding, S.selPart), cave = S.selKind === 'stable', title = S.selKind === 'capital' ? 'Capital' : cave ? BUILD_DEFS.stable.name : tower ? BUILD_DEFS.magetower.levels[(tower.level || 1) - 1] : den ? `${BUILD_DEFS.market.name} · ${den.thugs || 0}/${denCap(ME)} Thugs` : BUILD_DEFS.barracks.name;
     $q('#cmdTabs').innerHTML = `<span class="cmd-tab" aria-selected="true"><img alt="" src="${S.selKind === 'capital' ? settlementThumb(2) : tower ? buildThumb('magetower', tower.level || 1) : den ? buildThumb('market') : cave ? buildThumb('stable') : buildThumb('barracks')}">${title}</span>`;
     const cells = new Array(16).fill('<div class="cmd-cell"></div>');
     kinds.forEach((k, i) => { const info = cmdInfo('train:' + k); cells[i] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="train:${k}" aria-label="Train ${info.name}${info.why ? ' (' + info.why + ')' : ''}"><img alt="" src="${portrait(k)}"></button>`; });
-    Q.slice(0, 4).forEach((q, i) => { cells[12 + i] = `<button type="button" class="cmd-btn cmd-q" data-cmd="queue:${i}" aria-label="${UNIT_DEFS[q.kind].name} in training, click to cancel"><img alt="" src="${portrait(q.kind)}">${i === 0 ? '<i class="cmd-prog"><s></s></i>' : ''}<em>${i + 1}</em></button>`; });
+    Q.slice(0, 4).forEach((q, i) => { cells[12 + i] = `<button type="button" class="cmd-btn cmd-q" data-cmd="queue:${i}" aria-label="${q.retro ? 'Retrofit to ' : ''}${UNIT_DEFS[q.kind].name} in ${q.retro ? 'the queue' : 'training'}, click to cancel"><img alt="" src="${portrait(q.kind)}">${i === 0 ? '<i class="cmd-prog"><s></s></i>' : ''}<em>${i + 1}</em></button>`; });
     if (Q.length > 4) cells[15] = `<div class="cmd-cell cmd-more">+${Q.length - 3}</div>`;
     if (den) { const info = cmdInfo('thugout'); cells[3] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="thugout" aria-label="${info.name}"><img alt="" src="${info.icon}"></button>`; }
     if (tower) { const xu = S.xup.get(S.selBuilding + '@' + tower.slot), id = xu ? 'xcancel' : 'xup', info = cmdInfo(id); cells[3] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="${id}" aria-label="${info.name}"><img alt="" src="${info.icon}">${xu ? '<i class="cmd-prog"><s></s></i>' : ''}</button>`; }
@@ -2009,7 +2017,7 @@ function renderTrainCard() {
     if (cmdHover) showCmdTip(cmdHover);
   }
   const bar = $q('#cmdGrid .cmd-prog s'), q = Q[0];
-  if (bar) bar.style.width = (q && q.t0 !== null ? Math.min(100, (S.t - q.t0) / trainTime(q.kind) * 100) : 0) + '%';
+  if (bar) bar.style.width = (q && q.t0 !== null ? Math.min(100, (S.t - q.t0) / trainTime(q.kind, q) * 100) : 0) + '%';
 }
 function renderSettleCard() {
   const p = S.selProv, b = S.buildings.get(p), up = S.upgrades.get(p);

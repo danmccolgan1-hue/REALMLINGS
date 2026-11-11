@@ -318,10 +318,13 @@ onBattleJoin = function (a, t) {
   a.fiery = 0;
   if (!isCaster(a)) return;
   const lv = lvl('fiery');
-  if (lv && autoOn(a, 'fiery') && (a.fieryCd || 0) <= t) { a.fiery = FIERY[lv].pct; a.fieryCd = t + FIERY[lv].cd; toast(`${a.name}: ${TECH_BY_ID[lineTech('fiery')].name} (${Math.round(FIERY[lv].pct * 100)}% chance of double blows).`); }
+  if (lv && autoOn(a, 'fiery') && (a.fieryCd || 0) <= t) { a.fiery = FIERY[lv].pct; a.fieryCd = t + FIERY[lv].cd; a.fieryHits = 0;
+    // its icon joins the battle-magic icons over the army (v78's wrapper ran before Fiery Weapons was set, so add it here)
+    a.mfx = a.mfx && isFinite(a.mfx.until) ? a.mfx : { list: [], until: Infinity }; if (!a.mfx.list.some(e => e.k === 'fiery')) a.mfx.list.push({ k: 'fiery', tech: lineTech('fiery') });
+    toast(`${a.name}: ${TECH_BY_ID[lineTech('fiery')].name} (${Math.round(FIERY[lv].pct * 100)}% chance of double blows).`); }
 };
 const _onBattleEnd = onBattleEnd;
-onBattleEnd = function (a, t) { _onBattleEnd(a, t); a.fiery = 0; };
+onBattleEnd = function (a, t) { _onBattleEnd(a, t); if (a.fiery && a.owner === ME && a.fieryHits) toast(`${a.name}: Fiery Weapons struck ${a.fieryHits} double blow${a.fieryHits > 1 ? 's' : ''} in that battle.`); a.fiery = 0; a.fieryHits = 0; };
 // a Scouting Pyre sees its province and every neighbor through open borders (its line of sight)
 function pyreSight(vis) { for (const P of S.spyres || []) if (P.owner === ME && P.until > S.t) { vis.add(P.prov); for (const { q } of openNbr[P.prov]) vis.add(q); } }
 function stepPyromancy(t) {
@@ -364,6 +367,8 @@ function drawPyromancy(g, t) {
   }
   for (const T of S.ftraps) {
     if (T.owner !== ME || !S.explored.has(T.prov)) continue;
+    // the trap covers the whole province: its border smoulders while the trap is set
+    roundedPath(g, G.provs[T.prov].inner, 12); g.lineWidth = Math.max(5, 3 / cam.z); g.strokeStyle = `rgba(255,110,40,${(0.45 + Math.sin(t * 2.5) * 0.2).toFixed(2)})`; g.setLineDash([18, 12]); g.lineDashOffset = -t * 14; g.stroke(); g.setLineDash([]);
     const c = G.provs[T.prov].ic; g.save(); g.translate(c[0] - 60, c[1] + 120); g.scale(1, 0.5); g.rotate(t * 0.4);
     g.beginPath(); g.arc(0, 0, 24, 0, 7); g.lineWidth = 4; g.strokeStyle = `rgba(255,110,40,${(0.55 + Math.sin(t * 3) * 0.25).toFixed(2)})`; g.setLineDash([7, 6]); g.stroke(); g.setLineDash([]);
     for (let k = 0; k < 3; k++) { const q = k * 2.09; g.beginPath(); g.moveTo(Math.cos(q) * 10, Math.sin(q) * 10); g.lineTo(Math.cos(q) * 22, Math.sin(q) * 22); g.lineWidth = 3; g.strokeStyle = '#ffb347'; g.stroke(); }
@@ -375,6 +380,19 @@ function drawPyromancy(g, t) {
     const f = (S.t - b.t0) / 2; g.save(); g.globalAlpha = 1 - f;
     const gr = g.createRadialGradient(b.x, b.y - 20, 0, b.x, b.y - 20, 90 * (0.4 + f)); gr.addColorStop(0, '#fff3a6'); gr.addColorStop(0.4, '#ff7a2c'); gr.addColorStop(1, 'rgba(200,40,20,0)');
     g.fillStyle = gr; g.beginPath(); g.arc(b.x, b.y - 20, 90 * (0.4 + f), 0, 7); g.fill(); g.restore();
+  }
+  // Fiery Weapons: each round the blows land double, flames burst along the army's weapons and "×2" rises
+  for (const u of S.units) {
+    if (u.kind !== 'army' || !u.fieryHit || S.t - u.fieryHit > 1 || !(u.owner === ME || S.visible.has(u.prov))) continue;
+    const f = (S.t - u.fieryHit) / 1, K = (typeof UKK === 'number' ? UKK : 1) * 1.6, x = u.x, y = u.y - 20 * K;
+    g.save(); g.globalAlpha = 1 - f;
+    const gr = g.createRadialGradient(x, y, 0, x, y, 70 * K * (0.6 + f)); gr.addColorStop(0, 'rgba(255,240,150,0.9)'); gr.addColorStop(0.45, 'rgba(255,122,44,0.7)'); gr.addColorStop(1, 'rgba(200,40,20,0)');
+    g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, 70 * K * (0.6 + f), 42 * K * (0.6 + f), 0, 0, 7); g.fill();
+    for (let k = 0; k < 7; k++) { const a = k * 0.9 + u.id, rx = x + Math.cos(a) * 34 * K, ry = y + Math.sin(a) * 14 * K - f * 26 * K, fl = (1 - f) * (9 + (k % 3) * 3) * K;
+      g.beginPath(); g.moveTo(rx - fl * 0.5, ry); g.quadraticCurveTo(rx - fl * 0.4, ry - fl * 1.2, rx, ry - fl * 2); g.quadraticCurveTo(rx + fl * 0.4, ry - fl * 1.2, rx + fl * 0.5, ry); g.closePath(); g.fillStyle = k % 2 ? '#ff7a2c' : '#ffd34d'; g.fill(); g.lineWidth = 1.5; g.strokeStyle = OL; g.stroke(); }
+    const k2 = Math.max(1, 0.62 / cam.z); g.font = (16 * k2) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-display'); g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.lineWidth = 4 * k2; g.strokeStyle = OL; g.strokeText('🔥 ×2', x, y - 50 * K - f * 30 * K); g.fillStyle = '#ffd34d'; g.fillText('🔥 ×2', x, y - 50 * K - f * 30 * K);
+    g.restore();
   }
   // Path of Fire: flames licking at a running army's heels
   for (const u of S.units) {

@@ -25,7 +25,7 @@ function revealOwnedResources(t) {
 // he goes back to the province he came from if it is his own nation's or an enemy's at war with him; otherwise all the way home to his capital
 function outpostClaimed(p, by) {
   for (const u of S.units) {
-    if (u.kind !== WAYFINDER || u.owner === by || u.prov !== p || u.exiting) continue;
+    if (u.kind !== WAYFINDER || u.owner === by || u.prov !== p || u.exiting || u.stealth) continue;   // a sneaking one stays put
     const back = u.lastProv, bo = back !== undefined ? nationOf(back) : 0;
     const okBack = back !== undefined && back !== p && (bo === u.owner || (bo && hostile(u.owner, bo)));
     u.path = []; u.moving = false; u.scouting = null; u.survey = null; u.aiSurvey = null; u.aiTarget = undefined; u.aiJob = null;
@@ -172,10 +172,16 @@ function stepFortGates() {
   }
 }
 
-// ---------- GPC14: retrofitting at a Barracks ----------
-const RETRO_TIME = 10;   // seconds per soldier
+// ---------- GPC14 (v86): retrofitting, queued at a Barracks like training ----------
+// 2 s per soldier. The army walks to the nearest building that can do it: a Barracks for infantry, a Barracks with a
+// Stable for Realmling cavalry, an Ogre Cave for Ogres. There the job joins that building's training queue, so each
+// building retrofits one army at a time (and trains nothing while it does). The army waits there; moving or fighting cancels it.
+const RETRO_TIME = 2;   // seconds per soldier
 const barracksOk = (p, o, cav) => { const l = S.extras.get(p); return !!l && nationOf(p) === o && !S.occ.has(p) && l.some(e => e.type === (cav && isSw(o) ? 'stable' : 'barracks')) && (!cav || l.some(e => e.type === 'stable')); };
-// the nearest Barracks (with a Stable for cavalry) the army can reach, or -1
+const retroKey = (p, o, cav) => (cav && isSw(o) ? 'stable:' : 'barracks:') + p;
+const retroSiteName = (o, cav) => cav ? (isSw(o) ? BUILD_DEFS.stable.name : `${BUILD_DEFS.barracks.name} with a ${BUILD_DEFS.stable.name}`) : BUILD_DEFS.barracks.name;
+const retroWhere = o => isSw(o) ? `at one of your ${BUILD_DEFS.barracks.name}s (${UNIT_BASE.cav.name} at an ${BUILD_DEFS.stable.name})` : `at one of your ${BUILD_DEFS.barracks.name}s (cavalry need a ${BUILD_DEFS.stable.name} there too)`;
+// the nearest place the army can reach to retrofit to this design, or -1
 function retroSite(a, to) {
   const cav = !!DSTATS[to].cav;
   if (barracksOk(a.prov, a.owner, cav)) return a.prov;
@@ -183,20 +189,38 @@ function retroSite(a, to) {
   for (const p of S.extras.keys()) { if (!barracksOk(p, a.owner, cav)) continue; const h = findPath(a, p); if (h && h.length < bd) { bd = h.length; best = p; } }
   return best;
 }
+// the army has arrived: pay, and join the building's queue
 function beginRetro(a) {
   const w = a.retroWant; a.retroWant = null; if (!w) return false;
   const plan = retroPlan([a], w.to); if (!plan.n) return false;
+  const cav = !!DSTATS[w.to].cav;
+  if (!barracksOk(a.prov, a.owner, cav)) return false;
   if (!canAfford(plan.cost)) { toast(`Retrofitting ${a.name} needs ${costText(plan.cost)}.`, true); return false; }
   for (const r in plan.cost) S.stock[r] -= plan.cost[r];
-  a.retro = { to: w.to, t0: S.t, dur: plan.n * RETRO_TIME, paid: plan.cost, prov: a.prov };
-  toast(`${a.name} is retrofitting ${plan.n} soldier${plan.n > 1 ? 's' : ''} to ${UNIT_DEFS[w.to].name}: ${plan.n * RETRO_TIME} s${Object.keys(plan.cost).length ? ' (−' + costText(plan.cost) + ')' : ''}. Moving or fighting stops it.`);
-  cmdKey = ''; return true;
+  const key = retroKey(a.prov, a.owner, cav), Q = (S.queues[key] = S.queues[key] || []);
+  const q = { kind: w.to, retro: true, army: a.id, n: plan.n, dur: plan.n * RETRO_TIME, paid: plan.cost, t0: null, prov: a.prov, key };
+  Q.push(q); a.retro = q;
+  const ahead = Q.length - 1, site = retroSiteName(a.owner, cav);
+  toast(`${a.name} retrofits ${plan.n} soldier${plan.n > 1 ? 's' : ''} to ${UNIT_DEFS[w.to].name} at the ${site}: ${plan.n * RETRO_TIME} s${Object.keys(plan.cost).length ? ' (−' + costText(plan.cost) + ')' : ''}${ahead ? `, after ${ahead} job${ahead > 1 ? 's' : ''} ahead in the queue` : ''}. Moving or fighting cancels it.`);
+  cmdKey = ''; capPanelKey = ''; return true;
 }
+// take the job out of its queue and refund it
 function cancelRetro(a, quiet) {
-  if (!a.retro) return;
-  for (const r in a.retro.paid) S.stock[r] += a.retro.paid[r];
-  a.retro = null; cmdKey = '';
+  const q = a.retro; if (!q) return;
+  a.retro = null; cmdKey = ''; capPanelKey = '';
+  const Q = S.queues[q.key] || [], i = Q.indexOf(q);
+  if (i < 0) return;
+  Q.splice(i, 1); if (i === 0 && Q[0]) Q[0].t0 = null;
+  for (const r in q.paid) S.stock[r] += q.paid[r];
   if (!quiet && a.owner === ME) toast(`${a.name} stopped retrofitting. Resources refunded.`, true);
+}
+// the queue reached the end of the job (called from stepTraining)
+function finishRetro(q) {
+  const a = S.units.find(v => v.id === q.army);
+  if (!a || a.retro !== q) return;
+  a.retro = null;
+  const n = retrofitNow(a, q.kind);
+  if (a.owner === ME) { toast(`${a.name}: ${n} soldier${n === 1 ? '' : 's'} retrofitted to ${UNIT_DEFS[q.kind].name}.`); sfx('bld_done', { prov: a.prov }); }
 }
 function stepRetrofits(t) {
   for (const a of S.units) {
@@ -206,11 +230,13 @@ function stepRetrofits(t) {
       else if (!a.moving) { if (a.prov === a.retroWant.prov) beginRetro(a); else a.retroWant = null; }
     }
     if (!a.retro) continue;
-    if (a.moving || a.battle || a.prov !== a.retro.prov || !S.units.includes(a)) { cancelRetro(a); continue; }
-    if (t - a.retro.t0 < a.retro.dur) continue;
-    const to = a.retro.to; a.retro = null;
-    const n = retrofitNow(a, to);
-    if (a.owner === ME) { toast(`${a.name}: ${n} soldier${n === 1 ? '' : 's'} retrofitted to ${UNIT_DEFS[to].name}.`); sfx('bld_done', { prov: a.prov }); }
+    if (!(S.queues[a.retro.key] || []).includes(a.retro)) { a.retro = null; cmdKey = ''; continue; }
+    if (a.moving || a.battle || a.prov !== a.retro.prov) cancelRetro(a);
+  }
+  // an army that is gone (merged, destroyed) leaves its job behind: drop it with a refund
+  for (const key in S.queues) {
+    const Q = S.queues[key];
+    for (let i = Q.length - 1; i >= 0; i--) { const q = Q[i]; if (!q.retro) continue; const a = S.units.find(v => v.id === q.army); if (a && a.retro === q) continue; Q.splice(i, 1); if (i === 0 && Q[0]) Q[0].t0 = null; for (const r in q.paid) S.stock[r] += q.paid[r]; capPanelKey = ''; }
   }
 }
 
@@ -318,8 +344,9 @@ function stepQuakes(t) {
     if (c.moving || c.battle) { endQuake(c, `${c.name} stopped casting the ${SPELL2[k].name}.`); continue; }
     if (t - c.quake.t0 < SPELL2[k].time) continue;
     const q = c.quake.to; endQuake(c);
-    if (k === 'quake') { if (!quakeWhyAt(c)) quakeStrike(c); continue; }
+    if (k === 'quake') { if (!quakeWhyAt(c)) { spellFx('quake', c, c.prov); quakeStrike(c); } continue; }
     const e = wallBetween(c.prov, q), i = e ? world.edges.indexOf(e) : -1;
+    if (i >= 0) spellFx(isSw(c.owner) ? 'fireball' : 'shock', c, q, e);
     if (i >= 0) { breakWall(i, c); if (c.owner === ME) toast(`The ${SHOCK()} ${isSw(ME) ? 'blasts apart' : 'shatters'} the wall between ${provName(c.prov)} and ${provName(q)}.`); }
   }
   // banners only last while the caster is still at war with you
@@ -380,11 +407,13 @@ menuEl.addEventListener('click', e => {
 function drawQuakes(g, t) {
   for (const u of S.units) {
     if (!u.quake || !(u.owner === ME || S.visible.has(u.prov))) continue;
-    const K = typeof UKK === 'number' ? UKK : 1, T = SPELL2[u.quake.kind].time, col = u.quake.kind === 'quake' ? '#8a6a3a' : '#6f8fc9';
+    const K = typeof UKK === 'number' ? UKK : 1, T = SPELL2[u.quake.kind].time, fb = u.quake.kind === 'shock' && isSw(u.owner), col = u.quake.kind === 'quake' ? '#8a6a3a' : fb ? '#ff7a2c' : '#6f8fc9';
     const r = (u.kind === 'army' ? 40 : 26) * K, f = Math.min(1, (S.t - u.quake.t0) / T), y = u.y - (u.kind === 'army' ? 80 : 60) * K, shake = Math.sin(t * 40) * 1.5;
     g.save(); g.translate(u.x + shake, u.y); g.scale(1, 0.45); g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.lineWidth = 6; g.strokeStyle = OL; g.setLineDash([6, 6]); g.stroke(); g.lineWidth = 4; g.strokeStyle = col; g.stroke(); g.setLineDash([]);
     if (u.quake.kind === 'shock') for (let k = 0; k < 2; k++) { const w = ((t * 0.8 + k * 0.5) % 1); g.globalAlpha = 1 - w; g.beginPath(); g.arc(0, 0, r * (1 + w * 1.6), 0, Math.PI * 2); g.lineWidth = 3; g.strokeStyle = col; g.stroke(); }
     g.restore();
+    if (fb) fireOrb(g, u.x, y - 22 * K, (6 + 10 * Math.min(1, (S.t - u.quake.t0) / T)) * K, t);   // the Fireball swells as the casting goes on
+    if (u.quake.kind === 'quake' && Math.sin(t * 1.7 + u.id) > 0.92) dustPuff(g, u.x + Math.sin(t * 13) * 30 * K, u.y + 6 * K, 14 * K, 0.5);   // the ground shudders now and then
     g.beginPath(); g.arc(u.x, y, 10 * K, 0, 7); g.fillStyle = 'rgba(250,241,220,0.95)'; g.fill();
     g.beginPath(); g.arc(u.x, y, 10 * K, -Math.PI / 2, -Math.PI / 2 + f * Math.PI * 2); g.lineWidth = 4.5 * K; g.strokeStyle = col; g.stroke(); g.beginPath(); g.arc(u.x, y, 10 * K, 0, 7); g.lineWidth = 1.8; g.strokeStyle = OL; g.stroke();
   }
@@ -580,3 +609,69 @@ function drawRewalls(g, t) {
   };
   extraCmdUse = id => { if (id !== 'rewalls') return use0(id); if (S.selProv >= 0) rebuildWalls(S.selProv); return true; };
 }
+
+// ---------- v86: the moment a Fireball, Shockwave or Earthquake strikes ----------
+// spellFx records it; drawSpellFx draws it over the map (it follows game time, so it pauses with the game)
+const SPELL_FX_TIME = { fireball: 2.2, shock: 1.8, quake: 3 };
+S.spellFx = [];
+function spellFx(kind, c, q, edge) {
+  let to = null;
+  if (edge) { const a = world.vertices[edge.v[0]], b = world.vertices[edge.v[1]]; to = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]; }
+  (S.spellFx = S.spellFx || []).push({ kind, t0: S.t, prov: c.prov, to: q, from: [c.x, c.y - 40], at: to, seed: Math.random() * 100 });
+  if (kind !== 'quake' && (c.owner === ME || S.visible.has(c.prov))) sfx(kind === 'fireball' ? 'war_declare' : 'mg_arcane', { prov: c.prov });
+}
+function fireOrb(g, x, y, r, t) {
+  const gl = g.createRadialGradient(x, y, 0, x, y, r * 3); gl.addColorStop(0, 'rgba(255,200,90,0.6)'); gl.addColorStop(1, 'rgba(255,120,40,0)');
+  g.fillStyle = gl; g.beginPath(); g.arc(x, y, r * 3, 0, 7); g.fill();
+  for (let k = 0; k < 5; k++) { const a = t * 6 + k * 1.26, fx = x + Math.cos(a) * r * 0.5, fy = y + Math.sin(a) * r * 0.3; g.beginPath(); g.moveTo(fx - r * 0.35, fy); g.quadraticCurveTo(fx, fy - r * 1.6, fx + r * 0.35, fy); g.fillStyle = '#ff7a2c'; g.fill(); }
+  g.beginPath(); g.arc(x, y, r, 0, 7); g.fillStyle = '#ff9a3c'; g.fill(); g.lineWidth = 2; g.strokeStyle = OL; g.stroke();
+  g.beginPath(); g.arc(x - r * 0.25, y - r * 0.25, r * 0.55, 0, 7); g.fillStyle = '#ffe27a'; g.fill();
+}
+function dustPuff(g, x, y, r, a) {
+  g.save(); g.globalAlpha = a;
+  for (let k = 0; k < 4; k++) { g.beginPath(); g.ellipse(x + (k - 1.5) * r * 0.7, y - (k % 2) * r * 0.4, r * (0.7 + (k % 3) * 0.2), r * 0.5, 0, 0, 7); g.fillStyle = k % 2 ? '#c8b28a' : '#b39a70'; g.fill(); }
+  g.restore();
+}
+function drawSpellFx(g, t) {
+  if (!S.spellFx || !S.spellFx.length) return;
+  S.spellFx = S.spellFx.filter(F => S.t >= F.t0 && S.t - F.t0 < SPELL_FX_TIME[F.kind]);
+  for (const F of S.spellFx) {
+    if (!(S.visible.has(F.prov) || (F.to !== undefined && S.visible.has(F.to)))) continue;
+    const e = S.t - F.t0, T = SPELL_FX_TIME[F.kind];
+    g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
+    if (F.kind === 'fireball') {
+      // a fireball arcs from the Warlock to the wall (first 0.9 s), then the wall bursts in flame and smoke
+      const fly = 0.9, [x0, y0] = F.from, [x1, y1] = F.at;
+      if (e < fly) {
+        const k = e / fly, x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k - Math.sin(k * Math.PI) * 160;
+        for (let i = 1; i <= 6; i++) { const kk = Math.max(0, k - i * 0.04), tx = x0 + (x1 - x0) * kk, ty = y0 + (y1 - y0) * kk - Math.sin(kk * Math.PI) * 160; g.globalAlpha = 0.5 - i * 0.07; g.beginPath(); g.arc(tx, ty, 30 - i * 3.5, 0, 7); g.fillStyle = i < 3 ? '#ffb347' : '#8a7a70'; g.fill(); }
+        g.globalAlpha = 1; fireOrb(g, x, y, 30, t);
+      } else {
+        const k = (e - fly) / (T - fly), R = 80 + k * 200;
+        g.globalAlpha = 1 - k;
+        const gr = g.createRadialGradient(x1, y1 - 20, 0, x1, y1 - 20, R); gr.addColorStop(0, '#fff3a6'); gr.addColorStop(0.35, '#ff7a2c'); gr.addColorStop(0.7, 'rgba(200,40,20,0.6)'); gr.addColorStop(1, 'rgba(60,40,40,0)');
+        g.fillStyle = gr; g.beginPath(); g.arc(x1, y1 - 20, R, 0, 7); g.fill();
+        for (let i = 0; i < 9; i++) { const a = F.seed + i * 0.7, d = R * 0.8 * (0.5 + (i % 3) * 0.25); g.beginPath(); g.arc(x1 + Math.cos(a) * d, y1 - 20 + Math.sin(a) * d * 0.6 - k * 70, 16 * (1 - k) + 5, 0, 7); g.fillStyle = i % 2 ? '#ffd34d' : '#5a4d4a'; g.fill(); }
+      }
+    } else if (F.kind === 'shock') {
+      // rings of force roll from the Mage to the wall, which cracks with a flash
+      const [x0, y0] = F.from, [x1, y1] = F.at, k = e / T;
+      for (let i = 0; i < 4; i++) { const kk = k * 1.6 - i * 0.18; if (kk < 0 || kk > 1) continue; const x = x0 + (x1 - x0) * kk, y = y0 + 30 + (y1 - y0 - 30) * kk; g.globalAlpha = (1 - kk) * 0.9; g.beginPath(); g.ellipse(x, y, 55 + kk * 80, (55 + kk * 80) * 0.45, 0, 0, 7); g.lineWidth = 11; g.strokeStyle = OL; g.stroke(); g.lineWidth = 6; g.strokeStyle = '#9fc4ff'; g.stroke(); }
+      if (k > 0.55) { const f = (k - 0.55) / 0.45; g.globalAlpha = 1 - f; const R = 60 + f * 170, gr = g.createRadialGradient(x1, y1 - 16, 0, x1, y1 - 16, R); gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.4, '#9fc4ff'); gr.addColorStop(1, 'rgba(111,143,201,0)'); g.fillStyle = gr; g.beginPath(); g.arc(x1, y1 - 16, R, 0, 7); g.fill();
+        for (let i = 0; i < 6; i++) { const a = F.seed + i * 1.05; g.beginPath(); g.moveTo(x1, y1 - 10); g.lineTo(x1 + Math.cos(a) * 60 * (0.5 + f), y1 - 10 + Math.sin(a) * 34 * (0.5 + f)); g.lineTo(x1 + Math.cos(a + 0.3) * 110 * (0.5 + f), y1 - 10 + Math.sin(a + 0.3) * 60 * (0.5 + f)); g.lineWidth = 5; g.strokeStyle = OL; g.stroke(); } }
+    } else {
+      // Earthquake: cracks race out from the middle of the province, dust rises, the ground heaves
+      const P = G.provs[F.prov], [cx, cy] = P.ic, k = e / T, grow = Math.min(1, e / 0.8), fade = k > 0.6 ? 1 - (k - 0.6) / 0.4 : 1, jig = Math.sin(e * 60) * 4 * (1 - k);
+      g.translate(jig, 0); g.globalAlpha = fade;
+      for (let i = 0; i < 7; i++) {
+        let a = F.seed + i * 0.9, x = cx, y = cy, L = (110 + (i % 3) * 50) * grow;
+        g.beginPath(); g.moveTo(x, y);
+        for (let s = 0; s < 6; s++) { a += Math.sin(F.seed * 3 + i * 7 + s * 5) * 0.5; x += Math.cos(a) * L / 6; y += Math.sin(a) * L / 6 * 0.55; g.lineTo(x, y); }
+        g.lineWidth = 9; g.strokeStyle = OL; g.stroke(); g.lineWidth = 4; g.strokeStyle = '#5a3a1e'; g.stroke();
+      }
+      for (let i = 0; i < 10; i++) { const a = F.seed + i * 0.63, d = (40 + (i % 4) * 30) * grow; dustPuff(g, cx + Math.cos(a) * d * 1.4, cy + Math.sin(a) * d * 0.6 - k * 30, 16 + (i % 3) * 6, 0.75 * fade); }
+    }
+    g.restore();
+  }
+}
+window.__v86 = { findPath: (u, q) => findPath(u, q), computeFog: () => computeFog(), spellFx, totalPick, walkDistFrom, retroSite, beginRetro, finishRetro, trainTime: (k, q) => trainTime(k, q) };

@@ -278,7 +278,7 @@ function magicCmdUse(id) {
   if (what === 'join') {
     const ms = S.selected.filter(v => v.kind === MAGE); let n = 0;
     for (const m of ms) { const a = S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === m.prov && !v.battle); if (!a) continue; cancelCast(m); a.troops[MAGE] = (a.troops[MAGE] || 0) + 1; if (a.troops[MAGE] > 1) { const merged = {}; for (const kk of Object.keys(AUTO)) merged[kk] = autoOn(m, kk) || autoOn(a, kk); a.auto = merged; } else a.auto = { ...(m.auto || {}) }; a.grew = S.t; S.units = S.units.filter(v => v !== m); n++; S.selected = [a]; }
-    if (n) { computeIncome(); toast(`${n > 1 ? n + ' Mages' : 'The Mage'} joined the army.`); }
+    if (n) { computeIncome(); toast(`${n > 1 ? n + ' ' + UNIT_DEFS[MAGE].name + 's' : 'The ' + UNIT_DEFS[MAGE].name} joined the army.`); }
     return true;
   }
   if (what === 'detach') {

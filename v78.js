@@ -952,13 +952,13 @@ function drawMoveMarks(g) {
 
 // ---------- Z5: a retrofitting army shows its progress ----------
 function drawRetroBar(g, u, x, y, w, K) {
-  const f = Math.max(0, Math.min(1, (S.t - u.retro.t0) / u.retro.dur)), h = 4.2 * Math.sqrt(K);
+  const f = u.retro.t0 === null ? 0 : Math.max(0, Math.min(1, (S.t - u.retro.t0) / u.retro.dur)), h = 4.2 * Math.sqrt(K);   // 0 while waiting its turn in the queue
   g.save();
   g.beginPath(); g.roundRect(x - w / 2 - 1.5, y - 1.5, w + 3, h + 3, (h + 3) / 2); g.fillStyle = OL; g.fill();
   g.beginPath(); g.roundRect(x - w / 2, y, w, h, h / 2); g.fillStyle = '#3d3a46'; g.fill();
   if (f > 0) { g.beginPath(); g.roundRect(x - w / 2, y, Math.max(h, w * f), h, h / 2); g.fillStyle = '#7fb8ff'; g.fill(); }
   const k = Math.max(1, 0.62 / cam.z); g.font = (8 * k) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-display'); g.textAlign = 'right'; g.textBaseline = 'middle';
-  g.lineWidth = 3 * k; g.strokeStyle = OL; g.strokeText('⚒', x - w / 2 - 3, y + h / 2); g.fillStyle = '#cfe3ff'; g.fillText('⚒', x - w / 2 - 3, y + h / 2);
+  g.lineWidth = 3 * k; g.strokeStyle = OL; const ic = u.retro.t0 === null ? '⏳' : '⚒'; g.strokeText(ic, x - w / 2 - 3, y + h / 2); g.fillStyle = '#cfe3ff'; g.fillText(ic, x - w / 2 - 3, y + h / 2);
   g.restore();
 }
 // ---------- Z6: a design saved over an in-use one counts up: Footman, Footman II, Footman III … ----------

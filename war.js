@@ -268,19 +268,24 @@ function connectedPick(winner, loser, n = WAR.maxProvs) {
   }
   return out;
 }
-// Total Victory always pays out 5 provinces: first those connected to the winner's capital land; if the two nations don't
-// border each other, the rest come from the loser's land nearest the winner, as one connected block
-function totalPick(winner, loser, n = WAR.maxProvs) {
-  const out = connectedPick(winner, loser, n), cap = capitalOf(loser), mine = provsOf(winner);
-  const d = mine.length ? hopsFrom(mine, allNbr) : null;
-  while (out.length < n) {
-    const left = provsOf(loser).filter(p => p !== cap && !out.includes(p) && takeable(p, winner)); if (!left.length) break;
-    const touching = left.filter(p => allNbr[p].some(q => out.includes(q)));
-    const pool = touching.length ? touching : left;
-    pool.sort((a, b) => (d ? d[a] - d[b] : 0) || a - b);
-    out.push(pool[0]);
+// Total Victory (v86) pays out the 5 provinces nearest the winner's capital by walking distance: the way an army would
+// march there, through open borders (not over mountains or across water). Provinces the winner can't walk to are skipped,
+// however close they look; the loser's capital is never taken.
+function walkDistFrom(src) {
+  const d = new Array(G.provs.length).fill(Infinity), done = new Uint8Array(G.provs.length), ic = i => G.provs[i].ic;
+  for (const s of src) d[s] = 0;
+  for (;;) {
+    let a = -1; for (let i = 0; i < d.length; i++) if (!done[i] && d[i] < Infinity && (a < 0 || d[i] < d[a])) a = i;
+    if (a < 0) break; done[a] = 1;
+    for (const { q } of openNbr[a]) { const nd = d[a] + Math.hypot(ic(q)[0] - ic(a)[0], ic(q)[1] - ic(a)[1]); if (nd < d[q]) d[q] = nd; }
   }
-  return out;
+  return d;
+}
+function totalPick(winner, loser, n = WAR.maxProvs) {
+  const cap = capitalOf(winner), src = cap >= 0 ? [cap] : provsOf(winner);
+  if (!src.length) return connectedPick(winner, loser, n);
+  const d = walkDistFrom(src), lcap = capitalOf(loser);
+  return provsOf(loser).filter(p => p !== lcap && takeable(p, winner) && d[p] < Infinity).sort((a, b) => d[a] - d[b] || a - b).slice(0, n);
 }
 // annexing the whole country is only possible when no third nation occupies any of it
 function totalTerms(loser, winner) { const own = provsOf(loser); return own.length <= WAR.maxProvs && (winner === undefined || own.every(p => takeable(p, winner))) ? 'annex' : 'split'; }
