@@ -137,6 +137,7 @@ function banditSlain(a, b) {
 function banditTag(p) {
   const list = S.units.filter(v => v.bandit && v.seen && v.prov === p && troopCount(v) > 0); if (!list.length) return '';
   const n = list.reduce((m, v) => m + troopCount(v), 0), mon = list.find(v => v.monster);
+  if (mon && mon.boss) { const B = BOSSES[mon.boss]; return `<span class="pm-tag bandit" title="A boss. Wayfinders can’t enter until it is beaten. The victor claims ${ARTIFACTS_TXT(B.art)}.">${B.short} · power ${B.power} · ${ARTIFACTS_TXT(B.art)}</span>`; }
   if (mon) { const L = MONSTERS[mon.monster].loot; return `<span class="pm-tag bandit" title="Hostile to everyone. Wayfinders can’t enter until they are beaten. Each one killed gives ${lootText(L)}.">${troopText(mon)} · ${lootText(L)} each</span>`; }
   return `<span class="pm-tag bandit" title="Hostile to everyone. Wayfinders can’t enter until they are beaten. Beat them for a ${BANDIT.bounty} gold bounty.">Bandit Gang · ${n} soldier${n > 1 ? 's' : ''} · ${BANDIT.bounty} gold bounty</span>`;
 }

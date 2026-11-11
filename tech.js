@@ -159,6 +159,11 @@ const MAG_TECHS = [
   ['townportal', 2, 'school-elemental', 'elemental', 100, 'Town Portal', 'After 5 seconds of casting, a Druid and the army he is in are carried to your capital. 5-minute cooldown per Druid.'],
   ['forestspirit', 2, 'school-elemental', 'elemental', 100, 'Forest Spirit', 'A Druid calls a spirit into a border of trees beside the province he stands in (20 seconds of casting). Both provinces along that border make 25% more gold, wood and food. One spirit per living Druid: if a Druid falls, a spirit fades.'],
   ['gelemental', 3, 'school-elemental', 'elemental', 200, 'Grand Elemental', 'A Druid summons a towering man of living water for 2 minutes (10 seconds of casting): he hits as hard as a fully upgraded Champion and has twice its health, but no armor. He joins the Druid’s army (or forms one), fights, and can capture provinces. 5-minute cooldown per Druid.'],
+  // v95: Warlocks' off-hand skulls (Swamplings): with a wand, a skull adds to the attack
+  ['skull-cracked', 1, null, '*', 40, 'Cracked Skulls', 'Warlocks with a wand can hold a Cracked Skull in the off hand: +1 attack. Set it in the Armory.'],
+  ['skull-chipped', 2, 'skull-cracked', '*', 100, 'Chipped Skulls', 'Warlocks with a wand can hold a Chipped Skull in the off hand: +2 attack.'],
+  ['skull-polished', 3, 'skull-chipped', '*', 200, 'Polished Skulls', 'Warlocks with a wand can hold a Polished Skull in the off hand: +3 attack.'],
+  ['skull-flawless', 3, 'skull-polished', '*', 200, 'Flawless Skulls', 'Warlocks with a wand can hold a Flawless Skull in the off hand: +4 attack.'],
   ['abandon', 3, null, '*', 300, 'Abandon Magic School', 'Costs 1000 gold to begin. When finished, your school and all of its spells are forgotten, and you can choose a new school.']
 ];
 for (const [id, tier, req, school, cost, name, blurb] of MAG_TECHS) TECHS.push({ id, tree: 'mag', tier, cost, req, school, name, blurb, gold: id === 'abandon' ? 1000 : 0 });
@@ -167,6 +172,7 @@ for (const [id, tier, req, school, cost, name, blurb] of MAG_TECHS) TECHS.push({
 for (const x of TECHS) {
   if (x.race) continue;
   if (['roads', 'roads2', 'roads3', 'granary', 'storehouse', 'w-bastard', 'w-longsword', 'w-greatsword'].includes(x.id) || /^s-|^a-(leather|chain|plate)/.test(x.id) || x.school === 'life' || x.id === 'school-life') x.race = 'realm';
+  if (/^skull-/.test(x.id)) x.race = 'swamp';   // v95
   if (/^a-(stag|wyvern|dragon)/.test(x.id) || ['w-bearded', 'w-battleaxe', 'w-waraxe'].includes(x.id) || x.school === 'pyro' || x.id === 'school-pyro') x.race = 'swamp';   // (v90: the axes were missing here, so other races could research them)
   // Woodlings (v90): their swords and armor are theirs alone; they share Granaries, Storehouses and Herbomancy with the Realmlings;
   // no Necromancy; no cavalry technologies until their Champions arrive (a later update)

@@ -119,7 +119,7 @@ function setupGame() {
   const [x0, y0, x1, y1] = G.bounds, mx = (x0 + x1) / 2, my = (y0 + y1) / 2, R = Math.hypot(x1 - x0, y1 - y0) / 2;
   const homeTer = isSw(ME) ? 'swamp' : raceOf(ME) === 'wood' ? 'forest' : 'grassland', where = (typeof menuOpts === 'object' && menuOpts.start) || 'center';
   const home = G.provs.map((p, i) => i).filter(i => G.provs[i].terrain === homeTer);
-  const cands = home.length ? home : G.provs.map((p, i) => i);   // (an island with none of your land: the province is turned into it below)
+  const home2 = home.filter(i => !uniqueBan(i)), cands = home2.length ? home2 : home.length ? home : G.provs.map((p, i) => i).filter(i => !uniqueBan(i));   // (an island with none of your land: the province is turned into it below)
   const fit = i => openNbr[i].length * 420 - (G.provs[i].coastal || G.provs[i].lakeside ? 2000 : 0);
   let best = -1;
   if (where === 'random') {
@@ -190,7 +190,7 @@ const nationOk = (u, q) => { if (u.exiting || u.owner === RAIDERS || (u.kind ===
 // at war, any unit may march into unexplored land that belongs to the enemy
 // a Wayfinder / Swampstrider of yours only steps into unexplored land when it is the province you sent him to (tgt):
 // his route never cuts across the fog on the way (v87)
-const canEnter = (u, q, tgt) => (u.owner !== ME || u.exiting || S.explored.has(q) || (u.kind === WAYFINDER ? (q === tgt || (u.autoWalk && q === u.autoWalk.to)) : (S.wars.length && nationOf(q) && hostile(ME, nationOf(q))))) && nationOk(u, q) && !(u.kind === WAYFINDER && u.owner === ME && banditsSeenIn(q)) && !(u.kind === MASON && masonDanger(u, q));
+const canEnter = (u, q, tgt) => (u.owner !== ME || u.exiting || S.explored.has(q) || (u.kind === WAYFINDER ? (q === tgt || (u.autoWalk && q === u.autoWalk.to)) : (S.wars.length && nationOf(q) && hostile(ME, nationOf(q))))) && nationOk(u, q) && !(u.kind === WAYFINDER && u.owner === ME && banditsSeenIn(q)) && !(u.kind === MASON && masonDanger(u, q)) && !bossBlock(u, q, tgt);
 // Masons won't walk into a province holding a hostile army they know about (GPC05)
 const masonDanger = (u, q) => S.units.some(v => v.kind === 'army' && v.prov === q && troopCount(v) > 0 && !v.retreating && hostile(v.owner, u.owner) && (u.owner !== ME || (v.bandit ? v.seen : S.visible.has(q))));
 // an army that can't get there through open borders and gates will batter down an enemy wall on the way
@@ -985,6 +985,7 @@ function update(realT) {
   run('outliner', () => { renderRoster(); renderFlags(); });
   run('minimap', () => drawMini());
   run('commands', () => renderCmd());
+  run('v95', () => { stepV95(t, dt); paintCooldowns(); });
   run('fog', () => computeFog());
   run('selection', () => selUI());
 }

@@ -395,6 +395,24 @@ function item(g, name, x, y, ang, t, flip) {
       glint(g, -7, -6, 3, 1.6, -0.4, 0.6);
       break;
     }
+    case 'skull1': case 'skull2': case 'skull3': case 'skull4': {
+      // v95: a Warlock's off-hand skull (Cracked, Chipped, Polished, Flawless)
+      const lv = +name.slice(5), bone = ['#d9cfb0', '#e2d9bc', '#f2ecd8', '#fbf7ea'][lv - 1];
+      g.translate(0, -4); g.scale(1.6, 1.6);   // held up in the palm, big enough to read
+      if (lv === 4) glow(g, 0, -4, 26, 'rgba(120,255,140,1)', 0.35 + Math.sin(t * 4) * 0.1);
+      if (lv === 3) glow(g, 0, -4, 20, 'rgba(255,240,200,1)', 0.25);
+      g.beginPath(); g.moveTo(-9, -2); g.quadraticCurveTo(-10, -16, 0, -16); g.quadraticCurveTo(10, -16, 9, -2); g.lineTo(6, 3); g.lineTo(6, 7); g.lineTo(-6, 7); g.lineTo(-6, 3); g.closePath();
+      bnd(-10, -16, 10, 7); ink(g, bone, 2.4);
+      if (lv === 2) { poly(g, [[3, -15.5], [8.6, -12], [8.4, -6], [4.5, -9]]); g.fillStyle = '#9a8a6a'; g.fill(); g.lineWidth = 1.2; g.strokeStyle = OL; g.stroke(); LB = null; }
+      const eye = lv === 4 ? '#7dff8a' : '#2a1f1a';
+      for (const ex of [-4, 4]) { circ(g, ex, -6, 2.6); g.fillStyle = eye; g.fill(); }
+      poly(g, [[-1.2, -1], [1.2, -1], [0, 1.5]]); g.fillStyle = '#2a1f1a'; g.fill();
+      g.strokeStyle = '#2a1f1a'; g.lineWidth = 1; for (const x of [-3, 0, 3]) { g.beginPath(); g.moveTo(x, 3.5); g.lineTo(x, 7); g.stroke(); }
+      if (lv === 1) { g.strokeStyle = '#3a2f25'; g.lineWidth = 1.2; g.beginPath(); g.moveTo(-2, -16); g.lineTo(-4, -11); g.lineTo(-1, -9); g.lineTo(-3, -5); g.stroke(); g.beginPath(); g.moveTo(6, -14); g.lineTo(4, -10); g.stroke(); }
+      if (lv >= 3) glint(g, -4, -12, 2.6, 1.4, -0.4);
+      if (lv === 4) { circ(g, 0, -12, 1.8); g.fillStyle = '#e0526a'; g.fill(); }
+      break;
+    }
     case 'buckler':
       circ(g, 0, 0, 11); ink(g, P.steel, 2.6); circ(g, 0, 0, 4); ink(g, P.gold, 2); glint(g, -4, -4, 3, 1.6);
       break;

@@ -74,7 +74,7 @@ function spawnAINations(slots, races = []) {
 }
 // capitals: grassland with open borders, as far as possible from every other capital, and reachable over land
 function pickAICapital(caps, reach, r, terrain = 'grassland') {
-  const all = G.provs.map((_, i) => i).filter(i => !S.buildings.has(i) && reach[i] < Infinity);
+  const all = G.provs.map((_, i) => i).filter(i => !S.buildings.has(i) && reach[i] < Infinity && !uniqueBan(i));
   let cands = all.filter(i => G.provs[i].terrain === terrain && openNbr[i].length >= 2);
   if (terrain !== 'grassland' && cands.length < 3) cands = cands.concat(all.filter(i => G.provs[i].terrain === 'grassland' && openNbr[i].length >= 2));
   if (cands.length < 8) cands = all.filter(i => openNbr[i].length >= 2);

@@ -658,6 +658,79 @@
     throw new Error('Could not generate a valid world: ' + JSON.stringify(reasons));
   }
 
+  // ---------- v95: three unique provinces on every normal island ----------
+  // Death Mountain: an inland province walled off by mountains on every side (nobody can enter it).
+  // Desert Oasis: a desert province ringed by palm trees, with one open border (the entrance).
+  // Heart of the Forest: a forest province ringed by trees, with one open border (the entrance).
+  // Each entrance (and one province next to Death Mountain) is guarded by a boss, placed by the game (v95.js).
+  function placeUniques(w, seed) {
+    const rng = seedRng('unique:' + seed), ps = w.provinces, E = w.edges, n = ps.length;
+    const other = (e, i) => e.a === i ? e.b : e.a;
+    const inland = i => !ps[i].coast.length;
+    const banned = new Set();
+    const U = { death: -1, deathGuard: -1, oasis: -1, oasisGuard: -1, heart: -1, heartGuard: -1 };
+    // every province except Death Mountain must stay reachable on foot once the borders are closed
+    const connected = (closed, dead) => {
+      const start = ps.findIndex((_, i) => i !== dead); const seen = new Set([start]), q = [start];
+      while (q.length) { const u = q.pop(); for (const id of ps[u].edges) { const e = E[id]; if (!e.open || closed.has(id)) continue; const v = other(e, u); if (v === dead || seen.has(v)) continue; seen.add(v); q.push(v); } }
+      return seen.size === n - (dead >= 0 ? 1 : 0);
+    };
+    const order = list => shuffle(list.slice(), rng);
+    // 1. Death Mountain: inland, not a desert, ideally with no desert or coastal neighbor
+    {
+      const base = order(ps.map((_, i) => i).filter(i => inland(i) && ps[i].terrain !== 'desert' && ps[i].nbr.length >= 4));
+      const score = i => ps[i].nbr.filter(j => ps[j].terrain === 'desert').length * 10 + ps[i].nbr.filter(j => !inland(j)).length;
+      base.sort((x, y) => score(x) - score(y));
+      for (const i of base) {
+        const closed = new Set(ps[i].edges);
+        if (!connected(closed, i)) continue;
+        U.death = i;
+        for (const id of ps[i].edges) { E[id].open = false; E[id].style = 'mountains'; }
+        const g = order(ps[i].nbr.slice()).sort((x, y) => inland(y) - inland(x))[0]; U.deathGuard = g;
+        banned.add(i); for (const j of ps[i].nbr) banned.add(j); for (const j of ps[g].nbr) banned.add(j);
+        break;
+      }
+    }
+    // 2 and 3: a ring of one terrain with a single way in
+    const ringed = (terrain, style, key) => {
+      const cands = order(ps.map((_, i) => i).filter(i => ps[i].terrain === terrain && inland(i) && ps[i].nbr.length >= 4 && !banned.has(i) && !ps[i].nbr.some(j => banned.has(j))));
+      const same = i => ps[i].nbr.filter(j => ps[j].terrain === terrain).length / ps[i].nbr.length;
+      cands.sort((x, y) => same(y) - same(x));
+      for (const i of cands) {
+        // the entrance: a neighbor that is not banned, prefer one of the same terrain with many neighbors
+        const gs = order(ps[i].nbr.filter(j => !banned.has(j))).sort((x, y) => (ps[y].terrain === terrain) - (ps[x].terrain === terrain) || ps[y].nbr.length - ps[x].nbr.length);
+        for (const g of gs) {
+          const ent = ps[i].edges.find(id => other(E[id], i) === g); if (ent === undefined) continue;
+          const closed = new Set(ps[i].edges.filter(id => id !== ent));
+          // the entrance must actually be passable afterwards
+          const was = E[ent].open; E[ent].open = true;
+          if (!connected(closed, U.death)) { E[ent].open = was; continue; }
+          for (const id of ps[i].edges) if (id !== ent) { E[id].open = false; E[id].style = style; }
+          E[ent].style = null;
+          // "always surrounded by desert / forest": neighbors of another terrain are turned into it
+          for (const j of ps[i].nbr) if (ps[j].terrain !== terrain) {
+            ps[j].terrain = terrain;
+            if (terrain === 'desert') for (const id of ps[j].edges) { const o = other(E[id], j); if (o === i || o === U.death) continue; E[id].open = true; E[id].style = null; }   // deserts keep no barriers
+          }
+          U[key] = i; U[key + 'Guard'] = g;
+          banned.add(i); for (const j of ps[i].nbr) banned.add(j); for (const j of ps[g].nbr) banned.add(j);
+          return;
+        }
+      }
+    };
+    ringed('desert', 'palms', 'oasis');
+    ringed('forest', 'trees', 'heart');
+    // junction fillers around the unique provinces follow their new borders
+    const vKind = new Map();
+    if (U.death >= 0) for (const v of ps[U.death].verts) vKind.set(v, 'mountains');
+    if (U.oasis >= 0) for (const v of ps[U.oasis].verts) vKind.set(v, 'palms');
+    if (U.heart >= 0) for (const v of ps[U.heart].verts) vKind.set(v, 'trees');
+    for (const j of w.junctions) if (vKind.has(j.v) && j.kind !== 'river') j.kind = vKind.get(j.v);
+    w.unique = U;
+    return w;
+  }
+  function generateWorldU(seed) { return placeUniques(generateWorld(seed), seed); }
+
   // ---------- practice world: a small 10-province island cut from a normal world ----------
   // 1 desert, 1 swamp, 5 grassland, 3 forest; every province reachable on foot; forests keep a border of trees for Lumber Mills
   function generatePractice(seed) {
@@ -719,6 +792,6 @@
       features: { peninsulas: [], coves: [] }, lakes: [], lakesInland: true, touchesEdgeOfWorld: false, seed: 'practice:' + seed, practice: true, attempts: big.attempts, report: [] };
   }
 
-  const api = { generateWorld, generatePractice, validate, TERRAINS };
+  const api = { generateWorld: generateWorldU, generatePractice, validate, TERRAINS, placeUniques };
   if (typeof module !== 'undefined' && module.exports) module.exports = api; else root.RealmGen = api;
 })(typeof globalThis!=="undefined"?globalThis:this);

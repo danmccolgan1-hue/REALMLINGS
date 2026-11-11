@@ -223,11 +223,11 @@ function spawnLairs(skip) {
 // both are landmarks drawn like set pieces (S.finds), but give their reward once, when your Wayfinder surveys the province
 const TREASURE_CHANCE = 1 / 8, TREASURE_GOLD = 200, RUINS_MINUTES = 3;
 S.finds = new Map();   // p -> { id: 'ruins' | 'treasure', done }
-function placeRuins() {
+function placeRuins(avoid = new Set()) {
   const r = rngFrom(world.seed + ':ruins');
   const caps = [...S.buildings].filter(([, b]) => b.stage === 2).map(([p]) => p), near = new Set(caps.flatMap(c => [c, ...allNbr[c]]));
-  const ok = world.provinces.map((P, i) => i).filter(i => world.provinces[i].terrain === 'swamp' && !S.buildings.has(i) && !near.has(i) && !S.setpieces.has(i));
-  const any = ok.length ? ok : world.provinces.map((P, i) => i).filter(i => world.provinces[i].terrain === 'swamp' && !S.buildings.has(i));
+  const ok = world.provinces.map((P, i) => i).filter(i => world.provinces[i].terrain === 'swamp' && !S.buildings.has(i) && !near.has(i) && !S.setpieces.has(i) && !avoid.has(i));
+  const any = ok.length ? ok : world.provinces.map((P, i) => i).filter(i => world.provinces[i].terrain === 'swamp' && !S.buildings.has(i) && !avoid.has(i));
   if (!any.length) return -1;
   const p = any[Math.floor(r() * any.length)];
   S.finds.set(p, { id: 'ruins', done: false });
@@ -280,7 +280,7 @@ function queueFind(f) { findQueue.push(f); }
 function showNextFind() {
   const el = $q('#findPop'); if (!el.hidden || !findQueue.length || !$q('#spPop').hidden) return;
   const f = findQueue.shift();
-  el.innerHTML = `<button type="button" class="pop-x" data-fp="ok" aria-label="Dismiss" title="Dismiss">×</button><h2 id="findPopT">${f.icon ? `<img class="sp-ico" alt="" src="${f.icon}">` : ''}Discovery!<span>${f.title} at ${escHTML(provName(f.p))}</span></h2><p class="sp-said">${f.said}</p>${f.note ? `<p>${f.note}</p>` : ''}<div class="dm-btns"><button type="button" data-fp="look">Show me</button><button type="button" data-fp="ok">OK</button></div>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-fp="ok" aria-label="Dismiss" title="Dismiss">×</button><h2 id="findPopT">${f.icon ? `<img class="sp-ico" alt="" src="${f.icon}">` : ''}${f.head || 'Discovery!'}<span>${f.title} at ${escHTML(provName(f.p))}</span></h2><p class="sp-said">${f.said}</p>${f.note ? `<p>${f.note}</p>` : ''}<div class="dm-btns"><button type="button" data-fp="look">Show me</button><button type="button" data-fp="ok">OK</button></div>`;
   el.dataset.prov = f.p; el.hidden = false; sfx('wn_ally');
   const ok = el.querySelector('.dm-btns [data-fp="ok"]'); if (ok) ok.focus({ preventScroll: true });
 }
@@ -852,7 +852,7 @@ let peaceCtx = null, killCtx = null;
     _endWar(w);
     if (!rec) return;
     rec.end = S.t;
-    const K = { gold: 'gold', provs: 'provinces', total: 'Total Victory' };
+    const K = { gold: 'gold', provs: 'provinces', total: 'Total Victory', surrender: 'surrender' };
     if (peaceCtx && peaceCtx.w === w) { const kind = peaceCtx.terms && peaceCtx.terms.kind; rec.result = kind === 'white' || !K[kind] ? 'White peace' : peaceCtx.winner === ME ? 'Victory · ' + K[kind] : 'Defeat · ' + K[kind]; }
     else if (S.fallen) rec.result = 'Defeat · realm fallen';
     else if (killCtx !== null && killCtx === rec.foe) rec.result = 'Victory · enemy destroyed';
@@ -1048,9 +1048,10 @@ function setupV78() {
   if (cap >= 0) S.spFound.add(cap);
   // the map's extras: the Intact Ruins first (nothing else may sit there), then bandits and monsters, then the travelers
   S.finds = new Map(); S.treasureRolled = new Set(); S.travelers = []; findQueue.length = 0;
-  const ruins = placeRuins(), skip = new Set(ruins >= 0 ? [ruins] : []);
+  const uqs = uqSkip(), ruins = placeRuins(uqs), skip = new Set([...uqs, ...(ruins >= 0 ? [ruins] : [])]);
   spawnLairs(skip);
   for (const u of S.units) if (u.bandit) skip.add(u.prov);
   placeTravelers(skip);
+  spawnBosses();   // v95: the three bosses guarding Death Mountain, the Oasis and the Heart of the Forest
 }
 window.__v78 = { wallBetween, raiseWall, startShock, startQuake, terrascape, openEdgeBetween, nextDesignName, terraWhy, findSpot, VIEW, unitK, f4Z: () => f4Z, spawnMonster, MONSTERS, spawnLairs, placeRuins, surveyFinds, grantTech, addResearch, showTravPop, travelersChoose, TRAVELERS, LAIR_CHANCE, armyFigures, armyHp, findUpgradable, openInspect, toggleCountry, openSplitMenu, splitKind, openRename, stepPatrols, spKnown, realmLabelOf, castUnitId, drawMonster };

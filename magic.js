@@ -141,6 +141,7 @@ function pathWhy(c, q, kind, close) {
   if (!L) return 'Not researched';
   if (close && L < 3) return `Research ${TECH_BY_ID[LINES[line][2]].name} first`;
   if (!allNbr[c.prov].includes(q)) return 'The Mage must stand next door';
+  if (isDeathMtn(q)) return 'No magic can open Death Mountain';
   const style = kind === 'forest' ? 'trees' : 'mountains';
   if (close) { const i = Object.keys(S.paths).map(Number).find(i => S.paths[i] === kind && [world.edges[i].a, world.edges[i].b].includes(q) && [world.edges[i].a, world.edges[i].b].includes(c.prov)); if (i === undefined) return `No ${kind === 'forest' ? 'forest path' : 'tunnel'} on that border`; }
   else if (edgeBetween(c.prov, q, style, false) < 0) return kind === 'forest' ? 'No border of trees there' : 'No mountain border there';

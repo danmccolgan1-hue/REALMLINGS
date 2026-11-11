@@ -21,8 +21,24 @@ R("cv.width = cache.width = Math.round(cw * dpr); cv.height = cache.height = Mat
 R("  cacheDirty = true; kick();\n}\nfunction fit()","  cacheDirty = true;\n}\nfunction fit()")
 
 # ---- bigger provinces, thick border bands, blended terrain (see WORLD_K in game.js) ----
-R("let bakedScale = 0;\n", """// large copies of the border sprites for the thick border bands
-for (const n of ['mtn0', 'mtn1', 'mtn2', 'tree0', 'tree1', 'tree2', 'pine0', 'pine1', 'cypress0', 'cypress1', 'pillar', 'arch', 'rock0', 'rock1']) { const s = SPR[n]; if (s) def(n + '_L', s.w * 2, s.h * 2, s.ax * 2, s.ay * 2, g => { g.scale(2, 2); s.fn(g); }); }
+R("let bakedScale = 0;\n", """// v95: a date palm for the Desert Oasis' ring of palm trees
+[0, 1].forEach(i => def('palm' + i, 40, 46, 20, 43, g => {
+  const lean = i ? 4 : -3;
+  g.fillStyle = 'rgba(0,0,0,0.22)'; g.beginPath(); g.ellipse(1, 0, 9, 3, 0, 0, 7); g.fill();
+  // a curved, ringed trunk
+  g.lineCap = 'round'; g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(lean * 0.2, -14, lean, -27);
+  g.lineWidth = 7; g.strokeStyle = OL; g.stroke(); g.lineWidth = 4.2; g.strokeStyle = '#a77a48'; g.stroke();
+  g.strokeStyle = 'rgba(80,50,25,0.55)'; g.lineWidth = 1.2; for (let k = 1; k < 6; k++) { const t = k / 6, x = lean * t * t, y = -27 * t; g.beginPath(); g.moveTo(x - 2, y); g.lineTo(x + 2, y - 1); g.stroke(); }
+  // fronds: long drooping leaves
+  const cx = lean, cy = -28;
+  const fr = [[-15, 6], [-12, -6], [-3, -11], [8, -9], [15, -2], [14, 8], [-6, 10]];
+  for (const [fx, fy] of fr) { g.beginPath(); g.moveTo(cx, cy); g.quadraticCurveTo(cx + fx * 0.5, cy + fy * 0.5 - 6, cx + fx, cy + fy); g.lineWidth = 6.5; g.strokeStyle = OL; g.stroke(); }
+  for (const [fx, fy] of fr) { g.beginPath(); g.moveTo(cx, cy); g.quadraticCurveTo(cx + fx * 0.5, cy + fy * 0.5 - 6, cx + fx, cy + fy); g.lineWidth = 3.6; g.strokeStyle = fy < 0 ? '#5fbf4a' : '#3f9a3c'; g.stroke(); }
+  // dates
+  g.fillStyle = '#c0582a'; g.strokeStyle = OL; g.lineWidth = 1; for (const [dx, dy] of [[-2, 2], [1, 3], [3, 1]]) { g.beginPath(); g.arc(cx + dx, cy + dy, 1.8, 0, 7); g.fill(); g.stroke(); }
+}));
+// large copies of the border sprites for the thick border bands
+for (const n of ['palm0', 'palm1', 'mtn0', 'mtn1', 'mtn2', 'tree0', 'tree1', 'tree2', 'pine0', 'pine1', 'cypress0', 'cypress1', 'pillar', 'arch', 'rock0', 'rock1']) { const s = SPR[n]; if (s) def(n + '_L', s.w * 2, s.h * 2, s.ax * 2, s.ay * 2, g => { g.scale(2, 2); s.fn(g); }); }
 let bakedScale = 0;
 """)
 R("const inner = insetPoly(pts, kinds.map(k => k === 'open' ? 4 : k === 'bar' ? 16 : 10), c);", "const inner = insetPoly(pts, kinds.map(k => k === 'open' ? 6 : k === 'bar' ? BAND_IN : 18), c);")
@@ -42,6 +58,7 @@ r = r[:a] + """  const treeL = swampy => treeFor(swampy) + '_L';
       const off = row * (e.style === 'trees' ? 15 : 13) + (rnd() - 0.5) * 8;
       const x = a[0] + dx * t + nx * off, y = a[1] + dy * t + ny * off + 8;
       if (e.style === 'trees') sway.push({ x, y, s: treeL(swampy), ph: rnd() * 6.28 });
+      else if (e.style === 'palms') sway.push({ x, y, s: 'palm' + (rnd() < 0.5 ? 0 : 1) + '_L', ph: rnd() * 6.28 });
       else if (e.style === 'mountains') { still.push({ x, y: y + 4, s: 'mtn' + Math.floor(rnd() * 3) + '_L' }); if (rnd() < 0.3) still.push({ x: x + nx * row * 14, y: y + ny * row * 14 + 10, s: 'mtn1_L' }); }
       else { still.push({ x, y, s: rnd() < 0.4 ? 'pillar_L' : 'arch_L' }); if (rnd() < 0.7) still.push({ x: x + (rnd() - 0.5) * 24, y: y + 8, s: 'rock' + (rnd() < 0.5 ? 0 : 1) + '_L' }); }   // ruins: stones only, no trees, so they never look like a forest border
     }
@@ -51,7 +68,8 @@ r = r[:a] + """  const treeL = swampy => treeFor(swampy) + '_L';
     const [x, y] = V[j.v];
     if (j.kind === 'river') return;
     const swampy = vSwamp.has(j.v);
-    if (j.kind === 'trees') { for (const [ox, oy] of [[-14, 0], [14, 4], [0, 18], [0, -12]]) sway.push({ x: x + ox, y: y + oy, s: treeL(swampy), ph: rnd() * 6.28 }); }
+    if (j.kind === 'palms') { for (const [ox, oy] of [[-12, 0], [12, 6], [0, 16]]) sway.push({ x: x + ox, y: y + oy, s: 'palm' + (rnd() < 0.5 ? 0 : 1) + '_L', ph: rnd() * 6.28 }); }
+    else if (j.kind === 'trees') { for (const [ox, oy] of [[-14, 0], [14, 4], [0, 18], [0, -12]]) sway.push({ x: x + ox, y: y + oy, s: treeL(swampy), ph: rnd() * 6.28 }); }
     else if (j.kind === 'mountains') { still.push({ x: x - 10, y: y + 6, s: 'mtn2_L' }); still.push({ x: x + 14, y: y + 16, s: 'mtn1_L' }); still.push({ x: x + 2, y: y - 8, s: 'mtn0_L' }); }
     else if (j.kind === 'ruins') { still.push({ x: x - 8, y: y + 4, s: 'pillar_L' }); still.push({ x: x + 12, y: y + 12, s: 'rock0_L' }); }
     else still.push({ x, y: y + 6, s: 'rock' + (rnd() < 0.5 ? 0 : 1) + '_L' });
@@ -125,7 +143,7 @@ import base64, glob, os, json
 def sfx_data():
     d = {os.path.basename(f)[:-4]: base64.b64encode(open(f, 'rb').read()).decode() for f in sorted(glob.glob('sfx/*.mp3'))}
     return '\nconst SFX_DATA = ' + json.dumps(d) + ';\n'
-script = "(function () {\n'use strict';\n" + r + "\n" + open('game.js').read().replace('fit(); setupBar(); bootMenu();', open('war.js').read() + open('equip.js').read() + open('tech.js').read() + open('techicons.js').read() + open('govtech.js').read() + open('magic.js').read() + open('menu.js').read() + sfx_data() + open('sound.js').read() + open('features.js').read() + open('flags.js').read() + open('content.js').read() + open('ai.js').read() + open('gpc.js').read() + open('v78.js').read() + open('swamp.js').read() + open('wood.js').read() + open('save.js').read() + '\nfit(); setupBar(); bootMenu();') + "\n})();"
+script = "(function () {\n'use strict';\n" + r + "\n" + open('game.js').read().replace('fit(); setupBar(); bootMenu();', open('war.js').read() + open('equip.js').read() + open('tech.js').read() + open('techicons.js').read() + open('govtech.js').read() + open('magic.js').read() + open('menu.js').read() + sfx_data() + open('sound.js').read() + open('features.js').read() + open('flags.js').read() + open('content.js').read() + open('ai.js').read() + open('gpc.js').read() + open('v78.js').read() + open('swamp.js').read() + open('wood.js').read() + open('v95.js').read() + open('save.js').read() + '\nfit(); setupBar(); bootMenu();') + "\n})();"
 shell=open('game_shell.html').read()
 out = shell + "\n<script>\n" + open('gen.js').read() + "\n</script>\n<script>\n" + open('iso.js').read() + "\n</script>\n<script>\n" + open('buildings.js').read() + "\n</script>\n<script>\n" + open('buildings2.js').read() + "\n</script>\n<script>\n" + open('swampbld.js').read() + "\n</script>\n<script>\n" + open('woodbld.js').read() + "\n</script>\n<script>\n" + script + "\n</script>\n"
 open('realmlings_play.html','w').write(out)

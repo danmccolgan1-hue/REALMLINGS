@@ -189,7 +189,7 @@ const PLURAL_OF = n => /man$/.test(n) ? n.replace(/man$/, 'men') : /s$/.test(n) 
 // ---------- combat helpers (used by the battle code) ----------
 const STATS0 = { atk: 5, hp: 30, armor: 0, shieldArmor: 0, red: 0, parry: 0, crit: 0, cav: false, fam: 'sword' };
 // a soldier's stats; your own soldiers also get the repeatable Military and Magic research bonuses (see boostStats)
-const statsOf = (k, o) => { const st = DSTATS[k] || STATS0; return o === ME ? boostStats(k, st) : st; };
+const statsOf = (k, o) => { const st = DSTATS[k] || STATS0; return artStats(k, o === ME ? boostStats(k, st) : st, o); };   // v95: artifacts (artStats in v95.js)
 function sideMix(armies) {
   let n = 0, cav = 0, red = 0, parry = 0, blunt = 0, atk = 0;
   for (const a of armies) for (const k in a.troops) { const c = a.troops[k], s = statsOf(k, a.owner); n += c; if (s.cav && !s.champ) cav += c; red += c * s.red; parry += c * s.parry; if (s.fam === 'blunt') blunt += c * s.atk; atk += c * s.atk; }

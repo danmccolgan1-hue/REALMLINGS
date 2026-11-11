@@ -196,7 +196,7 @@ function swCastId(sc) {
   return id;
 }
 const SW_MAGE0 = { ...RealmIso.UNITS['sw-mage'].spec };
-const mageHands = gear => { const W = MAGE_WEAPONS[gear.weapon]; return { right: gear.weapon === 'stave' ? 'stave' : gear.weapon, left: !W.twoH && gear.shield && !isSw(ME) ? gear.shield : null }; };
+const mageHands = gear => { const W = MAGE_WEAPONS[gear.weapon]; return { right: gear.weapon === 'stave' ? 'stave' : gear.weapon, left: !W.twoH ? (isSw(ME) ? gear.skull || null : gear.shield || null) : null }; };   // v95: a Warlock holds a skull, never a shield
 function mageArtSpec(gear) { return isSw(ME) ? { ...SW_MAGE0, ...mageHands(gear) } : { ...MAGE_SPEC0, ...mageSpec(gear) }; }
 const _registerMage = registerMage;
 registerMage = function () { _registerMage(); RealmIso.UNITS['sw-mage'].spec = { ...SW_MAGE0, ...mageHands(S.mageGear) }; delete portraitURL[MAGE]; };
