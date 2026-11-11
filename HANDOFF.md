@@ -19,7 +19,7 @@ https://claude.ai/artifact/JDKKiwqrMhuaBoEAdBDMSV.
 - **Shell:** `game_shell.html` holds the HTML, the CSS and the How to Play text.
 - **Renderer:** lines 130–581 of `page.html` (do not change that file's line count of 690). `assemble_game.py` patches this slice with string replacements (`R(old, new)`, each must match exactly once).
 - **Game code:** `game.js`, with these files inserted before `fit(); setupBar(); bootMenu();`, all inside one IIFE in strict mode:
-  `war.js, equip.js, tech.js, techicons.js, govtech.js, magic.js, menu.js, SFX_DATA (sound effects embedded as base64 from sfx/*.mp3), sound.js, features.js, flags.js, content.js, ai.js, gpc.js, v78.js`
+  `war.js, equip.js, tech.js, techicons.js, govtech.js, magic.js, menu.js, SFX_DATA (sound effects embedded as base64 from sfx/*.mp3), sound.js, features.js, flags.js, content.js, ai.js, gpc.js, v78.js, swamp.js`
   (`gpc.js`: most of the v77 gameplay changes; its `stepGPC` runs every unpaused frame.)
   (`v78.js`: most of the v78 graphics / interface / text changes; `stepV78` runs every frame, `setupV78` at game start.)
   (`content.js`: set pieces, Bandit Gangs, towns and civilians, repeatable-tech effects. `ai.js`: the AI nations.)
@@ -27,7 +27,8 @@ https://claude.ai/artifact/JDKKiwqrMhuaBoEAdBDMSV.
 
 ### Publishing
 
-- **Current version: v83** (v72 AI nations; v73 lighter bitmap cache; v74 error-proof game loop; v75 province window fix, war, Wayfinder and meeting changes; v76 left column and UI size; v77 the GPC01–GPC31 gameplay list; v78 the GC/IC/T list: graphics, interface and text; v79 the SMA small map additions; v80 Quick queue setting; v81 popup buttons and move marker; v82 the Z list; v83 Earthquake is a 2-minute cast). After each publish, update this line with the version number the publish result reports.
+- **Current version: v85** (v85 the Y list: menu screens, start paused, alliance flags; see the v85 section at the end)
+- (previously: v84 the Swamplings) (v83) (v72 AI nations; v73 lighter bitmap cache; v74 error-proof game loop; v75 province window fix, war, Wayfinder and meeting changes; v76 left column and UI size; v77 the GPC01–GPC31 gameplay list; v78 the GC/IC/T list: graphics, interface and text; v79 the SMA small map additions; v80 Quick queue setting; v81 popup buttons and move marker; v82 the Z list; v83 Earthquake is a 2-minute cast). After each publish, update this line with the version number the publish result reports.
 - Name project zips with that version, e.g. `realmlings_v76.zip`.
 
 - Publish `realmlings_play.html` to the URL above (pass it as `url`; read the artifact first, since it is from an earlier conversation).
@@ -242,3 +243,48 @@ Settings has a "Quick queue" toggle (`#qqBtn`, `VIEW.quickQueue`, saved in `real
 - **Z11 / Z12** gpc.js Earthquake section rewritten (`SPELL2`, `startSpell2`, `c.quake.kind`). **Shockwave** (`shock`, every Mage, army cell 10 / Mage cell 11, also in the Ctrl+right-click menu): aim at a neighboring province of a nation at war with the caster; after 120 s the wall on that border is broken (`breakWall`). **Earthquake** (`quake`, tech `earthquake`, Magic Tier III any school, army cell 11 / Mage cell 14): cast in a province your nation occupies; after 120 s (v83; was 30 s) all its buildings (and upgrades / constructions there) and every wall on its borders are destroyed (`quakeStrike`; settlements stay). Enemy casts show the warning flag; the AI casts both (`aiQuake`).
 - **Z13** `realmLabelsOf`: the nation-name toggle labels your nation and every nation you have met (over the biggest block of their land you have explored).
 - **Z15** Terrascaping (tech `terrascape`, Herbomancy Tier III, needs Speak with the Forest): from the Ctrl+right-click menu on a neighbor across a plain open border, 5 minutes of casting; `terrascape(p, q)` adds trees to `G.sway` along the border with a gap in the middle, sets the edge style to `trees` and `S.paths[i] = 'forest'` (the border stays passable only through that forest path; Arboreal Restoration can close it).
+
+
+## v84: the Swamplings (a second race)
+
+Not play-tested: the user tests himself. The build was assembled, syntax-checked (`node --check` on every script) and scanned for undefined names (TypeScript, `allowJs`/`checkJs`, codes 2304/2552).
+
+- **Race core** (swamp.js, top): `RACE` (owner → `'realm'` | `'swamp'`), `raceOf(o)`, `isSw(o)`, `techFor(x, race)` (a technology with `x.race` belongs to that race only). `applyRace(race)` runs in `startGame` before `setupGame`: it renames units, buildings, technologies, tree texts and Armory headings for the player's race (originals kept in `ORIG`), rebuilds `BUILD_ORDER` and `CMD[MASON]`, gives Swamplings Mushroom Farming. Humans are now called Realmlings.
+- **Menu** (menu.js, game_shell.html): a Race row (`#mRace`) and a small race button beside each opponent slot (R / S / ?), saved as `realm-races`. `spawnAINations(slots, races)` sets `RACE[id]`, `N.race`, and maps family / armor line / school for Swamplings (`swFamily`, `swArmorLine`, `swSchool`).
+- **Start**: Swamplings start in a swamp (`setupGame`, `pickAICapital(…, terrain)`), with three Axe Berserkers (`footmanOf(o)`).
+- **Art**: iso.js has the Swampling rig (`RealmIso.swamp(o)`: green skin, hunch and back hump, pointed ears, underbite with tusks, glowing red eyes; `crouch` for Berserkers; `log` for the Swampwright; `allFours` + `POSE.running` for the Swampstrider; unit `'ogre'` is drawn 1.55× on foot), axe items, and units `sw-pioneer`, `sw-mason`, `sw-mage` (Warlock), `thug:A`. Every unit is drawn through `drawUnitFor(g, id, owner, moving, …)` → `swArtId`. swampbld.js (`SwampBuild`) draws mud-and-clay huts, every building and the settlements; `settleArt` / `bldArt` pick the art by the owner's race (cache keys carry the race).
+- **Buildings**: Ogre Cave = `stable` (needs a mountain border, `mountainBorder`), Thug Den = `market`, Supply Cache = `bank` (+500 of each, `storeOf`), Warlock Tower / Spire / Grand Spire = `magetower`, Hot Springs = `temple` (swamp only). No Granary, Storehouse or roads. Rules in `raceBuildWhy` (player `buildCheck` and `aiBuildWhy` are wrapped).
+- **Thugs** (`THUG = 'thug:A'`): trained at a selected Thug Den (`S.selKind = 'market'`), go straight in if there is room (`e.thugs` on the den's extra); `thugin` / `thugout` commands; `denCap(o)` = 2 + Thugging Benefits Program + Stock Options. Gold in `provinceIncome` (`thugGold`): 1 per Thug, ×2 with Highwaymen (`traderoutes`, which for Swamplings needs only the Thug Den: `x.reqSw`) when the den borders another nation, +5% per Thug Guilds (`rep-trade`). AI dens count as full.
+- **Swamp bonuses**: `speedMod(u)` (+20% speed in a swamp, Path of Fire) is multiplied into `unitSpeed`; `sideStrength` gives Swamplings +20% damage in swamps and spares their Ogres the cavalry penalty; Swampstrider Stealth has no slowdown in swamps (`stealthFree`). Swamp Taxes (`swampTax`): +1 gold and +2 food per settlement level in swamps.
+- **Armory** (equip.js): axes (`fam: 'axe'`, all one-handed, parry like swords), no shields, Staghide / Wyvern-Scaled / Dragonbone armor (10% weaker, 10% faster than their twins), `OGRES` in place of `HORSES` (`mountsFor(race)`; armor ×0.8 on Ogres), dual wielding (`d.off`, half its attack; tech `dualwield`; `offhandRow`). Designs carry `race`; lists, Barracks and retrofits only show your race's designs. Starting designs `d-sw-axe`, `d-sw-spear`, `d-sw-club`, `d-sw-ogre`.
+- **Technology** (tech.js): Swampling-only `w-bearded`, `w-battleaxe`, `w-waraxe`, `a-stag*`, `a-wyvern*`, `a-dragon*`, `dualwield`, `thugs2`, `thugs3`, Pyromancy; Realmling-only roads, granary, storehouse, swords, shields, their armor, Herbomancy, `rep-shield`, `rep-harvest`. Renames in `SW_TEXT` (repeatables via `swName` / `swBlurb`). `reqMet(x, st, all, race)`.
+- **Pyromancy** (school `pyro`, Swamplings only; magic.js `SCHOOLS.pyro`, `schoolOk`): Fiery Weapons (autocast `AUTO.fiery`, `a.fiery` = chance of double damage per round), Scouting Pyre (`CAST.spyre`, `S.spyres`, `pyreSight` in `computeFog`), Fire / Blazing / Molten Trap (`CAST.ftrap`, `S.ftraps`, springs on an army that enters after it was set, `burnArmy` kills 3 / 6 / 9 Footmen's worth), Path of Fire / Flame / Inferno (`CAST.pfire`, `u.pathFire`), Sacred Pyre (building `pyre`, levels Sacred / Grand, `PYRE`, `pyrePayday` after `payday`; one burns per living Warlock). Per-Warlock cooldowns are stored as `S.cd['spyre' + id]` / `S.cd['pfire' + id]`.
+- **Fireball**: Shockwave is called Fireball for Swamplings (`SHOCK(o)` in gpc.js).
+- **Travelers**: Swamplings can't recruit them; with an army there they capture them for 30 food each (`travelersChoose('capture')`).
+- **Spiked Walls**: Stone Walls for Swamplings, drawn as sharpened stakes (`drawWallEdge`).
+- **Known simplifications**: many toasts and the How to Play text still say Wayfinder / Mason / Mage in places; AI Swamplings don't train Thugs (dens count as full) or cast Pyromancy (Sacred Pyres count as income); the civilians' houses are the same for both races.
+
+### v84 follow-ups (same version)
+
+- **Ogres train at the Ogre Cave** itself (`trainable('stable')`, `S.selKind = 'stable'`), no Barracks needed; a Swampling Barracks trains Berserkers only. Ogres are retrofitted at an Ogre Cave (`barracksOk`). AI Swamplings still train Ogres only where a Barracks and an Ogre Cave share a province.
+- **Axes**: no parry; each axe blow has a 10% chance to do double damage (`st.crit`, `critBlows` in `sideStrength`). Swords keep their 10% parry.
+- **Sacred Pyre is raised by a Warlock** standing on his own (Warlock command cell 13, `pyrebuild`, through `beginExtra`); it is no longer on the Swampwright's build list. Moving cancels it and refunds the wood.
+- **Debug buttons** (Settings, row "Debug", for testing only): `#dbgReveal` toggles `S.reveal` (the whole map visible); `#dbgRes` adds 2000 gold, wood and food and raises storage by 2000 each (`S.debugCap`, counted in `storageCap`) so it isn't clamped. Code at the end of swamp.js. Remove before release.
+- **Debug: Research all** (`#dbgTech`): marks every non-repeatable technology of your race as researched in all three trees; Magic uses your school, or picks the first school open to your race. Test-only.
+- **Art pass**: Ogres (`ogreBody` in iso.js, spec flags `ogreBody`, `noEars`, `blackEyes`, `bigHands` from `swampSpecFor`) are always on all fours, knuckle-walking on huge fists under a humped back, with a big long head (0.91 × 1.17) and black eyes, no shoulder plates or ears; armies pass `walking` to `drawUnitFor` so Ogres run. Crouching Berserkers hold both weapons out at 45° (outward, or forward from the side) so dual-wielded axes don't cover the face. Swampwright skin = Leviathan Ogre (#5a7a80), Swampstrider skin = Swampfeet Ogre (#93b55c).
+- **Swampling towns** (content.js): houses in a Swampling province are little mud huts (`SW_HUTS`, drawn with `SwampBuild.hut`; 2 of every 3 thatched in the owner's color); townsfolk there are drawn in forest green, green, light green, teal or brown (`SW_CIV`, chosen by the owner's race at draw time), hunched, with pointed ears and no hats.
+
+## v85: the Y list
+
+Not play-tested by the user yet. Assembled, `node --check`ed, and driven in headless Chromium (menu screens, start, meet popup, flags, 15 minutes fast-forwarded with mixed races, no errors).
+
+- **Y1 Start paused**: `startGame` (menu.js) calls `togglePause()` after setup; the welcome toast says to press Space.
+- **Y2 Meet popup "Show me"**: `updateMet` records which Wayfinder met each nation (`metBy`); `showMetScout(o)` (war.js) selects that Wayfinder (or any of yours standing in or next to their land) and flies to him; falls back to `lookAtNation`.
+- **Y3 Alliance ended flag**: `endAlliance` pushes `S.allyEnds` (not when you ended it yourself); flag `allyend:<id>` (`flag_alliance_ended.svg`, broken chain), shown 2 minutes (`ALLY_END_SHOW`); left-click flies to their land (or opens Diplomacy), right-click dismisses.
+- **Y3 Truce flag**: no seconds and no counter badge any more ("Truce ending soon"), so it no longer redraws every second. Labeled flags get side margins so labels don't overlap (`.nf:has(em)`).
+- **Y4 Outliner**: the Workers list headings, the Capital card and the settlement description use the race's unit names (Swampstriders / Swampwrights).
+- **Y4b Swampling nation names**: `SW_AI_TITLES` (Clan, Tribe, Legion) and `SW_AI_PLACES` (Bloodtusk, Skullmire…) in ai.js: "Ironjaw Tribe" or "Legion of Skullmire".
+- **Y5** `allyWhy`: Realmlings and Swamplings never ally (player and AI).
+- **Y6 Menu**: two screens in the title card: `#mMain` (Music, Sound effects, New Game `#mNew`, How to play) and `#mSetup` (seed, nation, race, color, flag, practice, opponents, Start game, Back `#mBack`; Esc goes back). `menuScreen('main' | 'setup')`. The parade above both follows the chosen race; the race is saved again at game start (`racesSave`).
+- **Y7 Pause audio**: pausing no longer suspends the audio context or mutes sound effects (`sfx` ignores `S.paused`); music plays at half volume while paused (`musicTarget()` in menu.js). The battle clash loop still stops while paused, since battles are frozen.
+- Test hooks: `window.__v85` (`metScout`, `showMetScout`, `meetNation`, `endAlliance`, `nbr`).

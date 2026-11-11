@@ -153,8 +153,8 @@ function drawMagicFx(g, u, x, y, t) {
 }
 
 // ---------- GC22: a casting Mage lifts his staff overhead; lightning crackles in the school's color ----------
-const SCHOOL_BOLT = { life: '#4fe36a', death: '#1d1a22', arcane: '#ff5fc8' };
-const schoolOf = o => (o === ME ? currentSchool() : null) || 'arcane';
+const SCHOOL_BOLT = { life: '#4fe36a', death: '#1d1a22', arcane: '#ff5fc8', pyro: '#ff7a2c' };
+const schoolOf = o => (o === ME ? currentSchool() : NATIONS[o] && NATIONS[o].school) || 'arcane';
 const schoolColor = o => SCHOOLS[schoolOf(o)].color;
 function castUnitId(u) {
   const sc = schoolOf(u.owner), id = MAGE + '#cast-' + sc, base = RealmIso.UNITS[MAGE];
@@ -347,7 +347,7 @@ function drawTreasureArt(g, x, y, t) {
 // ---------- SMA01: Lost bands of travelers ----------
 // a few wander in free provinces. When one of your units reaches them they ask for food: feed them and they join you as Footmen,
 // or rob them for gold (an army must be there). Leave them and they ask again the next time you come by.
-const TRAVELERS = { foodEach: 20, goldEach: 30, sizes: [3, 4, 5] };
+const TRAVELERS = { foodEach: 20, goldEach: 30, foodCaught: 30, sizes: [3, 4, 5] };   // Swamplings can't recruit travelers: their Berserkers capture them for food instead
 S.travelers = [];
 function placeTravelers(skip) {
   const r = rngFrom(world.seed + ':travelers'), want = Math.max(2, Math.round(world.provinces.length / 40));
@@ -414,8 +414,8 @@ function showTravPop(B) {
   const canFeed = (S.stock.food || 0) >= food;
   if (!S.paused) { togglePause(); travPausedByMe = true; }
   $q('#paused').hidden = true;
-  el.innerHTML = `<button type="button" class="pop-x" data-tv="leave" aria-label="Dismiss" title="Dismiss">×</button><h2 id="travPopT">A lost band of travelers<span>at ${escHTML(provName(B.prov))}</span></h2><p>${B.n} weary travelers have lost their way. They are hungry, and ask if you can spare them some food. Fed, they would gladly take up arms for you.</p>
-  <div class="dm-btns trav-btns"><button type="button" data-tv="feed"${canFeed ? '' : ' disabled'} title="${canFeed ? '' : 'Not enough food'}">Share ${food} food<small>${B.n} Footmen join you</small></button><button type="button" data-tv="rob"${army ? '' : ' disabled'} title="${army ? '' : 'You need an army in this province'}">Rob them<small>+${gold} gold${army ? '' : ' · needs an army here'}</small></button><button type="button" data-tv="leave">Leave them be<small>They ask again next time</small></button></div><div class="dm-btns"><button type="button" data-tv="look">Show me</button><button type="button" data-tv="leave">OK</button></div>`;
+  el.innerHTML = `<button type="button" class="pop-x" data-tv="leave" aria-label="Dismiss" title="Dismiss">×</button><h2 id="travPopT">A lost band of travelers<span>at ${escHTML(provName(B.prov))}</span></h2><p>${isSw(ME) ? `${B.n} weary travelers have lost their way. They eye your Swamplings fearfully and won’t take up arms for you, but your Berserkers could drag them off to the larder.` : `${B.n} weary travelers have lost their way. They are hungry, and ask if you can spare them some food. Fed, they would gladly take up arms for you.`}</p>
+  <div class="dm-btns trav-btns">${isSw(ME) ? `<button type="button" data-tv="capture"${army ? '' : ' disabled'} title="${army ? '' : 'You need Berserkers in this province'}">Capture them<small>+${B.n * TRAVELERS.foodCaught} food${army ? '' : ' · needs Berserkers here'}</small></button>` : `<button type="button" data-tv="feed"${canFeed ? '' : ' disabled'} title="${canFeed ? '' : 'Not enough food'}">Share ${food} food<small>${B.n} Footmen join you</small></button>`}<button type="button" data-tv="rob"${army ? '' : ' disabled'} title="${army ? '' : 'You need an army in this province'}">Rob them<small>+${gold} gold${army ? '' : ' · needs an army here'}</small></button><button type="button" data-tv="leave">Leave them be<small>They ask again next time</small></button></div><div class="dm-btns"><button type="button" data-tv="look">Show me</button><button type="button" data-tv="leave">OK</button></div>`;
   el.hidden = false; sfx('wn_ally');
   setTimeout(() => { const b = el.querySelector('.dm-btns [data-tv="leave"]'); if (b) b.focus({ preventScroll: true }); }, 30);
 }
@@ -434,6 +434,13 @@ function travelersChoose(how) {
     else { a = newArmy(B.prov, { 'd-sword': B.n }); }
     S.travelers = S.travelers.filter(x => x !== B); computeIncome(); rosterKey = ''; cmdKey = '';
     toast(`The travelers eat their fill and swear to serve you: ${B.n} Footmen join ${a.name}.`);
+  } else if (how === 'capture') {
+    const army = S.units.some(u => u.owner === ME && u.kind === 'army' && u.prov === B.prov && troopCount(u) > 0 && !u.battle);
+    if (!army) return toast('You need Berserkers in this province to capture them.', true);
+    const food = B.n * TRAVELERS.foodCaught;
+    S.stock.food += food; clampStock(); S.pops.push({ prov: B.prov, t0: S.t, k: 'food', n: food, dx: 0 });
+    S.travelers = S.travelers.filter(x => x !== B);
+    toast(`Your Berserkers round up the travelers and haul them off to the larder: +${food} food.`);
   } else if (how === 'rob') {
     const gold = B.n * TRAVELERS.goldEach;
     S.stock.gold += gold; S.pops.push({ prov: B.prov, t0: S.t, k: 'gold', n: gold, dx: 0 });
@@ -690,7 +697,7 @@ const TG_ICON = {
 function syncArmsToggle() { const im = $q('#tgArms'); if (im && NATION) im.src = flagURL(PLAYERS[ME].color, NATION.emblem); }
 
 // ---------- GC09: each building's color in the action card ----------
-const BUILD_BG = { outpost: '#a3a9b3', farm: '#2aa198', lumber: '#2e6b34', goldmine: '#f0a62e', barracks: '#ef2b2b', stable: '#8c1c3a', market: '#d9bf8f', granary: '#36d6e8', storehouse: '#b58a58', bank: '#ffe62e', forge: '#e8552a', magetower: '#3f6fe0', temple: '#9a5fd6' };
+const BUILD_BG = { pyre: '#ff7a2c', outpost: '#a3a9b3', farm: '#2aa198', lumber: '#2e6b34', goldmine: '#f0a62e', barracks: '#ef2b2b', stable: '#8c1c3a', market: '#d9bf8f', granary: '#36d6e8', storehouse: '#b58a58', bank: '#ffe62e', forge: '#e8552a', magetower: '#3f6fe0', temple: '#9a5fd6' };
 const cmdBg = id => { const t = id && id.startsWith('build:') ? id.slice(6) : null, c = t ? BUILD_BG[t] : null, d = t && BUILD_DEFS[t]; if (d && d.tech && !hasTech(d.tech)) return ''; return c ? ` style="--bbg:${c}"` : ''; };   // Z4: not yet researched → stays gray
 
 // ---------- GC14: is there something to upgrade that you can afford? ----------
@@ -700,7 +707,7 @@ function findUpgradable() {
     if (b.stage === 0 && !upgradeWhy(p)) return { p, part: 'settlement', what: 'the outpost (to a Fort)' };
     for (const e of extrasIn(p)) {
       const d = BUILD_DEFS[e.type], lv = e.level || 1; if (!d.levels || lv >= d.levels.length || S.xup.has(p + '@' + e.slot)) continue;
-      const needT = (e.type === 'forge' ? ['battleforge', 'warforge'] : ['sanctum', 'arcanum'])[lv - 1];
+      const needT = e.type === 'pyre' ? null : (e.type === 'forge' ? ['battleforge', 'warforge'] : ['sanctum', 'arcanum'])[lv - 1];
       if (needT && !hasTech(needT)) continue;
       if (canAfford(d.ups[lv].cost)) return { p, part: e.type + '@' + e.slot, what: `the ${d.levels[lv - 1]} (to a ${d.levels[lv]})` };
     }
@@ -740,8 +747,8 @@ let inspArmy = null, inspKey = '';
 function gearOf(k) {
   if (k === MAGE) { const W = MAGE_WEAPONS[S.mageGear.weapon], sh = !W.twoH && S.mageGear.shield; return { main: { name: W.name, icon: equipIcon('weapon', S.mageGear.weapon) }, off: sh ? { name: SHIELD_DEFS[sh].name, icon: equipIcon('shield', sh) } : { name: W.twoH ? 'Both hands on the stave' : 'Empty', icon: null }, armor: { name: 'Robes', icon: null } }; }
   const d = designById(k); if (!d) return null;
-  const W = WEAPONS[d.weapon], sh = d.shield && !W.twoH;
-  return { main: { name: W.name, icon: equipIcon('weapon', d.weapon) }, off: sh ? { name: SHIELD_DEFS[d.shield].name, icon: equipIcon('shield', d.shield) } : { name: W.twoH ? 'Two-handed weapon' : 'No shield', icon: null }, armor: { name: ARMORS[d.armor].name, icon: equipIcon('armor', d.armor) }, horse: d.horse ? { name: HORSES[d.horse].name, icon: equipIcon('horse', d.horse) } : null };
+  const W = WEAPONS[d.weapon], sh = d.shield && !W.twoH, sw = d.race === 'swamp', off = sw && d.off && !W.twoH && WEAPONS[d.off];
+  return { main: { name: W.name, icon: equipIcon('weapon', d.weapon) }, off: off ? { name: off.name + ' (off hand)', icon: equipIcon('off', d.off) } : sh ? { name: SHIELD_DEFS[d.shield].name, icon: equipIcon('shield', d.shield) } : { name: W.twoH ? 'Two-handed weapon' : sw ? 'Empty' : 'No shield', icon: null }, armor: { name: ARMORS[d.armor].name, icon: equipIcon('armor', d.armor) }, horse: d.horse ? { name: mountsFor(d.race)[d.horse].name, icon: sw ? ticoCanvas('eq:ogre:' + d.horse, g => ogreIcon(g, OGRES[d.horse])) : equipIcon('horse', d.horse) } : null };
 }
 function openInspect(a) { inspArmy = a; inspKey = ''; closeBuildMenu(); renderInspect(); $q('#inspWin').hidden = false; }
 function closeInspect() { inspArmy = null; $q('#inspWin').hidden = true; }

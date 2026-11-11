@@ -219,7 +219,7 @@ function retrofitArmies(armies, to) {
 }
 function showRetrofit(a) {
   const why = extraCmdInfo('retrofit').why; if (why) return toast('Retrofit: ' + why + '.', true);
-  const rows = S.designs.map(d => {
+  const rows = S.designs.filter(d => (d.race || 'realm') === raceOf(a.owner)).map(d => {
     const plan = retroPlan([a], d.id); if (!plan.n) return '';
     const ok = canAfford(plan.cost);
     return `<button type="button" class="bm-item" data-retro="${d.id}" data-army="${a.id}" ${ok ? '' : 'aria-disabled="true"'}><img alt="" src="${portrait(d.id)}"><span class="bm-name">${d.name}<small>${plan.n} soldier${plan.n > 1 ? 's' : ''} re-equipped${ok ? '' : ' · not enough resources'}</small></span><span class="bm-cost">${Object.keys(plan.cost).length ? costHTML(plan.cost) : 'free'}</span></button>`;

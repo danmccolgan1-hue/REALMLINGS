@@ -16,7 +16,7 @@ const ICO = {
   roman(g, n, x = 52, y = 54) { g.font = '900 15px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 4; g.strokeStyle = OL; g.strokeText(n, x, y); g.fillStyle = '#fff'; g.fillText(n, x, y); }
 };
 // how long each held item is, so it can be fitted into an icon diagonally
-const ITEM_SPAN = { stave: [-78, 32], grandstave: [-100, 32], mythicstave: [-110, 32], wand: [-37, 6], crypticwand: [-44, 6], enigmaticwand: [-46, 6], spear: [-124, 26], pike: [-150, 30], polearm: [-140, 28], halberd: [-150, 28], shortsword: [-43, 10], sword: [-60, 12], longsword: [-73, 14], greatsword: [-96, 20], club: [-50, 14], mace: [-41, 14], morningstar: [-56, 14], warhammer: [-98, 24] };
+const ITEM_SPAN = { handaxe: [-42, 12], beardedaxe: [-48, 14], battleaxe: [-62, 16], waraxe: [-74, 18], stave: [-78, 32], grandstave: [-100, 32], mythicstave: [-110, 32], wand: [-37, 6], crypticwand: [-44, 6], enigmaticwand: [-46, 6], spear: [-124, 26], pike: [-150, 30], polearm: [-140, 28], halberd: [-150, 28], shortsword: [-43, 10], sword: [-60, 12], longsword: [-73, 14], greatsword: [-96, 20], club: [-50, 14], mace: [-41, 14], morningstar: [-56, 14], warhammer: [-98, 24] };
 function itemIcon(g, name) {
   const [a, b] = ITEM_SPAN[name] || [-40, 10], len = b - a, k = Math.min(1.6, 74 / len);
   g.save(); g.translate(32, 32); g.rotate(Math.PI / 4); g.scale(k, k); g.translate(0, -(a + b) / 2);
@@ -24,7 +24,9 @@ function itemIcon(g, name) {
 }
 function shieldIcon(g, name) { g.save(); g.translate(32, 30); const k = name === 'tower' ? 0.95 : name === 'kite' ? 1.05 : 1.45; g.scale(k, k); RealmIso.drawItem(g, name, 0, 0, 0, 0.4, false); g.restore(); }
 function armorIcon(g, type, lv) {
-  const col = type === 'leather' ? '#9a6a40' : type === 'chain' ? '#aab2bf' : '#d4dbe5';
+  const T0 = type;
+  if (ARMOR_TYPES[type] && ARMOR_TYPES[type].twin) type = ARMOR_TYPES[type].twin;   // Swampling armor: drawn like its Realmling twin, in its own colors
+  const col = T0 === 'stag' ? '#b08a5a' : T0 === 'wyvern' ? '#5f8f6a' : T0 === 'dragon' ? '#e8e0c8' : type === 'leather' ? '#9a6a40' : type === 'chain' ? '#aab2bf' : '#d4dbe5';
   ICO.poly(g, [[18, 14], [26, 10], [32, 16], [38, 10], [46, 14], [52, 24], [46, 28], [44, 52], [20, 52], [18, 28], [12, 24]], col);
   if (type === 'chain') { g.fillStyle = 'rgba(0,0,0,0.22)'; for (let y = 20; y < 50; y += 5) for (let x = 22; x < 44; x += 5) { g.beginPath(); g.arc(x + (y % 10 ? 2.5 : 0), y, 1.1, 0, 7); g.fill(); } }
   if (type === 'plate') { g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 3; g.beginPath(); g.moveTo(26, 20); g.lineTo(26, 46); g.stroke(); g.strokeStyle = 'rgba(0,0,0,0.2)'; g.beginPath(); g.moveTo(20, 38); g.lineTo(44, 38); g.stroke(); }
@@ -40,12 +42,25 @@ function horseIcon(g, H, badge) {
   if (H.barding) { ICO.poly(g, [[30, 18], [40, 16], [50, 30], [44, 34], [34, 26]], H.barding, 2.2); }
   if (badge) badge(g);
 }
+// an Ogre's head: green (or red, or blue-grey) with a jutting jaw and tusks
+function ogreIcon(g, O) {
+  g.beginPath(); g.ellipse(32, 30, 20, 18, 0, 0, 7); g.fillStyle = O.skin; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke();
+  for (const s of [-1, 1]) { g.beginPath(); g.moveTo(32 + s * 18, 26); g.lineTo(32 + s * 30, 20); g.lineTo(32 + s * 18, 34); g.closePath(); g.fillStyle = O.skin; g.fill(); g.stroke(); }
+  g.beginPath(); g.moveTo(16, 38); g.quadraticCurveTo(16, 56, 32, 56); g.quadraticCurveTo(48, 56, 48, 38); g.quadraticCurveTo(32, 44, 16, 38); g.closePath(); g.fillStyle = O.skin; g.fill(); g.stroke();
+  for (const x of [25, 39]) { g.beginPath(); g.moveTo(x - 3, 42); g.lineTo(x, 32); g.lineTo(x + 3, 42); g.closePath(); g.fillStyle = '#f6efd8'; g.fill(); g.lineWidth = 1.8; g.stroke(); }
+  for (const x of [25, 39]) { g.beginPath(); g.arc(x, 27, 3.2, 0, 7); g.fillStyle = '#ff3b2f'; g.fill(); }
+  if (O.moss) { g.fillStyle = '#4f7d2e'; for (const [x, y] of [[22, 16], [34, 13], [42, 18]]) { g.beginPath(); g.arc(x, y, 4.5, 0, 7); g.fill(); } }
+  if (O.fists) { g.beginPath(); g.arc(52, 52, 7, 0, 7); g.fillStyle = O.fists; g.fill(); g.lineWidth = 2; g.strokeStyle = OL; g.stroke(); }
+}
 function equipIcon(kind, key) {
+  if (kind === 'horse' && isSw(ME)) kind = 'ogre';
   return ticoCanvas('eq:' + kind + ':' + key, g => {
     if (kind === 'weapon') itemIcon(g, key);
     else if (kind === 'shield') shieldIcon(g, key);
     else if (kind === 'armor') armorIcon(g, ARMORS[key].type, ARMORS[key].level);
     else if (kind === 'horse') horseIcon(g, HORSES[key]);
+    else if (kind === 'ogre') ogreIcon(g, OGRES[key]);
+    else if (kind === 'off') itemIcon(g, key);
   });
 }
 // ---------- one picture per technology ----------
@@ -126,7 +141,9 @@ const REP_ICONS = {
   'rep-harvest': g => MAGIC_ICONS.harvest(g), 'rep-graverob': g => MAGIC_ICONS.graverob(g), 'rep-trading': g => MAGIC_ICONS.trading(g)
 };
 function techIcon(id) {
-  return ticoCanvas('tech:' + id, g => {
+  const swi = SW_ICONS && (SW_ICONS[id] && (isSw(ME) || TECH_BY_ID[id] && TECH_BY_ID[id].race === 'swamp')) ? SW_ICONS[id] : null;   // Swampling pictures for their own and renamed technologies
+  return ticoCanvas('tech:' + (swi ? 'sw:' : '') + id, g => {
+    if (swi) return swi(g);
     const x = TECH_BY_ID[id];
     if (REP_ICONS[id]) { REP_ICONS[id](g); repeatBadge(g); return; }
     if (id === 'horde') { horseshoeIcon(g, '#ffc93c'); ICO.roman(g, '×10', 32, 52); return; }

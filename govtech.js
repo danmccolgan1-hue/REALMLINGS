@@ -163,7 +163,7 @@ function drawGate(g, a, b, col = '#3f72d9') {
   g.beginPath(); g.moveTo(mx - 9, my + 2); g.lineTo(mx - 9, my - 14); g.quadraticCurveTo(mx, my - 24, mx + 9, my - 14); g.lineTo(mx + 9, my + 2); g.closePath(); g.fillStyle = '#7b5029'; g.fill(); g.lineWidth = 2.4; g.strokeStyle = OL; g.stroke();
   g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(mx, my + 2); g.lineTo(mx, my - 18); g.stroke();
 }
-function drawWallEdge(g, a, b, f = 1, t = 0) { (wallKind() === 'stone' ? strokeWall : strokePalisade)(g, a, b, f, t); }
+function drawWallEdge(g, a, b, f = 1, t = 0) { (wallKind() === 'stone' && !isSw(ME) ? strokeWall : strokePalisade)(g, a, b, f, t); }   // Swamplings' Spiked Walls stay sharpened stakes
 function strokeWall(g, a, b, f = 1, t = 0) {
   const ex = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], len = Math.hypot(ex[0] - a[0], ex[1] - a[1]), ux = (b[0] - a[0]) / Math.hypot(b[0] - a[0], b[1] - a[1]), uy = (b[1] - a[1]) / Math.hypot(b[0] - a[0], b[1] - a[1]);
   g.lineCap = 'round';

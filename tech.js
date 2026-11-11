@@ -51,17 +51,25 @@ const TECHS = [
   { id: 'sophfarms', tree: 'gov', tier: 3, req: 'reffarms', cost: 200, name: 'Sophisticated Farms', blurb: 'Every Farm gives another +1 food.' },
   { id: 'sophmills', tree: 'gov', tier: 3, req: 'refmills', cost: 200, name: 'Sophisticated Lumber Mills', blurb: 'Every Lumber Mill gives another +1 wood.' },
   { id: 'sophmines', tree: 'gov', tier: 3, req: 'refmines', cost: 220, name: 'Sophisticated Gold Mines', blurb: 'Every Gold Mine gives another +2 gold.' },
-  { id: 'retained2', tree: 'gov', tier: 3, req: 'retained', cost: 200, name: 'Retained Knowledge II', blurb: 'Every research tree (Government, Military and Magic) offers one more technology again (5 to choose from).' }
+  { id: 'retained2', tree: 'gov', tier: 3, req: 'retained', cost: 200, name: 'Retained Knowledge II', blurb: 'Every research tree (Government, Military and Magic) offers one more technology again (5 to choose from).' },
+  // Swamplings only: more room in the Thug Dens
+  { id: 'thugs2', tree: 'gov', tier: 2, req: 'market', cost: 100, race: 'swamp', name: 'Thugging Benefits Program', blurb: 'Every Thug Den holds one more Thug (3 instead of 2).' },
+  { id: 'thugs3', tree: 'gov', tier: 3, req: 'thugs2', cost: 200, race: 'swamp', name: 'Thugging Stock Options', blurb: 'Every Thug Den holds one more Thug again (4).' }
 ];
 // Military: weapons, shields, armor and horses for the Armory. Each family must be researched in order.
-const TECH_EQUIP = { 'w-pike': 'pike', 'w-polearm': 'polearm', 'w-halberd': 'halberd', 'w-bastard': 'sword', 'w-longsword': 'longsword', 'w-greatsword': 'greatsword', 'w-mace': 'mace', 'w-morningstar': 'morningstar', 'w-warhammer': 'warhammer' };
+const TECH_EQUIP = { 'w-bearded': 'beardedaxe', 'w-battleaxe': 'battleaxe', 'w-waraxe': 'waraxe', 'w-pike': 'pike', 'w-polearm': 'polearm', 'w-halberd': 'halberd', 'w-bastard': 'sword', 'w-longsword': 'longsword', 'w-greatsword': 'greatsword', 'w-mace': 'mace', 'w-morningstar': 'morningstar', 'w-warhammer': 'warhammer' };
 const MIL_TECHS = [
   ['w-pike', 1], ['w-bastard', 1], ['w-mace', 1], ['s-round', 1], ['a-leather2', 1], ['a-chain1', 1], ['horse-breeding', 1, 'stable', 60],
   ['w-polearm', 2, 'w-pike'], ['w-longsword', 2, 'w-bastard'], ['w-morningstar', 2, 'w-mace'], ['s-kite', 2, 's-round'], ['a-leather3', 2, 'a-leather2'], ['a-chain2', 2, 'a-chain1'], ['a-plate1', 2, 'a-chain1'], ['a-plate2', 2, 'a-plate1'], ['horse-training', 2, 'horse-breeding'],
   ['w-halberd', 3, 'w-polearm'], ['w-greatsword', 3, 'w-longsword'], ['w-warhammer', 3, 'w-morningstar'], ['s-tower', 3, 's-kite'], ['s-aegis', 3, 's-tower'], ['a-leather4', 3, 'a-leather3'], ['a-chain3', 3, 'a-chain2'], ['a-chain4', 3, 'a-chain3'], ['a-plate3', 3, 'a-plate2'], ['a-plate4', 3, 'a-plate3']
 ];
 MIL_TECHS.push(['battleforge', 1, null, 60], ['warforge', 2, 'battleforge', 140], ['horde', 2, null, 100]);
+// Swamplings: axes and their own armor lines in place of swords, shields, leather, chain and plate; and dual wielding
+MIL_TECHS.push(['w-bearded', 1], ['w-battleaxe', 2, 'w-bearded'], ['w-waraxe', 3, 'w-battleaxe'],
+  ['a-stag2', 1], ['a-wyvern1', 1], ['a-stag3', 2, 'a-stag2'], ['a-wyvern2', 2, 'a-wyvern1'], ['a-dragon1', 2, 'a-wyvern1'], ['a-dragon2', 2, 'a-dragon1'],
+  ['a-stag4', 3, 'a-stag3'], ['a-wyvern3', 3, 'a-wyvern2'], ['a-wyvern4', 3, 'a-wyvern3'], ['a-dragon3', 3, 'a-dragon2'], ['a-dragon4', 3, 'a-dragon3'], ['dualwield', 1, null, 40]);
 for (const [id, tier, req, cost] of MIL_TECHS) {
+  if (id === 'dualwield') { TECHS.push({ id, tree: 'mil', tier, cost, race: 'swamp', name: 'Dual Wielding', blurb: 'Berserkers and Ogres with a one-handed weapon can carry a second one in the off hand (set it in the Armory). The off-hand weapon hits for half its attack.' }); continue; }
   if (id === 'horde') { TECHS.push({ id, tree: 'mil', tier, cost, name: 'The Horde', blurb: 'An army of 10 or more cavalry and no other units has 1.3 times the health. A horseshoe over the army shows when it is active.' }); continue; }
   if (id === 'battleforge' || id === 'warforge') { TECHS.push({ id, tree: 'mil', tier, cost, req, name: id === 'battleforge' ? 'Battle Forge' : 'War Forge', blurb: id === 'battleforge' ? 'Lets a Forge be upgraded to a Battle Forge (Military Tier II). Offered once two Tier I Military technologies are researched.' : 'Lets a Battle Forge be upgraded to a War Forge (Military Tier III).' }); continue; }
   let name, blurb;
@@ -125,9 +133,30 @@ const MAG_TECHS = [
   ['crypticwand', 2, null, '*', 100, 'Cryptic Wands', 'Mages can carry a Cryptic Wand: attack 3 (Wand 2), leaving a hand free for a shield.'],
   ['enigmaticwand', 3, 'crypticwand', '*', 200, 'Enigmatic Wands', 'Mages can carry an Enigmatic Wand: attack 5, with a shield.'],
   ['earthquake', 3, null, '*', 200, 'Earthquake', 'A Mage standing in an enemy province your army occupies can cast an Earthquake: after 2 minutes every building in that province is destroyed, and every wall on its borders.'],
+  // Pyromancy (Swamplings only)
+  ['school-pyro', 1, null, null, 40, 'School of Pyromancy', 'Commit to Pyromancy: fiery weapons, scouting pyres, fire traps, sacred pyres and paths of fire.'],
+  ['fiery1', 1, 'school-pyro', 'pyro', 40, 'Fiery Weapons I', 'Autocast: when an army with a Warlock starts a battle, every blow has a 5% chance to strike twice as hard. 5-minute cooldown per army.'],
+  ['fiery2', 2, 'fiery1', 'pyro', 100, 'Fiery Weapons II', 'Fiery Weapons: a 10% chance of a double blow; cooldown 3 minutes.'],
+  ['fiery3', 3, 'fiery2', 'pyro', 200, 'Fiery Weapons III', 'Fiery Weapons: a 15% chance of a double blow; cooldown 90 seconds.'],
+  ['scoutpyre', 1, 'school-pyro', 'pyro', 40, 'Scouting Pyre', 'A Warlock lights a pyre where he stands (50 wood). For 2 minutes it sees every neighboring province in its line of sight. It is not a building. 1-minute cooldown per Warlock.'],
+  ['firetrap', 1, 'school-pyro', 'pyro', 40, 'Fire Trap', 'A Warlock buries a fire trap in his province. The next enemy army to enter is engulfed in flame: enough to kill 3 Footmen. One trap per Warlock.'],
+  ['blazetrap', 2, 'firetrap', 'pyro', 100, 'Blazing Trap', 'Fire traps burn hotter: enough to kill 6 Footmen.'],
+  ['molttrap', 3, 'blazetrap', 'pyro', 200, 'Molten Trap', 'Fire traps become molten: enough to kill 9 Footmen.'],
+  ['sacredpyre', 1, 'school-pyro', 'pyro', 60, 'Sacred Pyre', 'A Warlock can raise a Sacred Pyre on a free building plot where he stands (200 wood, 1 minute). It burns 10 wood every 10 s for 20 gold. It can be built up into a Grand Pyre (600 wood, 1 minute) that burns 20 wood for 50 gold. One per living Warlock.'],
+  ['pathfire', 1, 'school-pyro', 'pyro', 40, 'Path of Fire', 'A Warlock fires up his army: 100% faster for 10 seconds. 1-minute cooldown per Warlock.'],
+  ['pathflame', 2, 'pathfire', 'pyro', 100, 'Path of Flame', 'Path of Fire: 125% faster for 15 seconds.'],
+  ['pathinferno', 3, 'pathflame', 'pyro', 200, 'Path of Inferno', 'Path of Fire: 150% faster for 20 seconds.'],
   ['abandon', 3, null, '*', 300, 'Abandon Magic School', 'Costs 1000 gold to begin. When finished, your school and all of its spells are forgotten, and you can choose a new school.']
 ];
 for (const [id, tier, req, school, cost, name, blurb] of MAG_TECHS) TECHS.push({ id, tree: 'mag', tier, cost, req, school, name, blurb, gold: id === 'abandon' ? 1000 : 0 });
+// which race a technology belongs to: Swamplings have no roads, granaries, storehouses, swords, shields, Realmling armor or Herbomancy;
+// Pyromancy, axes, their armor and the Thug technologies are theirs alone (everything else is shared)
+for (const x of TECHS) {
+  if (x.race) continue;
+  if (['roads', 'roads2', 'roads3', 'granary', 'storehouse', 'w-bastard', 'w-longsword', 'w-greatsword'].includes(x.id) || /^s-|^a-(leather|chain|plate)/.test(x.id) || x.school === 'life' || x.id === 'school-life') x.race = 'realm';
+  if (/^a-(stag|wyvern|dragon)/.test(x.id) || x.school === 'pyro' || x.id === 'school-pyro') x.race = 'swamp';
+}
+TECHS.find(x => x.id === 'traderoutes').reqSw = 'market';   // Highwaymen (the Swamplings' Trade Routes) needs no roads
 // ---------- repeatable technologies ----------
 // offered only once a tree has fewer than 5 ordinary technologies left; each can be researched again and again,
 // costing 30% more every time. Their levels live in S.rep (id -> times researched).
@@ -144,34 +173,35 @@ const REP_TECHS = [
   ['rep-blunt', 'mil', 120, 'Crushing Blows', 'Blunt weapons deal 5% more damage.', null],
   ['rep-pole', 'mil', 120, 'Pike Drill', 'Polearms (spears, pikes, polearms, halberds) deal 5% more damage.', null],
   ['rep-armor', 'mil', 120, 'Tempered Armor', 'Body armor blocks 5% more damage.', null],
-  ['rep-shield', 'mil', 120, 'Reinforced Shields', 'Shields block 5% more damage.', null],
+  ['rep-shield', 'mil', 120, 'Reinforced Shields', 'Shields block 5% more damage.', null, null, 'realm'],
   ['rep-horsespeed', 'mil', 120, 'Swift Steeds', 'Cavalry horses run 5% faster.', null],
   ['rep-cavhp', 'mil', 120, 'Hardy Riders', 'Cavalry have 5% more health.', null],
   ['rep-magecap', 'mag', 120, 'Mage Academy', 'Raises the Mage limit by 1.', null, '*'],
   ['rep-stave', 'mag', 120, 'Stave Attunement', 'Staves deal 5% more damage.', null, '*'],
   ['rep-wand', 'mag', 120, 'Wand Attunement', 'Wands deal 5% more damage.', null, '*'],
-  ['rep-harvest', 'mag', 120, 'Fertile Fields', 'Harvest (at every rank) gives another 2% food from your Farms.', 'harvest', 'life'],
+  ['rep-harvest', 'mag', 120, 'Fertile Fields', 'Harvest (at every rank) gives another 2% food from your Farms.', 'harvest', 'life', 'realm'],
   ['rep-graverob', 'mag', 120, 'Deeper Graves', 'Grave Robbing (at every rank) yields 2% more gold.', 'graverob', 'death'],
   ['rep-trading', 'mag', 120, 'Planar Brokers', 'Interdimensional Trading (at every rank) yields 2% more of each resource.', 'trading', 'arcane']
 ];
 const repLv = id => S.rep[id] || 0;
-for (const [id, tree, cost, base, blurb, req, school] of REP_TECHS) TECHS.push({
-  id, tree, tier: 1, cost, req, school, rep: true, baseName: base, baseBlurb: blurb,
-  get name() { return `${base} ${repLv(id) + 1}`; },
-  get blurb() { return `Repeatable. ${blurb}${repLv(id) ? ` Researched ${repLv(id)} time${repLv(id) > 1 ? 's' : ''} so far.` : ''}`; }
+for (const [id, tree, cost, base, blurb, req, school, race] of REP_TECHS) TECHS.push({
+  id, tree, tier: 1, cost, req, school, rep: true, baseName: base, baseBlurb: blurb, race,
+  get name() { const T = TECH_BY_ID[id]; return `${(T && T.swName && isSw(ME)) ? T.swName : base} ${repLv(id) + 1}`; },
+  get blurb() { const T = TECH_BY_ID[id]; return `Repeatable. ${(T && T.swBlurb && isSw(ME)) ? T.swBlurb : blurb}${repLv(id) ? ` Researched ${repLv(id)} time${repLv(id) > 1 ? 's' : ''} so far.` : ''}`; }
 });
 const currentSchool = () => { const d = S.tech.mag.done.find(id => id.startsWith('school-')); return d ? d.slice(7) : null; };
 const TECH_BY_ID = Object.fromEntries(TECHS.map(x => [x.id, x]));
 const hasTech = id => { const x = TECH_BY_ID[id]; return !!x && S.tech[x.tree].done.includes(id); };
-const treeSize = tree => TECHS.filter(x => x.tree === tree && !x.rep).length;
+const treeSize = tree => TECHS.filter(x => x.tree === tree && !x.rep && techFor(x, raceOf(ME))).length;
 // a requirement may sit in another tree (Horse Breeding needs the Stable from Government): pass the nation's other trees as `all`
-const reqMet = (x, st, all) => !x.req || (Array.isArray(x.req) ? x.req : [x.req]).every(r => st.done.includes(r) || (all ? Object.values(all).some(t => t.done.includes(r)) : hasTech(r)));
+const reqOf = (x, race) => x.reqSw && race === 'swamp' ? x.reqSw : x.req;
+const reqMet = (x, st, all, race) => !reqOf(x, race || raceOf(ME)) || (Array.isArray(reqOf(x, race || raceOf(ME))) ? reqOf(x, race || raceOf(ME)) : [reqOf(x, race || raceOf(ME))]).every(r => st.done.includes(r) || (all ? Object.values(all).some(t => t.done.includes(r)) : hasTech(r)));
 // Battle Forge is only offered once two Tier I Military technologies are done (GPC13)
 const forgeReady = (x, st) => x.id !== 'battleforge' || st.done.filter(id => { const y = TECH_BY_ID[id]; return y && y.tier === 1 && !y.rep && y.tree === 'mil'; }).length >= 2;
 // the ordinary (non-repeatable) technologies a tree still has to research; Magic only counts its own school
 function techsLeft(tree) {
   const st = S.tech[tree], sc = tree === 'mag' ? currentSchool() : null;
-  return TECHS.filter(x => x.tree === tree && !x.rep && !st.done.includes(x.id) && x.id !== 'abandon' && !(tree === 'mag' && (x.id.startsWith('school-') ? !!sc : sc && x.school !== '*' && x.school !== sc))).length;
+  return TECHS.filter(x => x.tree === tree && !x.rep && techFor(x, raceOf(ME)) && !st.done.includes(x.id) && x.id !== 'abandon' && !(tree === 'mag' && (x.id.startsWith('school-') ? !!sc : sc && x.school !== '*' && x.school !== sc))).length;
 }
 const repOpen = tree => techsLeft(tree) < REP_LEFT;
 // how many choices each tree offers: Retained Knowledge adds one, Retained Knowledge II another
@@ -210,7 +240,7 @@ function techBonus() { const y = { gold: 0, wood: 0, food: 0 }; for (const k of 
 const UPGRADE_TECHS = new Set(['battleforge', 'warforge', 'sanctum', 'arcanum']);
 function availTechs(tree) {
   const st = S.tech[tree], T = techTier(tree), rep = repOpen(tree);
-  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st) && forgeReady(x, st) && (!x.rep || rep));
+  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && techFor(x, raceOf(ME)) && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st) && forgeReady(x, st) && (!x.rep || rep));
   if (tree === 'mag') { const sc = currentSchool(); avail = sc ? avail.filter(x => !x.id.startsWith('school-') && (x.school === '*' || x.school === sc)) : avail.filter(x => x.id.startsWith('school-')); }
   return avail;
 }

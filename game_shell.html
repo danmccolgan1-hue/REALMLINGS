@@ -371,6 +371,13 @@ body.in-menu .help, body.in-menu .res, body.in-menu .prov, body.in-menu .minimap
 .menu-start:disabled { background: #9aa6b5; cursor: progress; }
 .menu-how { align-self: center; font: 800 13px var(--font-ui); color: var(--muted); background: none; border: 0; text-decoration: underline; cursor: pointer; }
 .menu-howtext { text-align: left; font-size: 13px; line-height: 1.4; margin: 0; padding-left: 18px; }
+.menu-screen { display: flex; flex-direction: column; gap: 12px; }
+.menu-screen[hidden] { display: none; }
+.menu-sub { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.menu-sub h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 26px; color: #ffc93c; -webkit-text-stroke: 1.5px var(--ink); paint-order: stroke fill; }
+.menu-back { justify-self: start; font: 800 13px var(--font-ui); color: var(--ink); background: var(--chip-hi); border: 2px solid var(--ink); border-radius: 10px; padding: 4px 10px; cursor: pointer; }
+.menu-back:hover { background: #fff6e0; }
+.menu-back:focus-visible { outline: 3px solid #e8a817; outline-offset: 2px; }
 .menu-foot { font-size: 11px; font-weight: 700; color: var(--muted); }
 @media (max-width: 420px) { .menu-row { grid-template-columns: 1fr; gap: 4px; } }
 
@@ -510,6 +517,7 @@ body.in-menu .nflags { display: none !important; }
 .nf b { position: absolute; right: -3px; bottom: 9px; min-width: 19px; height: 19px; padding: 0 4px; font: 800 12px/15px var(--font-ui); color: var(--ink); background: var(--sun); border: 2px solid var(--ink); border-radius: 999px; } /* counter, e.g. exhaustion 4 */
 .nf.warn img { animation-name: nfglowbad; }
 .nf em { position: absolute; left: 50%; top: 100%; transform: translateX(-50%); margin-top: 2px; white-space: nowrap; font: 700 11px/1.2 var(--font-ui); font-style: normal; color: var(--ink); background: #faf1dc; border: 1px solid var(--ink); padding: 1px 5px; pointer-events: none; } /* a label under a flag, e.g. Earthquake at Ashdale */
+.nf em { white-space: normal; width: max-content; max-width: 86px; text-align: center; } .nf:has(em) { margin: 0 17px; } /* labeled flags make room so neighboring labels don't overlap */
 .nf:hover { animation-play-state: paused; }
 .nf:active { transform: translateY(2px); }
 .nf:focus-visible { outline: 3px solid #e8a817; outline-offset: 2px; border-radius: 6px; }
@@ -547,6 +555,15 @@ body.in-menu .nation { display: none !important; }
 .menu-opp .lbl small { display: block; letter-spacing: 0; text-transform: none; font-size: 11px; color: var(--chip-text); margin-top: 2px; }
 .opp-box { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 .opp-slots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
+/* each opponent slot has a small race button beside it: R = Realmlings, S = Swamplings, ? = Random */
+.opp-wrap { display: flex; gap: 2px; min-width: 0; }
+.opp-wrap .opp-slot { flex: 1; }
+.opp-race { flex: none; width: 22px; padding: 0; font: 800 11px var(--font-ui); color: var(--chip-text); border: 1px solid var(--ink); background: #efe6cf; cursor: pointer; }
+.opp-race.swamp { background: #b9d89a; }
+.opp-race.random { background: #e3d7f2; }
+.opp-race:disabled { cursor: not-allowed; opacity: 0.6; }
+.menu-race { display: flex; gap: 6px; }
+.menu-race .menu-tog[aria-pressed="false"] { opacity: 0.6; }
 .opp-slot { display: flex; align-items: center; gap: 4px; min-width: 0; padding: 3px 5px; font: 800 11.5px var(--font-ui); color: var(--chip-text); border: 1px solid var(--ink); background: var(--chip-hi); cursor: pointer; box-shadow: 0 1px 2px rgba(20,16,28,0.25); white-space: nowrap; overflow: hidden; }
 .opp-slot i { font-style: normal; flex: none; width: 15px; height: 15px; display: grid; place-items: center; font-size: 10px; border: 1px solid var(--ink); background: #fff; }
 .opp-slot.closed { background: repeating-linear-gradient(135deg, #e6e0d2 0 5px, #ddd6c6 5px 10px); color: var(--muted); font-weight: 700; }
@@ -738,6 +755,7 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
       <div class="menu-row"><span class="lbl">Sound effects</span><div class="menu-mus"><button type="button" class="menu-tog" id="sfxBtn" aria-pressed="true" aria-label="Sound effects"><span>On</span></button><input type="range" id="sfxVol" min="0" max="100" value="70" aria-label="Sound effects volume"></div></div>
       <div class="menu-row"><span class="lbl">UI size</span><div class="menu-mus"><input type="range" id="uiSize" min="70" max="150" step="5" value="100" aria-label="UI size"><b class="ui-val" id="uiVal">100%</b><button type="button" class="menu-btn ui-reset" id="uiReset" title="Back to 100%">Reset</button></div></div>
       <div class="menu-row"><span class="lbl" title="Right-click opens the survey / build menu for Wayfinders and Masons, no Ctrl needed">Quick queue</span><div class="menu-mus"><button type="button" class="menu-tog" id="qqBtn" aria-pressed="false" aria-label="Quick queue" title="When on, right-clicking a province with only Wayfinders and Masons selected opens their survey / build menu without holding Ctrl"><span>Off</span></button></div></div>
+      <div class="menu-row"><span class="lbl" title="For testing: these buttons will be removed later">Debug</span><div class="menu-mus"><button type="button" class="menu-tog" id="dbgReveal" aria-pressed="false" title="Lift the fog over the whole map (click again to put it back)"><span>Reveal map: Off</span></button><button type="button" class="menu-tog" id="dbgRes" title="Adds 2000 gold, wood and food (and 2000 storage of each so it fits)"><span>+2000 resources</span></button><button type="button" class="menu-tog" id="dbgTech" title="Every technology of your race in all three trees (Magic: your school, or the first one open to your race if you haven't chosen)"><span>Research all</span></button></div></div>
       <button type="button" class="st-btn" id="stHow">How to Play</button>
       <button type="button" class="menu-start" id="stResume">Resume</button>
       <button type="button" class="st-btn st-quit" id="stQuit">Return to main menu</button>
@@ -777,7 +795,7 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
     <li>Meeting nations: you meet a nation when you explore its land or when one of your Wayfinders stands next to one of its provinces. The game pauses to introduce it.</li>
     <li>At war: any of your units may march into the enemy’s land even where you haven’t explored it. A capture that is interrupted by a battle picks up where it left off if the capturing army wins. At 100 warscore Total Victory happens on its own: the winner takes 5 provinces (the whole country if it has 5 or fewer), a minute of the loser’s gold income from its treasury, and 100 research points in every tree it has unlocked. A nation with every province occupied and no army left loses at once. No peace deal can take a province another nation occupies: the winner takes what it can, never the capital. Both the occupier and the owner keep sight of an occupied province.</li>
     <li>Wayfinders and Masons at war: Masons won’t walk into a province where they can see enemy soldiers. A Wayfinder or Mason who meets enemy soldiers runs back to the province he came from. For 15 seconds after that, if he meets enemy soldiers again, an army of yours has 5 seconds to reach him before he is caught. Sneaking Wayfinders can’t be seen at all. A Wayfinder standing where another nation finishes an outpost withdraws to the province he came from (if it is yours or an enemy’s), or else all the way to your capital.</li>
-    <li>Armory (<kbd>G</kbd>): design your infantry and cavalry by choosing a weapon (polearms beat cavalry, blunt weapons crush armor, swords parry), a shield for one-handed weapons, armor (leather is fast, plate is tough but slow) and, for cavalry, a horse. Military research unlocks better gear. Barracks train your designs.</li>
+    <li>Armory (<kbd>G</kbd>): design your infantry and cavalry by choosing a weapon (polearms beat cavalry, blunt weapons crush armor, swords parry, axes land critical strikes), a shield for one-handed weapons, armor (leather is fast, plate is tough but slow) and, for cavalry, a horse. Military research unlocks better gear. Barracks train your designs.</li>
     <li>Every Mage knows Shockwave: Ctrl+right-click (or use the command card on) a neighboring province of a nation you are at war with, and after 2 minutes of casting the wall on that border is destroyed. Earthquake (Magic Tier III research) is cast in an enemy province your army occupies: after 2 minutes every building there and every wall on its borders is destroyed. Terrascaping (Herbomancy Tier III) grows trees along an open border, leaving a forest path in the middle (5 minutes).</li>
     <li>Magic: research the Mage Tower (Government Tier II) and build one, then choose a school: Herbomancy, Necromancy or Arcane. Train Mages at the tower (you can have 1 at first; Apprentice and Mage Academy raise the limit, and the Armies tab shows how many you have); select a Mage to cast spells from the command card, or have him join an army so its battle spells (skins, curses, the risen dead) fire on their own. Ctrl+right-click a neighboring province with a Mage to open forest paths or mountain tunnels. Every Mage knows Earthquake: 30 s of casting from land you control (or unclaimed land) raise a wall with your gate on the border with a neighbor. Nations at war with the caster get an “Earthquake at …” banner.</li>
     <li>Storage: the nation holds at most 2000 of each resource; Granaries, Storehouses and Banks add 1000 each. You start allowed a single fort; each Fort Charter adds 2, and the repeatable Garrison Charters (+1) never gets dearer and stays on offer once it appears.</li>
@@ -794,23 +812,31 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
     <h1 class="menu-logo">Realmlings</h1>
     <p class="menu-tag">Explore, settle, research and defend a little fantasy realm.</p>
     <canvas id="mParade" width="840" height="192" aria-hidden="true"></canvas>
-    <div class="menu-row"><label for="mSeed">Map seed</label><div class="menu-seed"><input id="mSeed" type="text" spellcheck="false" autocomplete="off" aria-label="Map seed"><button type="button" class="menu-btn" id="mDice" title="Random seed" aria-label="Random seed">🎲</button></div></div>
-    <div class="menu-row"><label for="mNation">Nation</label><input id="mNation" class="nat-name" type="text" maxlength="24" spellcheck="false" autocomplete="off" placeholder="My Realm"></div>
-    <div class="menu-row"><span class="lbl">Color</span><div class="nat-row" id="mColors"></div></div>
-    <div class="menu-row"><span class="lbl">Flag</span><div class="nat-row" id="mFlags"></div></div>
-    <div class="menu-row"><span class="lbl">Practice mode</span><button type="button" class="menu-tog" id="mPractice" aria-pressed="false"><span>Off</span></button></div>
-    <div class="menu-row menu-opp"><span class="lbl">Opponents <small id="mOppN"></small></span><div class="opp-box"><div class="opp-slots" id="mSlots" role="group" aria-label="Computer opponents: click a slot to change it"></div><div class="opp-quick" id="mQuick"><button type="button" data-q="easy">All Easy</button><button type="button" data-q="moderate">All Moderate</button><button type="button" data-q="difficult">All Difficult</button><button type="button" data-q="closed">Close all</button></div></div></div>
+    <div class="menu-screen" id="mMain">
     <div class="menu-row"><span class="lbl">Music</span><div class="menu-mus"><button type="button" class="menu-tog" id="mMusic" aria-pressed="true"><span>On</span></button><input type="range" id="mMusVol" min="0" max="100" value="35" aria-label="Music volume"></div></div>
     <div class="menu-row"><span class="lbl">Sound effects</span><div class="menu-mus"><button type="button" class="menu-tog" id="mSfx" aria-pressed="true"><span>On</span></button><input type="range" id="mSfxVol" min="0" max="100" value="70" aria-label="Sound effects volume"></div></div>
-    <button type="button" class="menu-start" id="mStart">Start game</button>
+    <button type="button" class="menu-start" id="mNew">New Game</button>
     <button type="button" class="menu-how" id="mHow" aria-expanded="false" aria-controls="mHowText">How to play</button>
     <ul class="menu-howtext" id="mHowText" hidden>
       <li>Send your Wayfinder into the fog to explore, and have him survey land to find its resources.</li>
       <li>Your Mason claims surveyed land next to yours with outposts, then fills their plots with farms, mills, mines and more.</li>
       <li>Research (<kbd>T</kbd>) unlocks new buildings and abilities. Forges and Mage Towers open Military and Magic research. Watch out for Bandit Gangs, and look for set pieces that boost research.</li>
-      <li>Train soldiers at a Barracks; battles start when hostile armies meet. <kbd>Space</kbd> pauses.</li>
+      <li>Train soldiers at a Barracks; battles start when hostile armies meet. A new game starts paused: press <kbd>Space</kbd> to begin, and again to pause.</li>
+      <li>Pick your race: Realmlings, or Swamplings, who start in a swamp, are faster and fiercer in swamps, train Berserkers and Ogres, run Thug Dens and learn Pyromancy.</li>
       <li>The gear in the top-left corner opens Settings, with the full How to Play guide.</li>
     </ul>
+    </div>
+    <div class="menu-screen" id="mSetup" hidden>
+    <div class="menu-sub"><button type="button" class="menu-back" id="mBack" aria-label="Back to the main menu">← Back</button><h2>New Game</h2><span></span></div>
+    <div class="menu-row"><label for="mSeed">Map seed</label><div class="menu-seed"><input id="mSeed" type="text" spellcheck="false" autocomplete="off" aria-label="Map seed"><button type="button" class="menu-btn" id="mDice" title="Random seed" aria-label="Random seed">🎲</button></div></div>
+    <div class="menu-row"><label for="mNation">Nation</label><input id="mNation" class="nat-name" type="text" maxlength="24" spellcheck="false" autocomplete="off" placeholder="My Realm"></div>
+    <div class="menu-row"><span class="lbl">Race</span><div class="menu-race" id="mRace" role="group" aria-label="Your race"><button type="button" class="menu-tog" data-race="realm" aria-pressed="true"><span>Realmlings</span></button><button type="button" class="menu-tog" data-race="swamp" aria-pressed="false"><span>Swamplings</span></button></div></div>
+    <div class="menu-row"><span class="lbl">Color</span><div class="nat-row" id="mColors"></div></div>
+    <div class="menu-row"><span class="lbl">Flag</span><div class="nat-row" id="mFlags"></div></div>
+    <div class="menu-row"><span class="lbl">Practice mode</span><button type="button" class="menu-tog" id="mPractice" aria-pressed="false"><span>Off</span></button></div>
+    <div class="menu-row menu-opp"><span class="lbl">Opponents <small id="mOppN"></small></span><div class="opp-box"><div class="opp-slots" id="mSlots" role="group" aria-label="Computer opponents: click a slot to change it"></div><div class="opp-quick" id="mQuick"><button type="button" data-q="easy">All Easy</button><button type="button" data-q="moderate">All Moderate</button><button type="button" data-q="difficult">All Difficult</button><button type="button" data-q="closed">Close all</button></div></div></div>
+    <button type="button" class="menu-start" id="mStart">Start game</button>
+    </div>
     <div class="menu-foot">Playtest build · the same seed always makes the same island</div>
   </div>
 </div>

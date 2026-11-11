@@ -174,7 +174,7 @@ function stepFortGates() {
 
 // ---------- GPC14: retrofitting at a Barracks ----------
 const RETRO_TIME = 10;   // seconds per soldier
-const barracksOk = (p, o, cav) => { const l = S.extras.get(p); return !!l && nationOf(p) === o && !S.occ.has(p) && l.some(e => e.type === 'barracks') && (!cav || l.some(e => e.type === 'stable')); };
+const barracksOk = (p, o, cav) => { const l = S.extras.get(p); return !!l && nationOf(p) === o && !S.occ.has(p) && l.some(e => e.type === (cav && isSw(o) ? 'stable' : 'barracks')) && (!cav || l.some(e => e.type === 'stable')); };
 // the nearest Barracks (with a Stable for cavalry) the army can reach, or -1
 function retroSite(a, to) {
   const cav = !!DSTATS[to].cav;
@@ -252,7 +252,9 @@ const nationPower = o => Math.round(armyPower(o) * 10);
 //   after 2 minutes every building in that province is destroyed, and every wall on its borders.
 // Nations at war with the caster see a warning banner while either is being cast. Moving or fighting stops the cast.
 const QUAKE_TIME = 120, SHOCK_TIME = 120;
-const SPELL2 = { quake: { name: 'Earthquake', time: QUAKE_TIME }, shock: { name: 'Shockwave', time: SHOCK_TIME } };
+const SPELL2 = { quake: { name: 'Earthquake', time: QUAKE_TIME }, shock: { get name() { return SHOCK(); }, time: SHOCK_TIME } };
+// the Swamplings' Warlocks hurl a Fireball where Realmling Mages cast a Shockwave (the same spell)
+const SHOCK = (o = ME) => isSw(o) ? 'Fireball' : 'Shockwave';
 S.quakes = []; let quakeSeq = 0, quakeAim = false;
 const controls = (p, o) => { const occ = S.occ.get(p); return occ !== undefined ? occ === o : nationOf(p) === o; };
 const quakeCaster = u => u && magesIn(u) > 0;
@@ -283,8 +285,8 @@ function startSpell2(c, kind, q) {
   if (c.cast && typeof cancelCast === 'function') cancelCast(c);
   c.quake = { kind, t0: S.t, to: q, id: ++quakeSeq };
   const where = kind === 'quake' ? provName(c.prov) : provName(q);
-  if (c.owner === ME) { toast(kind === 'quake' ? `${c.name} begins an Earthquake in ${where}: ${QUAKE_TIME / 60} minutes of casting. Moving or fighting stops it.` : `${c.name} begins a Shockwave at the wall toward ${where}: ${SHOCK_TIME / 60} minutes of casting. Moving or fighting stops it.`); sfx('mg_arcane', { prov: c.prov }); }
-  else if (atWar(ME, c.owner)) { S.quakes.push({ id: c.quake.id, from: c.prov, to: q, by: c.owner, kind }); toast(`${SPELL2[kind].name} at ${provName(c.prov)}! A Mage of the ${PLAYERS[c.owner].name} is casting.`, true); flagKey = ''; }
+  if (c.owner === ME) { toast(kind === 'quake' ? `${c.name} begins an Earthquake in ${where}: ${QUAKE_TIME / 60} minutes of casting. Moving or fighting stops it.` : `${c.name} begins a ${SHOCK()} at the wall toward ${where}: ${SHOCK_TIME / 60} minutes of casting. Moving or fighting stops it.`); sfx('mg_arcane', { prov: c.prov }); }
+  else if (atWar(ME, c.owner)) { S.quakes.push({ id: c.quake.id, from: c.prov, to: q, by: c.owner, kind }); toast(`${kind === 'shock' ? SHOCK(c.owner) : 'Earthquake'} at ${provName(c.prov)}! A ${isSw(c.owner) ? 'Warlock' : 'Mage'} of the ${PLAYERS[c.owner].name} is casting.`, true); flagKey = ''; }
   cmdKey = ''; return true;
 }
 const startQuake = c => startSpell2(c, 'quake');
@@ -318,7 +320,7 @@ function stepQuakes(t) {
     const q = c.quake.to; endQuake(c);
     if (k === 'quake') { if (!quakeWhyAt(c)) quakeStrike(c); continue; }
     const e = wallBetween(c.prov, q), i = e ? world.edges.indexOf(e) : -1;
-    if (i >= 0) { breakWall(i, c); if (c.owner === ME) toast(`The Shockwave shatters the wall between ${provName(c.prov)} and ${provName(q)}.`); }
+    if (i >= 0) { breakWall(i, c); if (c.owner === ME) toast(`The ${SHOCK()} ${isSw(ME) ? 'blasts apart' : 'shatters'} the wall between ${provName(c.prov)} and ${provName(q)}.`); }
   }
   // banners only last while the caster is still at war with you
   if (S.quakes.length) S.quakes = S.quakes.filter(x => atWar(ME, x.by) && S.units.some(v => v.quake && v.quake.id === x.id));
@@ -340,7 +342,7 @@ extraCmdInfo = id => {
     return { name: on ? `Earthquake (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : 'Earthquake', desc: `Cast it while standing in an enemy province your army occupies: after ${T / 60} minutes every building in that province is destroyed, and every wall on its borders.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click to cast', icon: xIcon('quake') };
   }
   const why = !c ? 'No Mage selected' : on ? null : castBusy(c) || (c.moving ? 'Stop moving first' : c.battle ? 'Not during battle' : null);
-  return { name: on ? `Shockwave (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : quakeAim ? 'Pick a province…' : 'Shockwave', desc: `Click this, then click a neighboring province of a nation you are at war with: after ${T / 60} minutes of casting the wall on that border is destroyed. Every Mage knows it.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click, then pick a province', icon: xIcon('shock') };
+  return { name: on ? `${SHOCK()} (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : quakeAim ? 'Pick a province…' : SHOCK(), desc: `Click this, then click a neighboring province of a nation you are at war with: after ${T / 60} minutes of casting the wall on that border is destroyed. Every ${UNIT_DEFS[MAGE].name} knows it.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click, then pick a province', icon: xIcon('shock') };
 };
 const _extraUse = extraCmdUse;
 extraCmdUse = id => {
@@ -356,7 +358,7 @@ const _pathAimClick = pathAimClick;
 pathAimClick = (p, right) => {
   if (!quakeAim) return _pathAimClick(p, right);
   const c = pathAim; pathAim = null; quakeAim = false; cv.style.cursor = ''; cmdKey = '';
-  if (right || p < 0 || !c) { toast('Shockwave cancelled.'); return; }
+  if (right || p < 0 || !c) { toast(SHOCK() + ' cancelled.'); return; }
   startShock(c, p);
 };
 window.addEventListener('keydown', e => { if (quakeAim && e.key === 'Escape') quakeAim = false; }, true);
@@ -366,7 +368,7 @@ magicRows = (c, q) => {
   const base = _magicRows(c, q);
   if (!c || c.prov === q || !allNbr[c.prov].includes(q) || !wallBetween(c.prov, q)) return base;
   const why = shockWhy(c, q) || castBusy(c);
-  const row = `<button type="button" class="bm-item" data-type="shock" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${xIcon('shock')}"><span class="bm-name">Shockwave: destroy the wall toward ${provName(q)}<small>${why || SHOCK_TIME / 60 + ' minutes of casting'}</small></span></button>`;
+  const row = `<button type="button" class="bm-item" data-type="shock" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${xIcon('shock')}"><span class="bm-name">${SHOCK()}: destroy the wall toward ${provName(q)}<small>${why || SHOCK_TIME / 60 + ' minutes of casting'}</small></span></button>`;
   return base ? base + row : '<div class="bm-sec">Magic</div>' + row;
 };
 menuEl.addEventListener('click', e => {

@@ -483,6 +483,7 @@ function commonThreat(a, b, B = borderSets(), N = sizes()) {
 }
 function allyWhy(a, b, B, N) {
   if (!aliveNation(a) || !aliveNation(b) || a === b) return 'Not possible';
+  if (raceOf(a) !== raceOf(b)) return 'Realmlings and Swamplings never ally';
   if (allied(a, b)) return 'Already allies';
   if (allyOf(a)) return a === ME ? 'You already have an ally' : 'They already have an ally';
   if (allyOf(b)) return b === ME ? 'You already have an ally' : 'They already have an ally';
@@ -498,10 +499,15 @@ function formAlliance(a, b, vs) {
   else if (knows(a) || knows(b)) toast(`The ${PLAYERS[a].name} and the ${PLAYERS[b].name} formed an alliance against the ${PLAYERS[vs].name}.`);
   dipKey = '';
 }
+let allyEndSeq = 0;
 function endAlliance(A, why) {
   S.allies = S.allies.filter(x => x !== A);
   if (aliveNation(A.a) && aliveNation(A.b)) S.truces.set(pairKey(A.a, A.b), Math.max(S.truces.get(pairKey(A.a, A.b)) || 0, S.t + WAR.allyTruce));
-  if (A.a === ME || A.b === ME) toast(`Your alliance with the ${PLAYERS[A.a === ME ? A.b : A.a].name} has ended: ${why}.`);
+  if (A.a === ME || A.b === ME) {
+    const o = A.a === ME ? A.b : A.a;
+    toast(`Your alliance with the ${PLAYERS[o].name} has ended: ${why}.`);
+    if (why !== 'you ended it') { S.allyEnds = (S.allyEnds || []).filter(x => x.o !== o); S.allyEnds.push({ id: ++allyEndSeq, o, why, t: S.t }); flagKey = ''; sfx('war_peace'); }
+  }
   else if (knows(A.a) || knows(A.b)) toast(`The alliance of the ${PLAYERS[A.a].name} and the ${PLAYERS[A.b].name} has ended.`);
   dipKey = '';
 }
@@ -541,10 +547,22 @@ const flagOf = o => o === ME ? flagURL(PLAYERS[ME].color, NATION.emblem) : flagU
 function updateMet() {
   if (!S.started || S.fallen || S.t - metAt < 1) return; metAt = S.t;
   for (const [p, b] of S.buildings) if (b.owner !== ME && NATIONS[b.owner] && !S.met.has(b.owner) && S.explored.has(p)) meetNation(b.owner);
-  for (const u of S.units) if (u.owner === ME && u.kind === WAYFINDER) for (const q of allNbr[u.prov]) { const o = nationOf(q); if (o && o !== ME && NATIONS[o] && !S.met.has(o)) meetNation(o); }
+  for (const u of S.units) if (u.owner === ME && u.kind === WAYFINDER) for (const q of allNbr[u.prov]) { const o = nationOf(q); if (o && o !== ME && NATIONS[o] && !S.met.has(o)) { metBy.set(o, u.id); meetNation(o); } }
 }
 // meeting a nation pauses the game with a popup until the player acknowledges it
-const metQueue = []; let metPausedByMe = false;
+const metQueue = [], metBy = new Map(); let metPausedByMe = false;
+// "Show me" on a new nation: your Wayfinder standing next to their land (the one who met them, if he is still there), else their land
+function metScout(o) {
+  const next = u => u && u.owner === ME && u.kind === WAYFINDER && S.units.includes(u) && (nationOf(u.prov) === o || allNbr[u.prov].some(q => nationOf(q) === o));
+  const first = S.units.find(v => v.id === metBy.get(o));
+  return next(first) ? first : S.units.find(next) || null;
+}
+function showMetScout(o) {
+  const u = metScout(o);
+  if (!u) { lookAtNation(o); return; }
+  S.selected = [u]; S.selBuilding = -1; S.selProv = -1; S.selPart = null; hoverPath = undefined; rosterKey = ''; cmdKey = '';
+  flyTo({ x: u.x, y: u.y, z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) });
+}
 function meetNation(o) {
   if (S.met.has(o)) return;
   S.met.add(o); dipKey = ''; metQueue.push(o);
@@ -572,7 +590,7 @@ $q('#metPop').addEventListener('pointerdown', e => e.stopPropagation());
 $q('#metPop').addEventListener('keydown', e => { if (e.key === ' ' || e.key === 'Enter') { e.stopPropagation(); } }, true);
 $q('#metPop').addEventListener('click', e => {
   const b = e.target.closest('[data-mp]'); if (!b) return;
-  if (b.dataset.mp === 'look') { const o = metQueue[0]; closeMet(false); if (o !== undefined) lookAtNation(o); return; }
+  if (b.dataset.mp === 'look') { const o = metQueue[0]; closeMet(false); if (o !== undefined) showMetScout(o); return; }
   closeMet(b.dataset.mp === 'dip');
 });
 function relation(o) {
@@ -719,3 +737,5 @@ function drawWar(g, t) {
   if (S.demand && S.demand.provs) for (const p of S.demand.provs) outline(p, '#ff6b6b', [16, 10]);
 }
 function roundRectPath(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+// test hooks (v85)
+window.__v85 = { metScout, showMetScout, meetNation, metBy, nbr: p => allNbr[p], endAlliance, stepAlliances };

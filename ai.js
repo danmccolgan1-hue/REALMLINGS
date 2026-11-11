@@ -7,6 +7,9 @@ const DIFF_NAME = { easy: 'Easy', moderate: 'Moderate', difficult: 'Difficult' }
 const AI_IDS = [4, 5, 6, 7, 8, 9, 10];
 const AI_TITLES = ['Kingdom', 'Duchy', 'Realm', 'March', 'Principality', 'Dominion', 'Free Cities', 'Grand Duchy', 'Barony'];
 const AI_PLACES = ['Thornwall', 'Emberreach', 'Mistvale', 'Highmoor', 'Goldhaven', 'Ravenmark', 'Stonebrook', 'Willowmere', 'Frostholm', 'Sunspire', 'Duskwood', 'Briarfell', 'Ironcrest', 'Saltmarsh', 'Oakenshade', 'Ashford'];
+// Swampling nations: crude, brutish clans, tribes and legions
+const SW_AI_TITLES = ['Clan', 'Tribe', 'Legion'];
+const SW_AI_PLACES = ['Bloodtusk', 'Gorehide', 'Skullmire', 'Rotfang', 'Bonegnaw', 'Mudmaw', 'Gutripper', 'Ironjaw', 'Grimbog', 'Blackfen', 'Bilegut', 'Snaggletooth', 'Muckclaw', 'Thudfist', 'Skarrak', 'Grubsnout'];
 // how each difficulty plays
 const AI_DIFF = {
   easy: { think: 3, maxProvs: 10, wf: 1, masons: 1, masons2: 1, outpostGap: 75, war: false, school: null, family: 'sword', armor: 'leather' },
@@ -30,43 +33,49 @@ const canPay = (st, c) => Object.keys(c).every(k => (st[k] || 0) >= c[k]);
 const pay = (st, c) => { for (const k in c) st[k] -= c[k]; };
 
 // ---------- setting up the nations ----------
-function spawnAINations(slots) {
-  for (const k of Object.keys(NATIONS)) delete NATIONS[k];
-  S.wars = []; S.truces.clear(); S.allies = []; S.met.clear(); S.allyAsk.clear(); S.allyOffer = null; S.fallen = false;
+function spawnAINations(slots, races = []) {
+  for (const k of Object.keys(NATIONS)) { delete NATIONS[k]; delete RACE[k]; }
+  S.wars = []; S.truces.clear(); S.allies = []; S.allyEnds = []; metBy.clear(); S.met.clear(); S.allyAsk.clear(); S.allyOffer = null; S.fallen = false;
   const r = rngFrom(world.seed + ':nations:' + slots.join(','));
   const colors = NATION_COLORS.map((c, i) => i).filter(i => i !== NATION.color);
-  const places = AI_PLACES.slice().sort(() => r() - 0.5), emblems = FLAG_EMBLEMS.filter(e => e !== NATION.emblem).sort(() => r() - 0.5);
+  const places = AI_PLACES.slice().sort(() => r() - 0.5), swPlaces = SW_AI_PLACES.slice().sort(() => r() - 0.5), emblems = FLAG_EMBLEMS.filter(e => e !== NATION.emblem).sort(() => r() - 0.5);
   const caps = [S.capital];
   const reach = hopsFrom(S.capital);
-  let k = 0;
+  let k = 0, ks = 0, kr = 0;
   slots.forEach((diff, i) => {
     if (!DIFF_NAME[diff]) return;
-    const id = AI_IDS[i], cap = pickAICapital(caps, reach, r); if (cap < 0) return;
+    // each opponent is Realmling, Swampling or (Random) either; Swamplings settle in a swamp
+    const id = AI_IDS[i], rc = races[i] === 'swamp' || races[i] === 'realm' ? races[i] : (r() < 0.5 ? 'swamp' : 'realm'), cap = pickAICapital(caps, reach, r, rc === 'swamp' ? 'swamp' : 'grassland'); if (cap < 0) return;
+    RACE[id] = rc;
     caps.push(cap);
     const [c, l] = NATION_COLORS[colors[k % colors.length]];
-    const name = AI_TITLES[Math.floor(r() * AI_TITLES.length)] + ' of ' + places[k % places.length];
+    let name;
+    if (rc === 'swamp') { const tl = SW_AI_TITLES[Math.floor(r() * SW_AI_TITLES.length)], pl = swPlaces[ks++ % swPlaces.length]; name = r() < 0.5 ? pl + ' ' + tl : tl + ' of ' + pl; }   // "Bloodtusk Clan", "Legion of Skullmire"
+    else name = AI_TITLES[Math.floor(r() * AI_TITLES.length)] + ' of ' + places[kr++ % places.length];
     PLAYERS[id] = { name, color: c, light: l };
     const N = NATIONS[id] = {
       id, diff, name, emblem: emblems[k % emblems.length] || FLAG_EMBLEMS[k % FLAG_EMBLEMS.length], alive: true, capital: cap,
       stock: { ...START_STOCK }, rep: {}, surveyed: new Set([cap]), exhaust: 0, ups: new Map(), xups: new Map(),
       tech: Object.fromEntries(TREE_KEYS.map(t => [t, { cur: null, prog: 0, bank: 0, opts: [], done: [], tier: 0, sticky: [] }])),
       queue: [], think: S.t + 1 + i * 0.37, nextOutpost: 0, phase: 'grow', stuckSince: null, warCheck: S.t + 60 + r() * 60,
-      family: AI_DIFF[diff].family || ['sword', 'pole', 'blunt'][Math.floor(r() * 3)], armorLine: AI_DIFF[diff].armor,
-      school: null, wantSchool: AI_DIFF[diff].school || ['life', 'death', 'arcane'][Math.floor(r() * 3)], spellT: 0, dv: 0, design: { inf: 'd-sword', cav: 'd-rider' }, armyN: 0, income: { gold: 0, wood: 0, food: 0 }
+      family: swFamily(rc, AI_DIFF[diff].family || ['sword', 'pole', 'blunt'][Math.floor(r() * 3)]), armorLine: swArmorLine(rc, AI_DIFF[diff].armor), race: rc,
+      school: null, wantSchool: swSchool(rc, AI_DIFF[diff].school || ['life', 'death', 'arcane'][Math.floor(r() * 3)], r), spellT: 0, dv: 0, design: rc === 'swamp' ? { inf: 'd-sw-axe', cav: 'd-sw-ogre' } : { inf: 'd-sword', cav: 'd-rider' }, armyN: 0, income: { gold: 0, wood: 0, food: 0 }
     };
+    if (rc === 'swamp') N.tech.gov.done.push('mushroom');   // Swamplings know Mushroom Farming from the start
     S.buildings.set(cap, { stage: 2, born: -10, owner: id });
     const wf = mkUnit(S.nextId++, WAYFINDER, '', cap, 0); wf.owner = id; S.units.push(wf);
     const ms = mkUnit(S.nextId++, MASON, '', cap, 1); ms.owner = id; S.units.push(ms);
-    aiNewArmy(N, cap, { 'd-sword': 3 });
+    aiNewArmy(N, cap, { [footmanOf(id)]: 3 });
     aiRedesign(N);
     k++;
   });
   territory = null; cacheDirty = true; computeFog();
 }
 // capitals: grassland with open borders, as far as possible from every other capital, and reachable over land
-function pickAICapital(caps, reach, r) {
+function pickAICapital(caps, reach, r, terrain = 'grassland') {
   const all = G.provs.map((_, i) => i).filter(i => !S.buildings.has(i) && reach[i] < Infinity);
-  let cands = all.filter(i => G.provs[i].terrain === 'grassland' && openNbr[i].length >= 2);
+  let cands = all.filter(i => G.provs[i].terrain === terrain && openNbr[i].length >= 2);
+  if (terrain !== 'grassland' && cands.length < 3) cands = cands.concat(all.filter(i => G.provs[i].terrain === 'grassland' && openNbr[i].length >= 2));
   if (cands.length < 8) cands = all.filter(i => openNbr[i].length >= 2);
   if (!cands.length) return -1;
   const ds = caps.map(c => hopsFrom(c, allNbr));
@@ -177,11 +186,11 @@ function aiTier(N, tree) {
 const aiTechCost = (N, x) => Math.round(x.cost * (x.rep && !FLAT_REPS.has(x.id) ? Math.pow(REP_STEP, aiRep(N, x.id)) : 1) * treeCostMult(x.tree) * techCostMult(aiProvCount(N)));
 function aiTechsLeft(N, tree) {
   const st = N.tech[tree], sc = tree === 'mag' ? N.school : null;
-  return TECHS.filter(x => x.tree === tree && !x.rep && !st.done.includes(x.id) && x.id !== 'abandon' && !(tree === 'mag' && (x.id.startsWith('school-') ? !!sc : sc && x.school !== '*' && x.school !== sc))).length;
+  return TECHS.filter(x => x.tree === tree && !x.rep && techFor(x, N.race) && !st.done.includes(x.id) && x.id !== 'abandon' && !(tree === 'mag' && (x.id.startsWith('school-') ? !!sc : sc && x.school !== '*' && x.school !== sc))).length;
 }
 function aiDrawOptions(N, tree) {
   const st = N.tech[tree], T = aiTier(N, tree), n = TECH_OPTIONS + (aiHas(N, 'retained') ? 1 : 0) + (aiHas(N, 'retained2') ? 1 : 0), rep = aiTechsLeft(N, tree) < REP_LEFT;
-  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st, N.tech) && forgeReady(x, st) && (!x.rep || rep) && x.id !== 'abandon');
+  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && techFor(x, N.race) && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st, N.tech, N.race) && forgeReady(x, st) && (!x.rep || rep) && x.id !== 'abandon');
   if (tree === 'mag') avail = N.school ? avail.filter(x => !x.id.startsWith('school-') && (x.school === '*' || x.school === N.school)) : avail.filter(x => x.id.startsWith('school-'));
   const weight = x => x.id === 'forge' && aiHasBuilding(N, 'barracks') ? 1.5 : 1;
   const sh = avail.map(x => ({ x, k: Math.pow(Math.random(), 1 / weight(x)) })).sort((a, b) => b.k - a.k).map(o => o.x), top = sh.filter(x => x.tier === T && !x.rep), opts = [];

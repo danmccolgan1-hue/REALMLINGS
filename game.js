@@ -18,7 +18,8 @@ function scaleWorld(w) {
 const SPEED = 75 * WORLD_K;    // world units per second (scaled with the map; halved from the original 150)
 // an army walks at the pace of its slowest soldier
 // (the slowest troop with any soldiers left sets the pace: cavalry, infantry and Mages in one army all walk at the slowest one's speed)
-const unitSpeed = u => { if (u.kind !== 'army') return UNIT_SPEED[u.kind] || 1; const ks = Object.keys(u.troops).filter(k => u.troops[k] > 0); return ks.length ? Math.min(...ks.map(k => troopSpeed(k, u.owner))) : 1; };
+// Swamplings are 20% faster in swamps; a Warlock's Path of Fire speeds up his army (speedMod, swamp.js)
+const unitSpeed = u => { if (u.kind !== 'army') return (UNIT_SPEED[u.kind] || 1) * speedMod(u); const ks = Object.keys(u.troops).filter(k => u.troops[k] > 0); return (ks.length ? Math.min(...ks.map(k => troopSpeed(k, u.owner))) : 1) * speedMod(u); };
 const UNIT_SPEED = { 'pioneer:B': 1, 'mason:A': 0.5 };   // soldiers' speeds come from their Armory design   // the Mason walks at half speed
 const BUILD_TIME = 30;   // seconds for most structures (outposts and buildings)
 const SLOW_BUILD = new Set(['forge', 'magetower']);   // Forges and Mage Towers take twice as long
@@ -114,11 +115,16 @@ function setupGame() {
   const [x0, y0, x1, y1] = G.bounds, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
   let best = -1, bs = -Infinity;
   // always grassland; prefer inland ones with many open borders near the middle of the island
-  G.provs.forEach((p, i) => {
-    if (p.terrain !== 'grassland') return;
-    const sc = openNbr[i].length * 420 - Math.hypot(p.ic[0] - mx, p.ic[1] - my) - (p.coastal || p.lakeside ? 2000 : 0);
-    if (sc > bs) { bs = sc; best = i; }
-  });
+  // Swamplings start in a swamp (any province if the island has no swamp at all)
+  const homeTer = isSw(ME) ? 'swamp' : 'grassland';
+  for (const strict of [true, false]) {
+    if (best >= 0) break;
+    G.provs.forEach((p, i) => {
+      if (strict && p.terrain !== homeTer) return;
+      const sc = openNbr[i].length * 420 - Math.hypot(p.ic[0] - mx, p.ic[1] - my) - (p.coastal || p.lakeside ? 2000 : 0) - (isSw(ME) && !strict && p.terrain !== 'grassland' ? 1000 : 0);
+      if (sc > bs) { bs = sc; best = i; }
+    });
+  }
   rollYields();
   S.capital = best;
   S.buildings.set(best, { stage: 2, born: -10, owner: ME });
@@ -128,7 +134,7 @@ function setupGame() {
   usedNames.clear(); armyCounter = 0;
   S.units = [mkUnit(1, WAYFINDER, 'Wayfinder', best, 0), mkUnit(2, MASON, 'Mason', best, 1)];
   S.nextId = Math.max(S.nextId || 0, 3);
-  newArmy(best, { 'd-sword': 3 });   // every realm starts with three infantry
+  newArmy(best, { [footmanOf(ME)]: 3 });   // every realm starts with three infantry (Swamplings: three Axe Berserkers)
   computeIncome();
   S.selected = [S.units[0]];
   computeFog();
@@ -154,7 +160,7 @@ function computeFog() {
   for (const u of S.units) if (u.owner === ME && u.scouting !== u.prov) { vis.add(u.prov); if (u.kind === WAYFINDER && hasTech('farsight')) for (const { q } of openNbr[u.prov]) { vis.add(q); if (!S.known.has(q)) { S.known.add(q); exp.add(q); } } }   // far sight explores what it sees, for good (GPC18)
   for (const [p, b] of S.buildings) { if (b.owner !== ME) continue; vis.add(p); for (const n of openNbr[p]) exp.add(n.q); }
   for (const [p, o] of S.occ) if (o === ME) vis.add(p);   // an occupied province stays in view for its occupier
-  towerSight(vis);
+  towerSight(vis); pyreSight(vis);
   if (S.reveal) for (let i = 0; i < G.provs.length; i++) vis.add(i);   // debug: lift the fog
   for (const p of vis) exp.add(p);
   const sig = [...exp].sort((a, b) => a - b).join(',') + '|' + [...vis].sort((a, b) => a - b).join(',');
@@ -305,7 +311,7 @@ const srcKey = () => S.selKind + ':' + S.selBuilding;
 function srcSpot(key) {
   const [kind, p] = key.split(':'), prov = +p, c = G.provs[prov].ic;
   if (kind === 'capital') return { prov, x: c[0], y: c[1], ox: 0, oy: 0, yOff: -150 };
-  const e = extrasIn(prov).find(v => v.type === (kind === 'magetower' ? 'magetower' : 'barracks')), [ox, oy] = bslotOf(prov, e ? e.slot : 0);
+  const e = extrasIn(prov).find(v => v.type === (kind === 'magetower' || kind === 'market' || kind === 'stable' ? kind : 'barracks')), [ox, oy] = bslotOf(prov, e ? e.slot : 0);
   return { prov, x: c[0] + ox, y: c[1] + oy, ox, oy, yOff: -62 };
 }
 function trainable(kind, prov) {
@@ -349,6 +355,7 @@ function stepTraining(t) {
       else { a = newArmy(spot.prov, { [q.kind]: 1 }); a.born = t; toast(`${d.name} is ready and formed ${a.name}.`); }
       sfx('pr_trained', { prov: spot.prov }); computeIncome(); capPanelKey = ''; continue;
     }
+    if (q.kind === THUG && thugIntoDen(spot.prov, key)) { sfx('pr_trained', { prov: spot.prov }); computeIncome(); capPanelKey = ''; toast('A Thug is ready and settles into the Thug Den.'); continue; }
     const n = S.units.filter(v => v.kind === q.kind && v.owner === ME).length + 1;
     const u = mkUnit(S.nextId++, q.kind, d.name + (n > 1 ? ' ' + n : ''), spot.prov, 0);
     u.slot = freeSlot(spot.prov, u); [u.x, u.y] = slotPos(spot.prov, u.slot);
@@ -428,7 +435,7 @@ function stepUpgrades(t) {
     if (!e) { S.xup.delete(k); continue; }
     const d = BUILD_DEFS[e.type]; if (t - xu.t0 < d.ups[xu.to - 1].time) continue;
     S.xup.delete(k); e.level = xu.to; e.born = t; sfx('bld_done', { prov: p });
-    toast(`${d.levels[xu.to - 2]} upgraded to a ${d.levels[xu.to - 1]}! ${e.type === 'forge' ? 'Military' : 'Magic'} research reaches Tier ${['', 'I', 'II', 'III'][xu.to]}.`);
+    toast(e.type === 'pyre' ? `${d.levels[xu.to - 2]} built up into a ${d.levels[xu.to - 1]}: it now burns ${PYRE[xu.to].wood} wood for ${PYRE[xu.to].gold} gold every 10 s.` : `${d.levels[xu.to - 2]} upgraded to a ${d.levels[xu.to - 1]}! ${e.type === 'forge' ? 'Military' : 'Magic'} research reaches Tier ${['', 'I', 'II', 'III'][xu.to]}.`);
     provKey = ''; cmdKey = ''; techKey = '';
   }
   for (const [p, u] of S.upgrades) {
@@ -443,7 +450,7 @@ function stepUpgrades(t) {
 
 // ---------- combat ----------
 // each soldier's attack, health and armor come from its Armory design (statsOf)
-// polearms hit cavalry harder, blunt weapons ignore half of the enemy's armor, swords parry
+// polearms hit cavalry harder, blunt weapons ignore half of the enemy's armor, swords parry, axes land critical strikes (10% of blows do double damage)
 const ROUND = 0.8;        // seconds between damage rounds
 const DMG_RATE = 0.22;    // share of an army's attack dealt each round
 const RETREAT_LOSS = 0.6; // most of an army that can be lost when retreating from a far larger enemy
@@ -456,7 +463,9 @@ const TERRAIN_MOD = {
 const hostilesIn = (p, owner) => S.units.filter(v => v.kind === 'army' && hostile(v.owner, owner) && v.prov === p && !v.retreating && troopCount(v) > 0);
 function sideStrength(armies, prov, defender, foe) {
   const T = TERRAIN_MOD[world.provinces[prov].terrain], cavFrac = foe ? foe.cavFrac : 0;
-  let s = 0; for (const a of armies) for (const k in a.troops) { const st = statsOf(k, a.owner); s += a.troops[k] * st.atk * T.mod(st.cav && !st.rough, defender) * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (1 + (a.curse || 0)); }
+  // Swamplings in a swamp: +20% damage, and their Ogres don't suffer the cavalry penalty; Fiery Weapons can make a round's blows land twice as hard
+  const swampy = world.provinces[prov].terrain === 'swamp';
+  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(a.troops[k], st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (1 + (a.curse || 0)); } }
   return s;
 }
 const rawStrength = armies => armies.reduce((n, a) => n + Object.entries(a.troops).reduce((m, [k, c]) => { const st = statsOf(k, a.owner); return m + c * st.atk * (hpOf(a, k) / 30) / (1 - st.red); }, 0), 0);
@@ -607,7 +616,7 @@ function drawBattle(g, b, t) {
   }
   all.sort((p, q) => p.y - q.y).forEach(f => {
     g.globalAlpha = 0.28; g.fillStyle = (PLAYERS[f.o] || PLAYERS[RAIDERS]).color; g.beginPath(); g.ellipse(f.x, f.y + 2, 12, 4.5, 0, 0, 7); g.fill(); g.globalAlpha = 1;
-    RealmIso.drawUnitAt(g, f.k, f.dir < 0 ? Math.PI / 2 : -Math.PI / 2, t * 2 + f.x, f.x, f.y, (isCav(f.k) ? UK * 0.8 : UK) * UKK);
+    drawUnitFor(g, f.k, f.o, false, f.dir < 0 ? Math.PI / 2 : -Math.PI / 2, t * 2 + f.x, f.x, f.y, (isCav(f.k) ? UK * 0.8 : UK) * UKK);
     if (f.swing > 0.55) { // a slash arc in front of the attacker
       const sx = f.x - f.dir * 14, sy = f.y - 16; g.beginPath(); g.arc(sx, sy, 11, f.dir < 0 ? -1.2 : Math.PI + 1.2, f.dir < 0 ? 1.2 : Math.PI - 1.2, f.dir > 0); g.lineWidth = 3.2; g.strokeStyle = 'rgba(255,255,255,' + ((f.swing - 0.55) * 2).toFixed(2) + ')'; g.stroke();
     }
@@ -657,7 +666,7 @@ function drawBattleFx(g, t) {
       // a soldier topples over and fades, with a puff and little stars
       const x = c[0] + dir * (36 + f.r * 30), y = c[1] + 22 + f.r * 26, a = Math.max(0, 1 - dt / 1.4);
       g.save(); g.globalAlpha = a; g.translate(x, y); g.rotate(-dir * Math.min(1.4, dt * 4));
-      RealmIso.drawUnitAt(g, f.unit, dir < 0 ? Math.PI / 2 : -Math.PI / 2, 0, 0, 0, (isCav(f.unit) ? UK * 0.8 : UK) * UKK);
+      drawUnitFor(g, f.unit, f.owner, false, dir < 0 ? Math.PI / 2 : -Math.PI / 2, 0, 0, 0, (isCav(f.unit) ? UK * 0.8 : UK) * UKK);
       g.restore();
       g.globalAlpha = a * 0.45; g.fillStyle = '#eef0f4'; g.beginPath(); g.arc(x, y - 4, 4 + dt * 9, 0, 7); g.fill();
       g.globalAlpha = a; g.fillStyle = '#fff3a6'; for (let i = 0; i < 3; i++) { const q = t * 6 + i * 2.1; g.beginPath(); g.arc(x + Math.cos(q) * 10, y - 26 + Math.sin(q) * 3, 2, 0, 7); g.fill(); }
@@ -836,7 +845,7 @@ function update(realT) {
       let time = dt;
       while (time > 0 && u.path.length) {
         if (siegeHold(u, time)) { time = 0; break; }
-        const wp = u.path[0], sp = SPEED * unitSpeed(u) / (u.scouting !== null ? SCOUT_SLOW : 1) * (onRoad(u, wp) ? roadSpeed() : 1) / (u.stealth ? 3 : 1), dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy);
+        const wp = u.path[0], sp = SPEED * unitSpeed(u) / (u.scouting !== null ? SCOUT_SLOW : 1) * (onRoad(u, wp) ? roadSpeed() : 1) / (u.stealth && !stealthFree(u) ? 3 : 1), dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy);
         if (d > 0.5) u.th = Math.round(Math.atan2(dx, dy) / (Math.PI / 4)) * (Math.PI / 4);
         if (d <= sp * time) {
           u.x = wp.x; u.y = wp.y; time -= d / sp; u.path.shift();
@@ -1250,12 +1259,12 @@ function drawGame(g, t) {
   const vx0 = cam.x - cw / 2 / cam.z - 360, vx1 = cam.x + cw / 2 / cam.z + 360, vy0 = cam.y - ch / 2 / cam.z - 360, vy1 = cam.y + ch / 2 / cam.z + 420;
   const onScreen = p => { const c = G.provs[p].ic; return c[0] > vx0 && c[0] < vx1 && c[1] > vy0 && c[1] < vy1; };
   for (const [p, b] of S.buildings) if (S.visible.has(p) && onScreen(p)) items.push({ y: G.provs[p].ic[1], f: () => drawBuilding(g, p, b, t) });
-  for (const [p, list] of S.extras) if (S.visible.has(p) && onScreen(p)) for (const e of list) { const c = G.provs[p].ic, [ox, oy] = bslotOf(p, e.slot); items.push({ y: c[1] + oy, f: () => { drawExtra(g, c[0] + ox, c[1] + oy, e.type, t, 1, t - e.born, e.level, owned(p)); const xu = S.xup.get(p + '@' + e.slot); if (xu) drawXupBar(g, c[0] + ox, c[1] + oy, xu, e); } }); }
+  for (const [p, list] of S.extras) if (S.visible.has(p) && onScreen(p)) for (const e of list) { const c = G.provs[p].ic, [ox, oy] = bslotOf(p, e.slot); items.push({ y: c[1] + oy, f: () => { drawExtra(g, c[0] + ox, c[1] + oy, e.type, t, 1, t - e.born, e.level, owned(p), raceOf(nationOf(p))); const xu = S.xup.get(p + '@' + e.slot); if (xu) drawXupBar(g, c[0] + ox, c[1] + oy, xu, e); } }); }
   for (const u of S.units) if (u.build && S.visible.has(u.build.prov)) {
     const c = G.provs[u.build.prov].ic;
     if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall') continue;
-    if (u.build.type === 'outpost') items.push({ y: c[1], f: () => drawSite(g, u.build, t) });
-    else items.push({ y: c[1] + u.build.oy, f: () => drawExtraSite(g, u.build, t) });
+    if (u.build.type === 'outpost') items.push({ y: c[1], f: () => drawSite(g, u.build, t, raceOf(u.owner)) });
+    else items.push({ y: c[1] + u.build.oy, f: () => drawExtraSite(g, u.build, t, raceOf(u.owner)) });
   }
   townItems(g, t, items); setpieceItems(g, t, items, onScreen); roadWalkerItems(g, t, items); findItems(g, t, items, onScreen); travelerItems(g, t, items);
   for (const u of S.units) if ((u.owner === ME || (S.visible.has(u.prov) && stealthSeen(u)) || armyDetected(u) || (u.bandit && u.seen && S.explored.has(u.prov))) && u.x > vx0 && u.x < vx1 && u.y > vy0 && u.y < vy1) items.push({ y: u.y, f: () => drawUnit(g, u, t) });
@@ -1318,9 +1327,10 @@ function drawArt(g, key, fn, x, y, k) {
 }
 function drawBuilding(g, prov, b, t) {
   const p = G.provs[prov], dt = t - b.born, s = dt < 1.5 ? Math.max(0, 1 - Math.exp(-dt * 7) * Math.cos(dt * 15)) : 1;
-  if (dt >= 1.5 && dpr * cam.z <= (b.owner === ME ? 0.5 : 2)) { const look = campLook(prov); if (drawArt(g, 'set|' + b.stage + '|' + look.variant + '|' + look.terrain, c => RealmBuild.drawSettlement(c, b.stage, 0, look), p.ic[0], p.ic[1], KB)) return; }
+  const race = raceOf(b.owner);   // Swamplings live in mud huts
+  if (dt >= 1.5 && dpr * cam.z <= (b.owner === ME ? 0.5 : 2)) { const look = campLook(prov); if (drawArt(g, race + 'set|' + b.stage + '|' + look.variant + '|' + look.terrain, c => settleArt(c, b.stage, 0, look, race), p.ic[0], p.ic[1], KB)) return; }
   g.save(); g.translate(p.ic[0], p.ic[1]); g.scale(KB * s, KB * s);
-  RealmBuild.drawSettlement(g, b.stage, t, campLook(prov));
+  settleArt(g, b.stage, t, campLook(prov), race);
   g.restore();
 }
 function drawSurveyQueue(g, t) {
@@ -1350,11 +1360,11 @@ function drawSurveyQueue(g, t) {
     });
   }
 }
-function drawExtra(g, x, y, type, t, rise, age = 9, level = 1, own = true) {
-  if (age >= 1.2 && rise === 1 && dpr * cam.z <= (own ? 0.5 : 2)) { const v = BUILD_DEFS[type].levels ? (level || 1) - 1 : BUILD_DEFS[type].variant; if (drawArt(g, 'ex|' + type + '|' + v, c => RealmBuildings.drawOnMap(c, type, v, 0, 1), x, y, EB)) return; }
+function drawExtra(g, x, y, type, t, rise, age = 9, level = 1, own = true, race = raceOf(ME)) {
+  if (age >= 1.2 && rise === 1 && dpr * cam.z <= (own ? 0.5 : 2)) { const v = BUILD_DEFS[type].levels ? (level || 1) - 1 : BUILD_DEFS[type].variant; if (drawArt(g, race + 'ex|' + type + '|' + v, c => bldArt(c, type, v, 0, 1, race), x, y, EB)) return; }
   const pop = age < 1.2 ? Math.max(0.01, 1 - Math.exp(-age * 7) * Math.cos(age * 15)) : 1;
   g.save(); g.translate(x, y); g.scale(EB * pop, EB * pop);
-  RealmBuildings.drawOnMap(g, type, BUILD_DEFS[type].levels ? (level || 1) - 1 : BUILD_DEFS[type].variant, t, rise);
+  bldArt(g, type, BUILD_DEFS[type].levels ? (level || 1) - 1 : BUILD_DEFS[type].variant, t, rise, race);
   g.restore();
 }
 // a small progress bar over a building that is being upgraded
@@ -1364,20 +1374,20 @@ function drawXupBar(g, x, y, xu, e) {
   g.beginPath(); g.roundRect(bx, by, w, h, 4); g.clip(); g.fillStyle = '#ffc93c'; g.fillRect(bx, by, w * f, h); g.restore();
   g.save(); g.strokeStyle = OL; g.lineWidth = 2.5; g.beginPath(); g.roundRect(bx, by, w, h, 4); g.stroke(); g.restore();
 }
-function drawExtraSite(g, site, t) {
+function drawExtraSite(g, site, t, race) {
   const c = G.provs[site.prov].ic, x = c[0] + site.ox, y = c[1] + site.oy, f = Math.min(1, (t - site.t0) / (site.dur || BUILD_TIME));
-  drawExtra(g, x, y, site.type, t, f);
+  drawExtra(g, x, y, site.type, t, f, 9, 1, true, race);
   g.save(); g.translate(x, y); g.lineCap = 'round';
   for (const [px, py] of [[-22, 0], [22, 0], [-12, 10], [12, 10]]) { g.beginPath(); g.moveTo(px, py); g.lineTo(px, py - 42); g.strokeStyle = OL; g.lineWidth = 4.5; g.stroke(); g.strokeStyle = '#b07a45'; g.lineWidth = 2.2; g.stroke(); }
   for (const yy of [-14, -32]) { g.beginPath(); g.moveTo(-24, yy); g.lineTo(24, yy); g.strokeStyle = OL; g.lineWidth = 4.5; g.stroke(); g.strokeStyle = '#c99560'; g.lineWidth = 2.2; g.stroke(); }
   g.restore();
 }
-function drawSite(g, site, t) {
+function drawSite(g, site, t, race) {
   const p = G.provs[site.prov], f = Math.min(1, (t - site.t0) / (site.dur || BUILD_TIME));
   g.save(); g.translate(p.ic[0], p.ic[1]); g.scale(KB, KB);
   // the outpost rises from the ground as work progresses
   g.save(); g.beginPath(); g.rect(-160, 60 - 220 * f, 320, 400); g.clip();
-  RealmBuild.drawSettlement(g, 0, t, campLook(site.prov));
+  settleArt(g, 0, t, campLook(site.prov), race);
   g.restore();
   // scaffold poles
   g.lineCap = 'round';
@@ -1447,7 +1457,7 @@ function drawArmy(g, u, t) {
   else if (grow < 0.6) sc *= 1 + Math.sin(grow / 0.6 * Math.PI) * 0.15;
   const casting = !!u.cast;
   const spots = figs.map((k, i) => { const r = Math.floor(i / per), c = i % per, inRow = Math.min(per, n - r * per); return { k, x: u.x + (c - (inRow - 1) / 2) * gx + (r % 2 ? gx * 0.35 : 0), y: u.y + (rows - 1 - r) * gy - (rows - 1) * gy / 2 + 4 * K, i }; });
-  spots.sort((a, b) => a.y - b.y).forEach(({ k, x, y, i }) => RealmIso.drawUnitAt(g, casting && k === MAGE ? castUnitId(u) : k, u.th, tt + u.id + i * 0.7, x, y + hop, isCav(k) ? sc * 0.85 : sc));
+  spots.sort((a, b) => a.y - b.y).forEach(({ k, x, y, i }) => drawUnitFor(g, casting && k === MAGE ? castUnitId(u) : k, u.owner, walking, u.th, tt + u.id + i * 0.7, x, y + hop, isCav(k) ? sc * 0.85 : sc));
   const top = u.y - (rows - 1) * gy / 2 + 4 * K - (figs.some(isCav) ? 38 : 33) * K - (casting && figs.includes(MAGE) ? 22 * K : 0);   // just above the heads of the back rank (and a casting Mage's staff)
   // GC11: the nation's flag on the banner pole (monsters carry none)
   if (!u.monster) drawArmyFlag(g, u, u.x + halfW + 4 * K, u.y + (rows - 1) * gy / 2 + 2, top - 2 * K, t, K);
@@ -1475,7 +1485,7 @@ function drawUnitBody(g, u, t) {
   const hop = walking ? -Math.abs(Math.sin(t * 9)) * 3 : working ? -Math.abs(Math.sin(t * 8)) * 2 : 0;
   let sc = UK * K;
   if (u.born !== undefined && t - u.born < 1.2) { const a = t - u.born; sc = UK * K * Math.max(0.01, 1 - Math.exp(-a * 7) * Math.cos(a * 15)); }
-  RealmIso.drawUnitAt(g, u.kind === MAGE && u.cast ? castUnitId(u) : u.kind, u.th, tt + u.id, u.x, u.y + hop, sc);
+  drawUnitFor(g, u.kind === MAGE && u.cast ? castUnitId(u) : u.kind, u.owner, walking, u.th, tt + u.id, u.x, u.y + (walking && u.kind === WAYFINDER && isSw(u.owner) ? hop * 0.4 : hop), sc);
   if (u.fleeing || u.doomAt) drawFleeMark(g, u, t);
   else if (u.scouting !== null) {
     const bx = u.x + 13 * K, by = u.y - 34 * K + Math.sin(t * 4) * 1.5;
@@ -1647,12 +1657,12 @@ function selectPart(p, part) {
 const menuEl = $q('#bmenu');
 const thumbURL = {};
 function buildThumb(type, level = 1) {
-  const tk = type + (level > 1 ? level : '');
+  const race = raceOf(ME), tk = race + type + (level > 1 ? level : '');
   if (thumbURL[tk]) return thumbURL[tk];
   const c = document.createElement('canvas'); c.width = 84; c.height = 84; const g = c.getContext('2d');
   g.translate(42, 58); g.scale(0.42, 0.42);
-  if (type === 'outpost') { g.scale(1.1, 1.1); RealmBuild.drawSettlement(g, 0, 0.8); }
-  else { if (BUILD_DEFS[type].levels) { const k2 = level === 3 ? 0.78 : 0.9; g.translate(0, level === 3 ? 6 : 0); g.scale(k2, k2); } RealmBuildings.drawOnMap(g, type, BUILD_DEFS[type].levels ? level - 1 : BUILD_DEFS[type].variant, 0.8, 1); }
+  if (type === 'outpost') { g.scale(1.1, 1.1); settleArt(g, 0, 0.8, {}, race); }
+  else { if (BUILD_DEFS[type].levels) { const k2 = level === 3 ? 0.78 : 0.9; g.translate(0, level === 3 ? 6 : 0); g.scale(k2, k2); } bldArt(g, type, BUILD_DEFS[type].levels ? level - 1 : BUILD_DEFS[type].variant, 0.8, 1, race); }
   return thumbURL[tk] = c.toDataURL();
 }
 let menuProv = -1, menuSlot = -1, menuShift = false;
@@ -1814,7 +1824,7 @@ let panelFor = '';
 function buildPanel() {
   const panel = $q('#cap'), kinds = trainable(S.selKind, S.selBuilding), isCap = S.selKind === 'capital';
   const hasStable = !isCap && extrasIn(S.selBuilding).some(e => e.type === 'stable');
-  const title = isCap ? 'Capital' : 'Barracks', sub = isCap ? 'Trains Wayfinders and Masons · +5 of each resource every 10 s' : (hasStable ? 'Trains infantry · Stable here: cavalry too' : 'Trains infantry · build a Stable in this province for cavalry');
+  const title = isCap ? 'Capital' : 'Barracks', sub = isCap ? `Trains ${UNIT_DEFS[WAYFINDER].name}s and ${UNIT_DEFS[MASON].name}s` + ' · +5 of each resource every 10 s' : (hasStable ? 'Trains infantry · Stable here: cavalry too' : 'Trains infantry · build a Stable in this province for cavalry');
   panel.innerHTML = `<div class="cap-head"><b>${title}</b><span>${sub}</span></div><div class="cap-cards" style="grid-template-columns: repeat(${Math.min(kinds.length, 3)}, minmax(0, 1fr))">` +
     kinds.map(kind => { const d = UNIT_DEFS[kind]; return `<div class="cap-card"><canvas width="96" height="112" data-kind="${kind}" aria-hidden="true"></canvas><div class="cap-info"><b>${d.name}</b><small>${d.blurb}</small><div class="cap-cost">${costHTML(d.cost)}</div><div class="cap-up">Upkeep ${costHTML(d.upkeep, '−')} <em>per 10 s</em></div><button type="button" data-train="${kind}" id="train-${d.name.toLowerCase()}">Train</button></div></div>`; }).join('') +
     `</div><div class="cap-queue" id="capQueue"></div>`;
@@ -1889,7 +1899,7 @@ function portrait(kind) {
   if (kind === 'army') kind = 'd-sword';
   if (portraitURL[kind]) return portraitURL[kind];
   const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
-  const cav = isCav(kind); RealmIso.drawUnitAt(g, kind, Math.PI / 4, 0.4, 32, cav ? 60 : 62, cav ? 0.3 : 0.5);
+  const cav = isCav(kind) && !isOgre(kind); drawUnitFor(g, kind, ME, false, Math.PI / 4, 0.4, 32, cav ? 60 : 62, cav ? 0.3 : isOgre(kind) ? 0.36 : 0.5);
   return portraitURL[kind] = c.toDataURL();
 }
 function cmdInfo(id) {
@@ -1900,7 +1910,7 @@ function cmdInfo(id) {
   if (what === 'train') {
     const d = UNIT_DEFS[type], Q = S.queues[srcKey()] || [];
     const lack = Object.keys(d.cost).filter(k => S.stock[k] < d.cost[k]);
-    const extra = isCav(type) ? ' Needs a Stable in this province. Joins the army standing here.' : MILITARY.has(type) ? ' Joins the army standing in this province.' : '';
+    const extra = isOgre(type) ? ' Trained at an Ogre Cave. Joins the army standing in this province.' : isCav(type) ? ` Needs a ${BUILD_DEFS.stable.name} in this province. Joins the army standing here.` : MILITARY.has(type) ? ' Joins the army standing in this province.' : '';
     const ds = DSTATS[type] ? statsOf(type, ME) : null, r1 = n => Math.round(n * 10) / 10, statLine = (ds ? ` Attack ${r1(ds.atk)}, health ${r1(ds.hp)}, armor ${Math.round(ds.red * 100)}%, speed ${r1(troopSpeed(type, ME) * 100) / 100}.` : '') + (type === MAGE ? ` Mages: ${unitTotal(MAGE)}/${mageCap()} (counting those in armies and in training).` : '');
     return { name: 'Train ' + d.name, desc: `${d.blurb}${statLine}${extra} Takes ${trainTime(type)} s. Upkeep every 10 s: ${Object.entries(d.upkeep).map(([k, v]) => v + ' ' + k).join(', ')}.${Q.length ? ' ' + Q.length + ' already queued.' : ''}`, cost: d.cost, why: limitWhy(type) || (lack.length ? 'Need ' + lack.map(k => d.cost[k] + ' ' + k).join(', ') : null), icon: portrait(type) };
   }
@@ -1917,6 +1927,7 @@ function cmdInfo(id) {
     const d = BUILD_DEFS[e.type], lv = e.level || 1, xu = S.xup.get(p + '@' + e.slot);
     if (what === 'xcancel') { const left = xu ? Math.ceil(d.ups[xu.to - 1].time - (S.t - xu.t0)) : 0; return { name: 'Upgrading to ' + d.levels[lv], desc: `Ready in ${left} s. Click to cancel and get the resources back.`, cost: xu ? xu.paid : null, why: null, ok: 'Click to cancel', icon: buildThumb(e.type, lv + 1) }; }
     if (lv >= d.levels.length) return { name: d.levels[lv - 1], desc: 'Fully upgraded.', cost: null, why: 'Already at the highest level', icon: buildThumb(e.type, lv) };
+    if (e.type === 'pyre') { const up = d.ups[lv]; return { name: 'Build up into a ' + d.levels[lv], desc: `A Grand Pyre burns ${PYRE[2].wood} wood for ${PYRE[2].gold} gold every 10 s (now ${PYRE[1].wood} for ${PYRE[1].gold}). Takes ${up.time} s; no Swampwright needed.`, cost: up.cost, why: lackText(up.cost), icon: buildThumb(e.type, lv + 1) }; }
     const needT = (e.type === 'forge' ? ['battleforge', 'warforge'] : ['sanctum', 'arcanum'])[lv - 1];
     if (needT && !hasTech(needT)) return { name: 'Upgrade to ' + d.levels[lv], desc: `Research ${TECH_BY_ID[needT].name} (${e.type === 'forge' ? 'Military' : 'Magic'} research) to unlock this upgrade.`, cost: d.ups[lv].cost, why: 'Research ' + TECH_BY_ID[needT].name + ' first', icon: buildThumb(e.type, lv + 1) };
     const up = d.ups[lv], tree = e.type === 'forge' ? 'Military' : 'Magic';
@@ -1983,15 +1994,16 @@ function cmdUse(id) {
 // when a capital or barracks is selected the command card trains units: top row trains, bottom row is the queue
 function renderTrainCard() {
   const kinds = trainable(S.selKind, S.selBuilding), Q = S.queues[srcKey()] || [];
-  const key = 'train|' + srcKey() + '|' + kinds.join(',') + '|' + Q.map(q => q.kind).join(',') + '|' + RES.map(k => S.stock[k]).join(',') + '|' + [...S.xup.keys()].join(',') + '|' + extrasIn(S.selBuilding).map(e => e.level || 1).join(',');
+  const key = 'train|' + srcKey() + '|' + (S.selKind === 'market' ? (extraAt(S.selBuilding, S.selPart) || {}).thugs + ':' + denCap(ME) + ':' : '') + kinds.join(',') + '|' + Q.map(q => q.kind).join(',') + '|' + RES.map(k => S.stock[k]).join(',') + '|' + [...S.xup.keys()].join(',') + '|' + extrasIn(S.selBuilding).map(e => e.level || 1).join(',');
   if (key !== cmdKey) {
     cmdKey = key;
-    const tower = S.selKind === 'magetower' && extraAt(S.selBuilding, S.selPart), title = S.selKind === 'capital' ? 'Capital' : tower ? BUILD_DEFS.magetower.levels[(tower.level || 1) - 1] : 'Barracks';
-    $q('#cmdTabs').innerHTML = `<span class="cmd-tab" aria-selected="true"><img alt="" src="${S.selKind === 'capital' ? settlementThumb(2) : tower ? buildThumb('magetower', tower.level || 1) : buildThumb('barracks')}">${title}</span>`;
+    const tower = S.selKind === 'magetower' && extraAt(S.selBuilding, S.selPart), den = S.selKind === 'market' && extraAt(S.selBuilding, S.selPart), cave = S.selKind === 'stable', title = S.selKind === 'capital' ? 'Capital' : cave ? BUILD_DEFS.stable.name : tower ? BUILD_DEFS.magetower.levels[(tower.level || 1) - 1] : den ? `${BUILD_DEFS.market.name} · ${den.thugs || 0}/${denCap(ME)} Thugs` : BUILD_DEFS.barracks.name;
+    $q('#cmdTabs').innerHTML = `<span class="cmd-tab" aria-selected="true"><img alt="" src="${S.selKind === 'capital' ? settlementThumb(2) : tower ? buildThumb('magetower', tower.level || 1) : den ? buildThumb('market') : cave ? buildThumb('stable') : buildThumb('barracks')}">${title}</span>`;
     const cells = new Array(16).fill('<div class="cmd-cell"></div>');
     kinds.forEach((k, i) => { const info = cmdInfo('train:' + k); cells[i] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="train:${k}" aria-label="Train ${info.name}${info.why ? ' (' + info.why + ')' : ''}"><img alt="" src="${portrait(k)}"></button>`; });
     Q.slice(0, 4).forEach((q, i) => { cells[12 + i] = `<button type="button" class="cmd-btn cmd-q" data-cmd="queue:${i}" aria-label="${UNIT_DEFS[q.kind].name} in training, click to cancel"><img alt="" src="${portrait(q.kind)}">${i === 0 ? '<i class="cmd-prog"><s></s></i>' : ''}<em>${i + 1}</em></button>`; });
     if (Q.length > 4) cells[15] = `<div class="cmd-cell cmd-more">+${Q.length - 3}</div>`;
+    if (den) { const info = cmdInfo('thugout'); cells[3] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="thugout" aria-label="${info.name}"><img alt="" src="${info.icon}"></button>`; }
     if (tower) { const xu = S.xup.get(S.selBuilding + '@' + tower.slot), id = xu ? 'xcancel' : 'xup', info = cmdInfo(id); cells[3] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="${id}" aria-label="${info.name}"><img alt="" src="${info.icon}">${xu ? '<i class="cmd-prog"><s></s></i>' : ''}</button>`; }
     $q('#cmdGrid').innerHTML = cells.join('');
     if (cmdHover) showCmdTip(cmdHover);
@@ -2074,14 +2086,15 @@ $q('#cmdGrid').addEventListener('pointerleave', () => { cmdHover = null; $q('#cm
 let provKey = '';
 const settleURL = {};
 function settlementThumb(stage) {
-  if (settleURL[stage]) return settleURL[stage];
+  const sk = raceOf(ME) + stage;
+  if (settleURL[sk]) return settleURL[sk];
   const c = document.createElement('canvas'); c.width = c.height = 84; const g = c.getContext('2d');
-  g.translate(42, 60); const k = stage === 2 ? 0.24 : stage === 1 ? 0.3 : 0.46; g.scale(k, k); RealmBuild.drawSettlement(g, stage, 0.8);
-  return settleURL[stage] = c.toDataURL();
+  g.translate(42, 60); const k = stage === 2 ? 0.24 : stage === 1 ? 0.3 : 0.46; g.scale(k, k); settleArt(g, stage, 0.8, {}, raceOf(ME));
+  return settleURL[sk] = c.toDataURL();
 }
 const STAGE_NAME = ['Outpost', 'Fort', 'Capital'];
 function partInfo(p, part, lvE) {
-  if (part === 'settlement') { const st = S.buildings.get(p).stage; return { name: STAGE_NAME[st], img: settlementThumb(st), desc: st === 2 ? `Trains Wayfinders and Masons. +${CAPITAL_BONUS.gold} of each resource. 6 building plots.` : st === 1 ? 'A stone fort. 4 building plots.' : 'Claims the province. 2 building plots; upgrade to a Fort for 4.' }; }
+  if (part === 'settlement') { const st = S.buildings.get(p).stage; return { name: STAGE_NAME[st], img: settlementThumb(st), desc: st === 2 ? `Trains ${UNIT_DEFS[WAYFINDER].name}s and ${UNIT_DEFS[MASON].name}s. +${CAPITAL_BONUS.gold} of each resource. 6 building plots.` : st === 1 ? 'A stone fort. 4 building plots.' : 'Claims the province. 2 building plots; upgrade to a Fort for 4.' }; }
   const d = BUILD_DEFS[part];
   if (d.levels) { const lv = (lvE && lvE.level) || 1; return { name: d.levels[lv - 1], img: buildThumb(part, lv), desc: `${part === 'forge' ? 'Military' : 'Magic'} research Tier ${['', 'I', 'II', 'III'][lv]} · +${[0, 2, 4, 6][lv]} points every 10 s` + (lv < 3 ? ' · select to upgrade' : '') }; }
   return { name: d.name, img: buildThumb(part), desc: d.store ? d.note : d.gives ? Object.entries(givesOf(part)).map(([k, v]) => '+' + v + ' ' + k).join(', ') + ' every 10 s' : part === 'barracks' ? (extrasIn(p).some(e => e.type === 'stable') ? 'Trains infantry and cavalry' : 'Trains infantry') : part === 'stable' ? 'Lets this province’s Barracks train cavalry' : '' };
@@ -2174,7 +2187,7 @@ function renderRoster() {
     return;
   }
   const group = (kind, title) => { const us = list.filter(u => u.kind === kind); return `<div class="ro-sec">${title} <span>${us.length}</span></div>` + (us.length ? us.map(u => `<button type="button" class="ro-u${isSel(u) ? ' on' : ''}" data-uid="${u.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(u.kind)}"><span><b>${u.name}</b><small><i class="${unitStatus(u) === 'idle' ? 'idle' : 'busy'}"></i>${unitStatus(u)} · ${S.explored.has(u.prov) ? provName(u.prov) : 'fog'}</small></span></button>`).join('') : '<div class="ro-none">None yet</div>'); };
-  el.innerHTML = tabs + group(WAYFINDER, 'Wayfinders') + group(MASON, 'Masons');
+  el.innerHTML = tabs + group(WAYFINDER, UNIT_DEFS[WAYFINDER].name + 's') + group(MASON, UNIT_DEFS[MASON].name + 's');   // Swampstriders / Swampwrights for Swamplings
 }
 $q('#roster').addEventListener('pointerdown', e => e.stopPropagation());
 $q('#roster').addEventListener('click', e => {

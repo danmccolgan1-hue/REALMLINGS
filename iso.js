@@ -259,6 +259,29 @@ function item(g, name, x, y, ang, t, flip) {
       poly(g, [[-3, -84], [3, -84], [0, -98]]); ink(g, P.steelL, 2);
       rr(g, -4, -72, 8, 5, 2); ink(g, P.gold, 1.6);
       break;
+    // ---- equipment: Swampling axes (one-handed, every tier) ----
+    case 'handaxe':
+      stick(g, 0, 10, 0, -30, 4, P.wood);
+      g.beginPath(); g.moveTo(1, -36); g.lineTo(13, -40); g.quadraticCurveTo(19, -31, 13, -21); g.lineTo(1, -26); g.closePath(); bnd(1, -40, 19, -21); ink(g, P.steel, 2.3);
+      glint(g, 10, -33, 1.4, 3.5, 0.2, 0.6);
+      break;
+    case 'beardedaxe':
+      stick(g, 0, 12, 0, -36, 4.2, P.wood);
+      g.beginPath(); g.moveTo(1, -42); g.lineTo(12, -46); g.quadraticCurveTo(22, -38, 18, -20); g.quadraticCurveTo(13, -24, 8, -30); g.lineTo(1, -31); g.closePath(); bnd(1, -46, 22, -20); ink(g, P.steelL, 2.4);
+      rr(g, -3, -14, 6, 4, 1.5); ink(g, P.leatherD, 1.4);
+      break;
+    case 'battleaxe':
+      stick(g, 0, 14, 0, -44, 4.5, P.woodD);
+      g.beginPath(); g.moveTo(1, -50); g.quadraticCurveTo(18, -60, 24, -46); g.quadraticCurveTo(26, -36, 22, -26); g.quadraticCurveTo(14, -32, 1, -34); g.closePath(); bnd(1, -60, 26, -26); ink(g, P.steelL, 2.5);
+      g.beginPath(); g.moveTo(-1, -48); g.lineTo(-10, -44); g.lineTo(-1, -38); g.closePath(); bnd(-10, -48, -1, -38); ink(g, P.steel, 2);
+      glint(g, 17, -44, 1.6, 5, 0.2, 0.55);
+      break;
+    case 'waraxe':
+      stick(g, 0, 16, 0, -52, 4.8, '#4a2e1a');
+      for (const s of [1, -1]) { g.beginPath(); g.moveTo(s * 1.5, -60); g.quadraticCurveTo(s * 22, -72, s * 28, -54); g.quadraticCurveTo(s * 30, -42, s * 24, -30); g.quadraticCurveTo(s * 14, -38, s * 1.5, -40); g.closePath(); bnd(Math.min(0, s * 30), -72, Math.max(0, s * 30), -30); ink(g, s > 0 ? P.steelL : P.steel, 2.5); }
+      poly(g, [[-3, -60], [3, -60], [0, -72]]); ink(g, P.steelL, 2);
+      rr(g, -4, -42, 8, 5, 2); ink(g, '#b8352d', 1.6);
+      break;
     // ---- equipment: shields ----
     case 'round':
       circ(g, 0, 2, 15); ink(g, '#a5713f', 2.8);
@@ -312,6 +335,18 @@ function face(g, s, R, cx, cy, t) {
     if (ck.d > 0.2) { g.fillStyle = 'rgba(232,96,96,0.28)'; g.beginPath(); g.ellipse(cx + ck.x, cy + 9, 4 * Math.max(0.4, ck.d), 2.5, 0, 0, TAU); g.fill(); }
   }
   const m = R.at(0, 18);
+  if (s.glowEyes && s.swamp && !s.blackEyes) for (const ph of [-0.45, 0.45]) { const e = R.at(ph, 18); if (e.d > 0.15) glow(g, cx + e.x, cy + 1, 9, 'rgba(255,60,40,1)', 0.55 + Math.sin(t * 5) * 0.12); }
+  if (s.underbite) {
+    // a Swampling's massive underbite: a wide jutting lower jaw with two tusks pointing up
+    if (m.d > -0.2) {
+      const w = Math.max(0.5, Math.abs(R.c)), jx = cx + m.x * 1.08, jy = cy + 15;
+      g.beginPath(); g.moveTo(jx - 17 * w, jy - 5); g.quadraticCurveTo(jx - 19 * w, jy + 12, jx, jy + 13); g.quadraticCurveTo(jx + 19 * w, jy + 12, jx + 17 * w, jy - 5); g.quadraticCurveTo(jx, jy + 1, jx - 17 * w, jy - 5); g.closePath();
+      bnd(jx - 19 * w, jy - 5, jx + 19 * w, jy + 13); ink(g, s.skin, 2.6);
+      g.strokeStyle = OL; g.lineWidth = 2.2; g.beginPath(); g.moveTo(jx - 12 * w, jy - 2); g.quadraticCurveTo(jx, jy + 3, jx + 12 * w, jy - 2); g.stroke();
+      if (m.d > 0.1) for (const d of [-8, 8]) { poly(g, [[jx + d * w - 2.6, jy - 1], [jx + d * w + 2.6, jy - 1], [jx + d * w + 0.6 * Math.sign(d), jy - 10]]); ink(g, '#f6efd8', 1.6, false); }
+    }
+    return;
+  }
   if (Math.abs(R.s) > 0.3 && R.c > -0.25) { circ(g, cx + 23 * Math.sign(R.s) * Math.min(1, Math.abs(R.s) * 1.15), cy + 4, 3.6); ink(g, s.skin, 2); }
   if (m.d > 0.05) {
     const w = Math.max(0.45, m.d), mx = cx + m.x, my = cy + 12;
@@ -430,11 +465,13 @@ function helm(g, s, R, cx, cy, phase, t) {
 function head(g, s, R, t) {
   const cx = 0, cy = -76;
   helm(g, s, R, cx, cy, 'back', t);
-  const earsShown = !['hood', 'greathelm', 'barbute'].includes(s.helm);
+  const earsShown = !s.noEars && !['hood', 'greathelm', 'barbute'].includes(s.helm);
   const ears = earsShown ? [Math.PI / 2, -Math.PI / 2].map(ph => R.at(ph, 23)) : [];
-  for (const e of ears) if (e.d <= 0.45) { circ(g, cx + e.x, cy + 3, 5.5); ink(g, s.skin, 2.4); }
+  // Swamplings have long pointed ears that stick out sideways
+  const ear = (e, k) => { if (!s.swamp) { circ(g, cx + e.x * k, cy + 3, 5.5); ink(g, s.skin, 2.4); return; } const sg = Math.sign(e.x) || 1, x0 = cx + e.x * k; poly(g, [[x0 - sg * 2, cy - 4], [x0 + sg * 15, cy - 9], [x0 - sg * 1, cy + 8]]); ink(g, s.skin, 2.4); };
+  for (const e of ears) if (e.d <= 0.45) ear(e, 1);
   circ(g, cx, cy, 23.5); ink(g, s.skin, 3);
-  for (const e of ears) if (e.d > 0.45) { circ(g, cx + e.x * 0.9, cy + 3, 5.5); ink(g, s.skin, 2.4); }
+  for (const e of ears) if (e.d > 0.45) ear(e, 0.9);
   if (s.hairColor && R.c < 0.35) {
     g.save(); g.beginPath(); g.arc(cx, cy, 23.5, 0, TAU); g.clip();
     const hx = cx - 18 * R.s, hw = 24 * (0.4 + 0.6 * Math.abs(R.c)) + 4;
@@ -516,29 +553,87 @@ function straps(g, s, R) {
 }
 
 // ---------- humanoid ----------
+// ---------- Swamplings: hunched, crouching, a hump on the back; the Swampstrider runs on all fours ----------
+function legCrouch(g, s, R, lx) {
+  const sg = Math.sign(lx), hip = R.P(lx, 0, -20), knee = R.P(lx * 1.9, 6, -10), foot = R.P(lx * 1.7, 1, 0), far = R.D(lx * 1.9, 6) < -2, col = far ? shade(s.pants) : s.pants;
+  stick(g, hip[0], hip[1], knee[0], knee[1], 9, col); stick(g, knee[0], knee[1], foot[0], foot[1], 8, col);
+  const bw = Math.hypot(13 * R.c, 17 * R.s); rr(g, foot[0] - bw / 2 + sg * 0, foot[1] - 9, bw, 10, [6, 6, 3, 3]); ink(g, far ? shade(s.boots) : s.boots, 2.4);
+}
+function hump(g, s, R) {
+  const x = R.X(0, -13), col = s.robe || s.shirt;
+  ell(g, x, -50, Math.hypot(15 * R.c, 11 * R.s) + 4, 13); ink(g, col, 3);
+  if (s.moss) { for (const [dx, dy, r] of [[-5, -56, 5], [4, -52, 6], [-1, -46, 4]]) { ell(g, x + dx * Math.abs(R.c || 0.4), dy, r, r * 0.7); ink(g, '#4f7d2e', 1.6); } }
+}
+function logOnShoulder(g, s, R) {
+  const a = R.P(19, -26, -60), b = R.P(19, 30, -60), w = 10;
+  stick(g, a[0], a[1], b[0], b[1], w, '#8a5a34');
+  const front = R.D(19, 30) > R.D(19, -26) ? b : a; circ(g, front[0], front[1], w * 0.62); ink(g, '#d9b07a', 2); g.strokeStyle = '#8a5a34'; g.lineWidth = 1.2; g.beginPath(); g.arc(front[0], front[1], w * 0.3, 0, TAU); g.stroke();
+}
+function crawler(g, s, R, t) {
+  // running on all fours: a low body along the facing direction, legs scrabbling, head out in front
+  const gait = Math.sin(t * 9), parts = []; const add = (d, f) => parts.push({ d, f });
+  for (const [lx, lz, ph] of [[-8, 12, 1], [8, 12, -1], [-8, -12, -1], [8, -12, 1]]) {
+    add(R.D(lx, lz) - 4, () => { const sw = gait * ph * 6, top = R.P(lx, lz, -18), foot = R.P(lx * 1.2, lz + sw, -1), far = R.D(lx, lz) < -2; stick(g, top[0], top[1], foot[0], foot[1], 7, far ? shade(s.skin) : s.skin); circ(g, foot[0], foot[1], 4); ink(g, far ? shade(s.skin) : s.skin, 2); });
+  }
+  for (const lz of [-12, -2, 8]) add(R.D(0, lz), () => { const c = R.P(0, lz, -22 + Math.abs(gait) * 1.5); ell(g, c[0], c[1], 13, 11); ink(g, lz < 0 ? s.shirt : s.sleeve || s.shirt, 2.8); });
+  if (s.cape) add(R.D(0, -14) + 0.5, () => { const c = R.P(0, -10, -30); ell(g, c[0], c[1], 14, 9); ink(g, s.cape, 2.6); });
+  add(R.D(0, 22) + 1, () => { const hp = R.P(0, 22, -26); g.save(); g.translate(hp[0], hp[1] + 76 * 0.78); g.scale(0.78, 0.78); head(g, s, R, t); g.restore(); });
+  parts.sort((a, b) => a.d - b.d).forEach(p => p.f());
+}
+// ---------- Ogres: always on all fours, knuckle-walking on huge fists, a huge long head with black eyes ----------
+function ogreBody(g, s, R, t) {
+  const run = !!s.running, gait = run ? Math.sin(t * 7) : 0, breathe = run ? Math.abs(gait) * 2 : Math.sin(t * 2) * 1.2, parts = []; const add = (d, f) => parts.push({ d, f });
+  // hind legs: short and thick
+  for (const [lx, ph] of [[-13, 1], [13, -1]]) add(R.D(lx, -16) - 6, () => { const hip = R.P(lx, -16, -40), foot = R.P(lx * 1.15, -16 + gait * ph * 8, -1), far = R.D(lx, -16) < -2; stick(g, hip[0], hip[1], foot[0], foot[1], 14, far ? shade(s.pants) : s.pants); ell(g, foot[0], foot[1] - 2, 11, 6); ink(g, far ? shade(s.skin) : s.skin, 2.2); });
+  // a massive body rising from the hips to a great humped back and shoulders, higher than the head
+  add(R.D(0, -14), () => { const c = R.P(0, -14, -48 + breathe); ell(g, c[0], c[1], 23, 19); ink(g, s.shirt, 3); });
+  add(R.D(0, 0), () => { const c = R.P(0, 0, -74 + breathe); ell(g, c[0], c[1], 30, 24); ink(g, s.skin, 3); if (s.moss) for (const [dx, dy, r] of [[-9, -12, 7], [7, -15, 8], [0, -5, 6]]) { ell(g, c[0] + dx, c[1] + dy, r, r * 0.7); ink(g, '#4f7d2e', 1.6); } });
+  add(R.D(0, 12), () => { const c = R.P(0, 12, -68 + breathe); ell(g, c[0], c[1], 29, 21); ink(g, s.sleeve || s.skin, 3); if (s.tabard) { ell(g, c[0], c[1] + 8, 13, 7); ink(g, s.tabard, 2); } });
+  // long arms down to huge fists; weapons gripped in the fists and held out at 45 degrees
+  for (const [lx, ph, sd] of [[-22, -1, 'r'], [22, 1, 'l']]) {
+    const d = R.D(lx * 1.15, 24);
+    add(d + (d > 0 ? 3 : -1), () => {
+      const sh = R.P(lx, 14, -70 + breathe), fist = R.P(lx * 1.18, 24 + gait * ph * 9, -9), far = d < -2;
+      stick(g, sh[0], sh[1], fist[0], fist[1], 14, far ? shade(s.skin) : s.skin);
+      const name = sd === 'r' ? s.right : s.left;
+      if (name) { const out = Math.sign(R.X(lx > 0 ? 1 : -1, 0.6)) || (sd === 'r' ? -1 : 1); item(g, name, fist[0], fist[1] - 4, out * Math.PI / 4, t, out < 0); }
+      circ(g, fist[0], fist[1] - 3, 12); ink(g, s.gloves || s.skin, 2.6);
+    });
+  }
+  // the head: big and long, jutting forward and low beneath the shoulders
+  add(R.D(0, 30) + 1.5, () => { const hp = R.P(0, 30, -38 + breathe); g.save(); g.translate(hp[0], hp[1]); g.scale(0.91, 1.17); g.translate(0, 76); head(g, s, R, t); g.restore(); });
+  parts.sort((a, b) => a.d - b.d).forEach(p => p.f());
+}
 function humanoid(g, s, R, t, seated) {
+  if (s.ogreBody && !seated) return ogreBody(g, s, R, t);
+  if (s.allFours && s.running && !seated) return crawler(g, s, R, t);
   const bob = seated ? Math.sin(t * 2.2) * 0.6 : Math.sin(t * 3.2) * 1.3;
   const parts = []; const add = (d, f, up = true) => parts.push({ d, f, up });
+  // the hunch: the upper body leans forward and down (more for a crouching Berserker)
+  const hx = s.swamp ? R.X(0, 6) : 0, hy = s.swamp ? 5 + (s.crouch ? 7 : 0) + R.D(0, 6) * TILT : 0;
   if (s.cape) add(R.D(0, -10) - 0.5, () => cape(g, s, R, t));
   if (s.back === 'rucksack') add(R.D(0, -19), () => rucksack(g, s, R));
-  if (!seated) for (const lx of [-7.5, 7.5]) add(R.D(lx, 0) * 0.5 - 3, () => legStand(g, s, R, lx), false);
+  if (s.swamp) add(R.D(0, -14) - 0.2, () => hump(g, s, R));
+  if (s.log) add(R.D(19, 0) + 0.6, () => logOnShoulder(g, s, R));
+  if (!seated) for (const lx of [-7.5, 7.5]) add(R.D(lx, 0) * 0.5 - 3, () => (s.crouch ? legCrouch : legStand)(g, s, R, lx), false);
   else for (const sd of [-1, 1]) add(R.D(sd * 14, 6) * 0.6, () => legSeat(g, s, R, sd), false);
   add(0, () => torso(g, s, R));
   if (s.back === 'rucksack') add(0.4, () => straps(g, s, R));
-  add(1, () => head(g, s, R, t));
+  add(1, () => { if (!s.swamp) return head(g, s, R, t); const f = R.P(0, 7, 8); g.save(); g.translate(f[0], f[1]); head(g, s, R, t); g.restore(); });
   // castPose (v78): both hands lifted over the head, the staff held high, lightning crackling at its tip in the school's color
   const cast = s.castPose;
-  const hands = cast ? { r: [-12, 10, -82], l: [13, 8, -76] } : { r: s.rightPose === 'raised' ? [-24, 10, -58] : [-24, 5, -28], l: [24, 5, -28] };
+  const hands = cast ? { r: [-12, 10, -82], l: [13, 8, -76] } : { r: s.rightPose === 'raised' ? [-24, 10, -58] : s.crouch ? [-30, 12, -36] : [-24, 5, -28], l: s.log ? [21, 6, -58] : s.crouch ? [30, 12, -36] : [24, 5, -28] };
   for (const sd of ['r', 'l']) {
     const sh = [sd === 'r' ? -17 : 17, 0, -46], hd = hands[sd];
     const name = sd === 'r' ? s.right : s.left, isShield = name && SHIELDS.includes(name);
     const d = R.D(hd[0], hd[1]), armD = d > 0 ? d + 1 : d - 0.5;
-    const ang = cast ? 0.08 * R.s : sd === 'r' ? (s.angF || 0) * R.c + (s.angS || 0) * R.s : 0;
+    // a crouching Berserker holds his weapons out at 45 degrees, outward (or forward, seen from the side), so they never cover his face
+    const ang = cast ? 0.08 * R.s : s.crouch ? (Math.sign(R.X(sd === 'r' ? -1 : 1, 0.6)) || (sd === 'r' ? -1 : 1)) * Math.PI / 4 : sd === 'r' ? (s.angF || 0) * R.c + (s.angS || 0) * R.s : 0;
     add(armD, () => {
       const sx = R.X(sh[0], sh[1]), hx = R.X(hd[0], hd[1]), hy = hd[2] + R.D(hd[0], hd[1]) * TILT * 0.4;
       if (name && !isShield) item(g, name, hx, hy, ang, t, R.s < -0.25);
       stick(g, sx, sh[2], hx, hy, 8, d < -2 ? shade(s.sleeve) : s.sleeve);
-      circ(g, hx, hy, 5.2); ink(g, s.gloves || s.skin, 2.4);
+      circ(g, hx, hy, s.bigHands ? 8 : 5.2); ink(g, s.gloves || s.skin, 2.4);
     });
     if (s.pauldrons) add(armD + 0.01, () => { const px = R.X(sh[0] * 1.05, 0); circ(g, px, -49, 9.5); ink(g, P.steel, 2.6); g.beginPath(); g.arc(px, -49, 9.5, Math.PI * 0.05, Math.PI * 0.95); g.strokeStyle = P.gold; g.lineWidth = 2.4; g.stroke(); });
     if (isShield) {
@@ -553,7 +648,7 @@ function humanoid(g, s, R, t, seated) {
   }
   if (cast) { const hd = hands.r, hx = R.X(hd[0], hd[1]), hy = hd[2] + R.D(hd[0], hd[1]) * TILT * 0.4; const tip = { stave: 72, grandstave: 88, 'staff-crystal': 88, mythicstave: 80, wand: 33, crypticwand: 37, enigmaticwand: 40 }[s.right] || 72; add(9, () => castBolts(g, hx, hy - tip, t, cast)); }
   parts.sort((a, b) => a.d - b.d);
-  for (const p of parts) { if (p.up) { g.save(); g.translate(0, bob); p.f(); g.restore(); } else p.f(); }
+  for (const p of parts) { if (p.up) { g.save(); g.translate(hx, bob + hy); p.f(); g.restore(); } else p.f(); }
 }
 // jagged lightning crackling around a raised staff's tip; col is the school's color (a dark color gets a pale halo so it still reads)
 function castBolts(g, x, y, t, col) {
@@ -662,6 +757,13 @@ const UNITS = {
   'mage:A': { unit: 'mage', name: 'Archmage', title: 'Mage',
     spec: base({ brows: 'bushy', browColor: '#f2f2f2', mouth: 'smile', helm: 'wizard', helmColor: '#3f5fc9', hairColor: '#f1f1f4', robe: '#3f5fc9', robeTrim: P.gold, sash: P.leather, sleeve: '#3f5fc9', cape: '#6a3fa8', boots: '#4a3a5a', right: 'staff-crystal', left: null, angS: 0.12, beard: { color: '#f4f4f4', style: 'long' } }) }
 };
+// ---------- Swamplings: green, hunched, with a massive underbite and glowing red eyes ----------
+const SWSKIN = '#6f9e45';
+const swamp = o => base(Object.assign({ skin: SWSKIN, swamp: true, underbite: true, glowEyes: '#ff3b2f', brows: 'angry', mouth: 'flat', shirt: '#6b5236', sleeve: SWSKIN, pants: '#4d3b28', boots: '#3a2c1e' }, o));
+UNITS['sw-pioneer'] = { unit: 'pioneer', name: 'Swampstrider', title: 'Swampstrider', spec: swamp({ skin: '#93b55c', sleeve: '#93b55c', allFours: true, shirt: '#5a6b3a', cape: '#4f6a34', right: 'lantern', left: null }) };
+UNITS['sw-mason'] = { unit: 'mason', name: 'Swampwright', title: 'Swampwright', spec: swamp({ skin: '#5a7a80', sleeve: '#5a7a80', shirt: '#8a6a44', apron: '#5e4128', right: 'hammer', left: null, log: true, angF: -0.45, angS: 0.25 }) };
+UNITS['sw-mage'] = { unit: 'mage', name: 'Warlock', title: 'Warlock', spec: swamp({ robe: '#26222b', robeTrim: '#7a2a2a', sash: '#5a1f1f', sleeve: '#26222b', cape: '#3a2030', boots: '#26222b', right: 'stave', left: null, angS: 0.12 }) };
+UNITS['thug:A'] = { unit: 'thug', name: 'Thug', title: 'Thug', spec: swamp({ helm: 'hood', helmColor: '#3b3330', hoodTrim: '#5a4a3a', shirt: '#4a3d33', right: 'club', left: null, crouch: true, angS: 0.3 }) };
 const DIRS = [
   { k: 'N', th: Math.PI }, { k: 'NE', th: 3 * Math.PI / 4 }, { k: 'E', th: Math.PI / 2 }, { k: 'SE', th: Math.PI / 4 },
   { k: 'S', th: 0 }, { k: 'SW', th: -Math.PI / 4 }, { k: 'W', th: -Math.PI / 2 }, { k: 'NW', th: -3 * Math.PI / 4 }
@@ -695,13 +797,20 @@ function renderIso(cv, id, th, t, opts = {}) {
   if (big) g.ellipse(0, 4, Math.hypot(18 * R.c, 46 * R.s) + 8, 10, 0, 0, TAU); else g.ellipse(0, 3, 22, 7, 0, 0, TAU);
   g.fill();
   if (big) { g.save(); g.scale(1.14, 1.14); horse(g, U.spec.horse, R, t, () => { g.save(); const seat = R.P(0, -3, -70); g.translate(seat[0], seat[1] + 16); g.scale(0.62, 0.62); humanoid(g, U.spec, R, t, true); g.restore(); }); g.restore(); }
+  else if (U.unit === 'ogre') { g.save(); g.scale(1.25, 1.25); humanoid(g, U.spec, R, t, false); g.restore(); }
   else humanoid(g, U.spec, R, t, false);
 }
 
 // draw a unit straight into another scene (no tile), feet at (x, y), scaled by k
+// POSE.running: the caller says the unit is on the move (a Swampstrider then runs on all fours)
+const POSE = { running: false };
 function drawUnitAt(g, id, th, t, x, y, k) {
   const U = UNITS[id]; if (!U) return;
   const R = rig(th), big = U.unit === 'cavalry';
+  // an Ogre is a huge Swampling on foot
+  if (U.unit === 'ogre') { const sp = POSE.running ? Object.assign({}, U.spec, { running: true }) : U.spec; g.save(); g.translate(x, y); g.scale(k * 1.55, k * 1.55); g.lineJoin = 'round'; g.lineCap = 'round'; g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(0, 3, Math.hypot(20 * R.c, 34 * R.s) + 14, 9, 0, 0, TAU); g.fill(); humanoid(g, sp, R, t * 0.8, false); g.restore(); return; }
+  const spec = POSE.running && U.spec.allFours ? Object.assign({}, U.spec, { running: true }) : U.spec;
+  if (spec !== U.spec) { g.save(); g.translate(x, y); g.scale(k, k); g.lineJoin = 'round'; g.lineCap = 'round'; g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath(); g.ellipse(0, 3, 24, 7, 0, 0, TAU); g.fill(); humanoid(g, spec, R, t, false); g.restore(); return; }
   g.save(); g.translate(x, y); g.scale(k, k); g.lineJoin = 'round'; g.lineCap = 'round';
   g.fillStyle = 'rgba(0,0,0,0.25)'; g.beginPath();
   if (big) g.ellipse(0, 4, Math.hypot(18 * R.c, 46 * R.s) + 8, 10, 0, 0, TAU); else g.ellipse(0, 3, 22, 7, 0, 0, TAU);
@@ -710,5 +819,5 @@ function drawUnitAt(g, id, th, t, x, y, k) {
   else humanoid(g, U.spec, R, t, false);
   g.restore();
 }
-root.RealmIso = { UNITS, DIRS, renderIso, drawUnitAt, VB, P, base, drawItem: item, SHIELDS };
+root.RealmIso = { UNITS, DIRS, renderIso, drawUnitAt, VB, P, base, swamp, SWSKIN, shadeOf: shade, drawItem: item, SHIELDS, POSE };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

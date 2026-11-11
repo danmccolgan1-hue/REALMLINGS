@@ -221,11 +221,20 @@ const HOUSE_LOOKS = [
 ];
 const houseSprites = [];
 const houseRoofed = new Map();
-function houseSprite(v, roof) {
-  const key = v + (roof || ''); if (roof ? houseRoofed.has(key) : houseSprites[v]) return roof ? houseRoofed.get(key) : houseSprites[v];
+// Swampling homes: little mud huts with thatched cones (2 of every 3 thatched in the nation's color, like the Realmling roofs)
+const SW_HUTS = [{ r: 11, h: 20, wall: '#8b6a45' }, { r: 9, h: 18, wall: '#a8794a' }, { r: 12, h: 21, wall: '#6e5134' }, { r: 10, h: 22, wall: '#8b6a45' }, { r: 9, h: 17, wall: '#a8794a' }, { r: 11, h: 19, wall: '#7a5a3a' }];
+function houseSprite(v, roof, race) {
+  const key = (race === 'swamp' ? 'sw' : '') + v + (roof || ''); if (race === 'swamp' || roof ? houseRoofed.has(key) : houseSprites[v]) return race === 'swamp' || roof ? houseRoofed.get(key) : houseSprites[v];
   const RES2 = 4, W = 100, H = 100, c = document.createElement('canvas'); c.width = W * RES2; c.height = H * RES2;
   const g = c.getContext('2d'), L = HOUSE_LOOKS[v], K = RealmBuild.KIT;
   g.scale(RES2, RES2); g.translate(50, 70); g.lineJoin = 'round'; g.lineCap = 'round';
+  if (race === 'swamp') {
+    const H2 = SW_HUTS[v % SW_HUTS.length];
+    g.beginPath(); g.ellipse(0, 2, 30, 13, 0, 0, Math.PI * 2); g.fillStyle = 'rgba(110,84,52,0.5)'; g.fill();
+    SwampBuild.hut(g, 0, 0, H2.r, H2.h, 0, { wall: H2.wall, thatch: roof || '#9a8048', roof: H2.h * 1.15, smoke: false });
+    if (v % 2) SwampBuild.shroom(g, 14, 10, 0.7, '#d8443a');
+    houseRoofed.set(key, c); return c;
+  }
   g.beginPath(); g.ellipse(0, 2, 34, 15, 0, 0, Math.PI * 2); g.fillStyle = 'rgba(176,138,86,0.55)'; g.fill();
   K.house(g, -L.w / 2, -L.d / 2, L.w, L.d, L.h, roof || L.roof, 0, { chimney: L.chimney, wall: L.wall || undefined, lit: true });
   if (roof) houseRoofed.set(key, c); else houseSprites[v] = c;
@@ -252,6 +261,8 @@ function housePlace(p, slot, n, taken) {
 }
 const CIV_TUNIC = ['#c8473d', '#3f72d9', '#4b9b4f', '#d9b45a', '#8a5aa8', '#e08a3c', '#6d8fa8', '#b3646f'];
 const CIV_SKIN = ['#f2c9a0', '#e0ad82', '#c68a5e', '#9c6a45', '#f5d6b8'];
+// Swampling townsfolk come in forest green, green, light green, teal and brown (skin and rags in the same shade)
+const SW_CIV = ['#3f6b35', '#5f9a3e', '#93c463', '#3f8a80', '#8a6a44'];
 function syncTowns() {
   const sig = [...S.extras].map(([p, l]) => p + ':' + l.map(e => e.type + e.slot).join(',')).join('|');
   if (sig === townSig) return; townSig = sig;
@@ -317,7 +328,7 @@ function drawHouse(g, p, h, t) {
   const c = G.provs[p].ic, x = c[0] + h.x, y = c[1] + h.y, age = t - h.born;
   const pop = age < 1.2 ? Math.max(0.01, 1 - Math.exp(-age * 7) * Math.cos(age * 15)) : 1, k = HOUSE_K * pop;
   const b = S.buildings.get(p), own = b && PLAYERS[b.owner] ? PLAYERS[b.owner].color : null;
-  g.drawImage(houseSprite(h.v, own && (h.n || 0) % 3 !== 2 ? own : null), x - 50 * k, y - 70 * k, 100 * k, 100 * k);
+  g.drawImage(houseSprite(h.v, own && (h.n || 0) % 3 !== 2 ? own : null, b ? raceOf(b.owner) : 'realm'), x - 50 * k, y - 70 * k, 100 * k, 100 * k);
 }
 function drawCiv(g, cv, t) {
   const age = t - cv.born; if (age < 0) return;
@@ -326,9 +337,13 @@ function drawCiv(g, cv, t) {
   g.save(); g.translate(cv.x, cv.y); g.scale(s * (cv.dir || 1), s); g.lineCap = 'round'; g.lineJoin = 'round';
   g.beginPath(); g.ellipse(0, 0.6, 4.6, 1.8, 0, 0, 7); g.fillStyle = 'rgba(29,26,34,0.22)'; g.fill();
   for (const [lx, d] of [[-1.4, sw], [1.4, -sw]]) { g.beginPath(); g.moveTo(lx, -4.6 + bob); g.lineTo(lx + d, 0); g.lineWidth = 2.8; g.strokeStyle = OL; g.stroke(); g.lineWidth = 1.4; g.strokeStyle = '#5b4a3a'; g.stroke(); }
-  g.beginPath(); g.ellipse(0, -7.6 + bob, 3.5, 4.2, 0, 0, 7); g.fillStyle = cv.col; g.fill(); g.lineWidth = 1.3; g.strokeStyle = OL; g.stroke();
+  const swf = isSw(nationOf(cv.prov)), swc = swf ? SW_CIV[Math.floor(cv.ph * 7) % SW_CIV.length] : null, tunic = swf ? RealmIso.shadeOf ? RealmIso.shadeOf(swc, 0.72) : swc : cv.col, skin = swf ? swc : cv.skin;
+  if (swf) g.translate(0.8, 1.2);   // a little hunched
+  g.beginPath(); g.ellipse(0, -7.6 + bob, 3.5, 4.2, 0, 0, 7); g.fillStyle = tunic; g.fill(); g.lineWidth = 1.3; g.strokeStyle = OL; g.stroke();
   if (cv.sack) { g.beginPath(); g.arc(3.6, -6.4 + bob, 2.2, 0, 7); g.fillStyle = '#c99560'; g.fill(); g.lineWidth = 1.1; g.stroke(); }
-  g.beginPath(); g.arc(0, -13.4 + bob, 2.6, 0, 7); g.fillStyle = cv.skin; g.fill(); g.lineWidth = 1.2; g.strokeStyle = OL; g.stroke();
+  if (swf) { g.beginPath(); g.moveTo(-1.6, -14 + bob); g.lineTo(-5, -15.6 + bob); g.lineTo(-1.8, -12.4 + bob); g.moveTo(1.6, -14 + bob); g.lineTo(5, -15.6 + bob); g.lineTo(1.8, -12.4 + bob); g.fillStyle = skin; g.fill(); g.lineWidth = 0.9; g.strokeStyle = OL; g.stroke(); }   // pointed ears
+  g.beginPath(); g.arc(0, -13.4 + bob, 2.6, 0, 7); g.fillStyle = skin; g.fill(); g.lineWidth = 1.2; g.strokeStyle = OL; g.stroke();
+  if (swf) { g.fillStyle = '#ff3b2f'; g.fillRect(0.6, -14.2 + bob, 1, 1); g.restore(); return; }   // a red eye glint; no hats
   if (cv.hat === 'straw') { g.beginPath(); g.ellipse(0, -15 + bob, 4.2, 1.3, 0, 0, 7); g.fillStyle = '#e8cf7a'; g.fill(); g.lineWidth = 1; g.stroke(); g.beginPath(); g.ellipse(0, -16 + bob, 2, 1.4, 0, Math.PI, 0); g.fill(); g.stroke(); }
   else if (cv.hat === 'hood') { g.beginPath(); g.arc(0, -13.8 + bob, 2.9, Math.PI * 1.05, Math.PI * 1.95); g.lineWidth = 2; g.strokeStyle = cv.col; g.stroke(); }
   g.restore();

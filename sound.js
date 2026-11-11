@@ -41,7 +41,7 @@ function sndNear(p) {
   return Math.max(0, 1 - off / 1.2);
 }
 function sfx(name, opts = {}) {
-  if (!SND.ctx || !SND.on || S.paused || !SFX_FILES[name]) return;
+  if (!SND.ctx || !SND.on || !SFX_FILES[name]) return;   // sounds still play while paused (clicks, panels)
   const now = SND.ctx.currentTime, gap = SFX_GAP[name] ?? 0.08;
   if (SND.last[name] !== undefined && now - SND.last[name] < gap) return;
   const b = SND.buf[name]; if (!b) return;
@@ -99,24 +99,22 @@ function sndRender() {
   for (const id of ['#sfxBtn', '#mSfx']) { const b = $q(id); if (!b) continue; b.setAttribute('aria-pressed', SND.on ? 'true' : 'false'); if (b.querySelector('span')) b.querySelector('span').textContent = SND.on ? 'On' : 'Off'; }
   for (const id of ['#sfxVol', '#mSfxVol']) { const r = $q(id); if (r && +r.value !== Math.round(SND.vol * 100)) r.value = Math.round(SND.vol * 100); }
 }
-function sndSet(on) { SND.on = on; sndSave(); sndRender(); if (SND.master) SND.master.gain.setTargetAtTime(on && !S.paused ? SND.vol : 0, SND.ctx.currentTime, 0.05); if (on) { sndInit(); sfx('ui_click'); } }
-function sndVolume(v) { SND.vol = v; sndSave(); sndRender(); if (SND.master && SND.on && !S.paused) SND.master.gain.setTargetAtTime(v, SND.ctx.currentTime, 0.03); }
+function sndSet(on) { SND.on = on; sndSave(); sndRender(); if (SND.master) SND.master.gain.setTargetAtTime(on ? SND.vol : 0, SND.ctx.currentTime, 0.05); if (on) { sndInit(); sfx('ui_click'); } }
+function sndVolume(v) { SND.vol = v; sndSave(); sndRender(); if (SND.master && SND.on) SND.master.gain.setTargetAtTime(v, SND.ctx.currentTime, 0.03); }
 $q('#sfxBtn').addEventListener('click', e => { e.stopPropagation(); sndSet(!SND.on); });
 $q('#mSfx').addEventListener('click', () => sndSet(!SND.on));
 for (const id of ['#sfxVol', '#mSfxVol']) { const r = $q(id); r.addEventListener('input', () => sndVolume(r.value / 100)); r.addEventListener('change', () => sfx('ui_click')); r.addEventListener('pointerdown', e => e.stopPropagation()); }
-for (const ev of ['pointerdown', 'pointerup', 'keydown', 'click', 'touchend']) addEventListener(ev, () => { sndInit(); if (SND.ctx && SND.ctx.state === 'suspended' && !S.paused) SND.ctx.resume(); }, true);
+for (const ev of ['pointerdown', 'pointerup', 'keydown', 'click', 'touchend']) addEventListener(ev, () => { sndInit(); if (SND.ctx && SND.ctx.state === 'suspended') SND.ctx.resume(); }, true);
 // every button gives the paper tick
 document.addEventListener('click', e => { if (e.target.closest('button, .cmd-cell, [role="button"]') && !e.target.closest('#sfxBtn, #mSfx')) sfx('ui_click'); }, true);
 sndRender();
 window.__sfx = { SND, sfx, sndNear };
 // error thunks stay quiet right after a big sound (war declared, etc.), which often arrives with a red message
 function sndQuietFor() { return !SND.ctx || SND.ctx.currentTime - (SND.lastBig || -9) > 0.8; }
-// pausing the game mutes everything; resuming brings it back
+// pausing the game keeps sound effects on and plays the music at half volume; resuming brings the music back up
 function soundPaused(p) {
-  if (SND.ctx) { if (p) SND.ctx.suspend(); else SND.ctx.resume(); }   // freezing the audio clock silences everything at once
-  if (SND.master) SND.master.gain.setTargetAtTime(p || !SND.on ? 0 : SND.vol, SND.ctx.currentTime, 0.05);
-  if (p && SND.loop) { const l = SND.loop; SND.loopGain.gain.setTargetAtTime(0, SND.ctx.currentTime, 0.05); setTimeout(() => { try { l.stop(); } catch (e) {} }, 300); SND.loop = null; }
-  if (MUSIC.el) { if (p) { clearInterval(MUSIC.fade); MUSIC.el.pause(); } else if (MUSIC.on && MUSIC.started) { const pr = MUSIC.el.play(); if (pr && pr.catch) pr.catch(() => {}); musicFadeTo(MUSIC.vol, 1); } }
+  if (p && SND.loop) { const l = SND.loop; SND.loopGain.gain.setTargetAtTime(0, SND.ctx.currentTime, 0.05); setTimeout(() => { try { l.stop(); } catch (e) {} }, 300); SND.loop = null; }   // frozen battles stop clashing
+  if (MUSIC.el && MUSIC.on && MUSIC.started) { if (MUSIC.el.paused) { const pr = MUSIC.el.play(); if (pr && pr.catch) pr.catch(() => {}); } musicFadeTo(musicTarget(), 0.6); }
 }
 $q('#pauseBtn').addEventListener('click', e => { e.stopPropagation(); togglePause(); });
 $q('#pauseBtn').addEventListener('pointerdown', e => e.stopPropagation());

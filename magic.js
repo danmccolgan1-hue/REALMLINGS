@@ -31,13 +31,18 @@ registerMage();
 const SCHOOLS = {
   life:   { name: 'Herbomancy', color: '#3f9b4b', light: '#e3f6e0', blurb: 'Harvests, protective skins, healing, and paths through the forest.', spells: ['Harvest', 'Hardened Skin', 'Mending', 'Speak with the Forest'] },
   death:  { name: 'Necromancy', color: '#6b3fa0', light: '#efe6fb', blurb: 'Cursed weapons, the risen dead, tunnels under mountains, and grave riches.', spells: ['Cursed Weapons', 'Risen Dead', 'Underworld Passage', 'Grave Robbing'] },
-  arcane: { name: 'Arcane', color: '#2f6fe0', light: '#e3ecff', blurb: 'Far-seeing towers, reading minds, trading across worlds, traps and rifts.', spells: ['Arcane Scouts', 'Clear Thoughts', 'Interdimensional Trading', 'Stasis Trap', 'Teleportation Rift'] }
+  arcane: { name: 'Arcane', color: '#2f6fe0', light: '#e3ecff', blurb: 'Far-seeing towers, reading minds, trading across worlds, traps and rifts.', spells: ['Arcane Scouts', 'Clear Thoughts', 'Interdimensional Trading', 'Stasis Trap', 'Teleportation Rift'] },
+  // Swamplings only (they have no Herbomancy)
+  pyro:   { name: 'Pyromancy', color: '#d9542c', light: '#ffe6da', blurb: 'Fiery weapons, scouting pyres, fire traps, sacred pyres that burn wood into gold, and paths of fire.', spells: ['Fiery Weapons', 'Scouting Pyre', 'Fire Trap', 'Sacred Pyre', 'Path of Fire'], race: 'swamp' }
 };
+SCHOOLS.life.race = 'realm';
+const schoolOk = (k, race) => !SCHOOLS[k].race || SCHOOLS[k].race === race;
 // each spell family's research line, lowest first; its tier is how many of them you know
 const LINES = {
   harvest: ['harvest', 'bountiful', 'magnificent'], skin: ['skin', 'stoneskin', 'diamondskin'], mending: ['mending', 'rejuvenation', 'restoration'], forest: ['forest', 'commune', 'arboreal'],
   curse: ['curse1', 'curse2', 'curse3'], tunnel: ['underworld', 'hallways', 'sealed'], risen: ['risen', 'necro', 'armyofdeath'], graverob: ['graverob', 'deathtax', 'charon'],
-  scouts: ['arcscouts', 'arcvision'], mind: ['clearthoughts', 'mindread'], trading: ['trading', 'stockmarket', 'planar'], stasis: ['stasis', 'prison'], rift: ['rift', 'portal']
+  scouts: ['arcscouts', 'arcvision'], mind: ['clearthoughts', 'mindread'], trading: ['trading', 'stockmarket', 'planar'], stasis: ['stasis', 'prison'], rift: ['rift', 'portal'],
+  fiery: ['fiery1', 'fiery2', 'fiery3'], ftrap: ['firetrap', 'blazetrap', 'molttrap'], spyre: ['scoutpyre'], pfire: ['pathfire', 'pathflame', 'pathinferno'], sacred: ['sacredpyre']
 };
 const lvl = line => LINES[line].filter(hasTech).length;
 const lineTech = line => LINES[line][Math.max(0, lvl(line) - 1)];
@@ -124,7 +129,7 @@ function castSpell(c, k) {
   if (c.cast && c.cast.spell === k) { cancelCast(c, 'Casting stopped.'); return; }
   const why = castWhy(c, k); if (why) return toast(why + '.', true);
   CAST[k].go(c); cmdKey = '';
-  sfx(k === 'rift' ? 'mg_rift' : 'mg_' + currentSchool(), { prov: c.prov });
+  sfx(k === 'rift' ? 'mg_rift' : 'mg_' + (currentSchool() === 'pyro' ? 'arcane' : currentSchool()), { prov: c.prov });
 }
 // ---------- forest paths and mountain tunnels (targeted from the right-click menu) ----------
 const edgeBetween = (p, q, style, open) => { for (let i = 0; i < world.edges.length; i++) { const e = world.edges[i]; if (((e.a === p && e.b === q) || (e.a === q && e.b === p)) && (style ? e.style === style : true) && (open === undefined || e.open === open)) return i; } return -1; };
@@ -332,13 +337,14 @@ function openSchoolPopup() {
   if (currentSchool()) return;
   const el = $q('#schoolPick'), cur = S.tech.mag.cur;
   el.innerHTML = `<button type="button" class="pop-x" data-school="later" aria-label="Dismiss" title="Dismiss">×</button><div class="sp-head"><b>Choose a school of magic</b><span>Your first Mage Tower stands. Your first Magic research will be the school you pick; you can switch before it finishes. Abandoning a school later is costly.</span></div><div class="sp-cards">` +
-    Object.entries(SCHOOLS).map(([k, sc]) => `<button type="button" class="sp-card${cur === 'school-' + k ? ' on' : ''}" data-school="${k}" style="--c:${sc.color};--l:${sc.light}"><img alt="" src="${techIcon('school-' + k)}"><b>${sc.name}</b><span>${sc.blurb}</span><ul>${sc.spells.map(n => `<li>${n}</li>`).join('')}</ul><em>${cur === 'school-' + k ? 'Researching' : 'Choose ' + sc.name}</em></button>`).join('') +
+    Object.entries(SCHOOLS).filter(([k]) => schoolOk(k, raceOf(ME))).map(([k, sc]) => `<button type="button" class="sp-card${cur === 'school-' + k ? ' on' : ''}" data-school="${k}" style="--c:${sc.color};--l:${sc.light}"><img alt="" src="${techIcon('school-' + k)}"><b>${sc.name}</b><span>${sc.blurb}</span><ul>${sc.spells.map(n => `<li>${n}</li>`).join('')}</ul><em>${cur === 'school-' + k ? 'Researching' : 'Choose ' + sc.name}</em></button>`).join('') +
     `</div><div class="dm-btns"><button type="button" class="sp-later" data-school="look">Show me</button><button type="button" class="sp-later" data-school="later">Decide later (Research panel)</button></div>`;
   el.hidden = false;
 }
 function closeSchoolPopup() { $q('#schoolPick').hidden = true; }
 function pickSchool(k) {
   sfx('mg_school');
+  if (!schoolOk(k, raceOf(ME))) return;
   const id = 'school-' + k, st = S.tech.mag;
   if (!st.opts.includes(id) && st.cur !== id) drawOptions('mag');
   if (st.cur !== id) pickTech(id);

@@ -3,7 +3,11 @@
 // the map drifts behind a title card; Start builds a fresh world from the chosen seed and begins play
 const MENU_WORDS = ['amber', 'bramble', 'cinder', 'dapple', 'ember', 'fable', 'gilded', 'hollow', 'ivy', 'juniper', 'kestrel', 'lantern', 'meadow', 'nettle', 'oaken', 'pebble', 'quill', 'rook', 'sable', 'thistle', 'umber', 'vale', 'willow', 'yarrow'];
 const randomSeed = () => MENU_WORDS[Math.floor(Math.random() * MENU_WORDS.length)] + '-' + MENU_WORDS[Math.floor(Math.random() * MENU_WORDS.length)] + '-' + (10 + Math.floor(Math.random() * 90));
-const menuOpts = { practice: false, slots: ['easy', 'easy', 'moderate', 'closed', 'closed', 'closed', 'closed'] };
+const menuOpts = { practice: false, slots: ['easy', 'easy', 'moderate', 'closed', 'closed', 'closed', 'closed'], race: 'realm', races: ['random', 'random', 'random', 'random', 'random', 'random', 'random'] };
+// your race and each opponent's: Realmlings, Swamplings or (opponents only) Random
+const RACE_CYCLE = ['realm', 'swamp', 'random'], RACE_TEXT = { realm: 'R', swamp: 'S', random: '?' }, RACE_LONG = { realm: 'Realmlings', swamp: 'Swamplings', random: 'Random race' };
+try { const v = JSON.parse(localStorage.getItem('realm-races') || 'null'); if (v && RACE_CYCLE.includes(v.race) && v.race !== 'random') menuOpts.race = v.race; if (v && Array.isArray(v.races) && v.races.length === 7 && v.races.every(x => RACE_CYCLE.includes(x))) menuOpts.races = v.races; } catch (e) {}
+function racesSave() { try { localStorage.setItem('realm-races', JSON.stringify({ race: menuOpts.race, races: menuOpts.races })); } catch (e) {} }
 // the 7 opponent slots: each is Easy, Moderate, Difficult or Closed (a closed slot spawns no nation)
 const SLOT_CYCLE = ['closed', 'easy', 'moderate', 'difficult'];
 const SLOT_TEXT = { closed: 'Closed', easy: 'Easy', moderate: 'Moderate', difficult: 'Difficult' };
@@ -11,7 +15,8 @@ try { const v = JSON.parse(localStorage.getItem('realm-slots') || 'null'); if (A
 function slotsSave() { try { localStorage.setItem('realm-slots', JSON.stringify(menuOpts.slots)); } catch (e) {} }
 function renderSlots() {
   const off = menuOpts.practice;
-  $q('#mSlots').innerHTML = menuOpts.slots.map((d, i) => `<button type="button" class="opp-slot ${d}" data-slot="${i}"${off ? ' disabled' : ''} aria-label="Opponent ${i + 1}: ${SLOT_TEXT[d]}. Click to change." title="Click to change (right-click goes back)"><i>${i + 1}</i>${SLOT_TEXT[d]}</button>`).join('');
+  $q('#mSlots').innerHTML = menuOpts.slots.map((d, i) => { const rc = menuOpts.races[i]; return `<span class="opp-wrap"><button type="button" class="opp-slot ${d}" data-slot="${i}"${off ? ' disabled' : ''} aria-label="Opponent ${i + 1}: ${SLOT_TEXT[d]}. Click to change." title="Click to change (right-click goes back)"><i>${i + 1}</i>${SLOT_TEXT[d]}</button><button type="button" class="opp-race ${rc}" data-srace="${i}"${off || d === 'closed' ? ' disabled' : ''} aria-label="Opponent ${i + 1} race: ${RACE_LONG[rc]}. Click to change." title="${RACE_LONG[rc]} (click to change)">${RACE_TEXT[rc]}</button></span>`; }).join('');
+  $q('#mRace').querySelectorAll('[data-race]').forEach(b => b.setAttribute('aria-pressed', b.dataset.race === menuOpts.race ? 'true' : 'false'));
   $q('#mQuick').querySelectorAll('button').forEach(b => b.disabled = off);
   const n = menuOpts.slots.filter(d => d !== 'closed').length;
   $q('#mOppN').textContent = off ? '' : `${n + 1} nation${n ? 's' : ''}`;
@@ -26,7 +31,14 @@ function bootMenu() {
   $q('#mSeed').value = randomSeed();
   renderMenuToggles();
   requestAnimationFrame(menuParade);
-  setTimeout(() => $q('#mStart').focus({ preventScroll: true }), 50);
+  menuScreen('main');
+}
+// the title card has two screens: the main menu (music, sound, New Game, How to play) and the New Game setup
+function menuScreen(which) {
+  const setup = which === 'setup';
+  $q('#mMain').hidden = setup; $q('#mSetup').hidden = !setup;
+  if (setup) { $q('#mHowText').hidden = true; $q('#mHow').setAttribute('aria-expanded', 'false'); }
+  setTimeout(() => $q(setup ? '#mStart' : '#mNew').focus({ preventScroll: true }), 50);
 }
 // on the title screen the whole island is shown, unfogged
 function showAllLand() { S.explored = new Set(G.provs.map((_, i) => i)); S.visible = new Set(S.explored); S.sig = 'menu'; fogDirty = true; miniDirty = true; }
@@ -57,8 +69,9 @@ function startGame() {
     const mode = menuOpts.practice ? 'practice' : 'normal';
     if (seed !== world.pickSeed || mode !== (world.mode || 'normal')) regenerate(seed, menuOpts.practice);
     S.explored = new Set(); S.visible = new Set(); S.sig = '';
+    applyRace(menuOpts.race);   // Realmlings or Swamplings: names, buildings, technologies and art
     setupGame();
-    spawnAINations(menuOpts.practice ? [] : menuOpts.slots);
+    spawnAINations(menuOpts.practice ? [] : menuOpts.slots, menuOpts.races);
     setupContent();   // set pieces, Bandit Gangs, the civilians' zoom level
     setupV78();       // Roaming Monsters, the F4 unit-size zoom, war record (v78)
     $q('#debug').hidden = true;   // debug buttons are retired
@@ -66,8 +79,10 @@ function startGame() {
     document.body.classList.remove('in-menu');
     $q('#menu').hidden = true;
     home();
+    racesSave();   // the title parade shows the race you last played
+    if (!S.paused) togglePause();   // a new game starts paused: look around, then press Space
     const others = Object.keys(NATIONS).length;
-    toast(menuOpts.practice ? `Practice island “${seed}”: 10 provinces, just you. Explore, settle and try things out.` : `Welcome to ${seed}. ${others ? `${others} other nation${others > 1 ? 's share' : ' shares'} the island. ` : ''}Explore with your Wayfinder, claim land with your Mason.`);
+    toast(menuOpts.practice ? `Practice island “${seed}”: 10 provinces, just you. Explore, settle and try things out. The game is paused: press Space to begin.` : `Welcome to ${seed}. ${others ? `${others} other nation${others > 1 ? 's share' : ' shares'} the island. ` : ''}Explore with your ${UNIT_DEFS[WAYFINDER].name}, claim land with your ${UNIT_DEFS[MASON].name}.${isSw(ME) ? ' Your Swamplings start in a swamp: they are faster and fiercer there.' : ''} The game is paused: press Space to begin.`);
   }, 30);
 }
 // a little parade of the realm's folk on the title card
@@ -75,11 +90,11 @@ function menuParade(now) {
   if (S.started) return;
   const cv = $q('#mParade'), g = cv.getContext('2d'), w = cv.width, h = cv.height, t = now / 1000;
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
-  const folk = ['pioneer:B', 'mason:A', 'swordsman:B', 'pikeman:C', 'cavalry:B', 'mage:A'];
+  const sw = menuOpts.race === 'swamp', folk = sw ? ['sw-pioneer', 'sw-mason', 'd-sw-axe', 'd-sw-spear', 'd-sw-ogre', 'sw-mage'] : ['pioneer:B', 'mason:A', 'swordsman:B', 'pikeman:C', 'cavalry:B', 'mage:A'];
   folk.forEach((id, i) => {
     const x = w * (i + 0.5) / folk.length, hop = -Math.abs(Math.sin(t * 6 + i * 1.1)) * 6;
     g.fillStyle = 'rgba(29,26,34,0.18)'; g.beginPath(); g.ellipse(x, h - 14, 34, 10, 0, 0, Math.PI * 2); g.fill();
-    RealmIso.drawUnitAt(g, id, i % 2 ? 0.6 : -0.6, t * 2 + i, x, h - 14 + hop, id === 'cavalry:B' ? 0.82 : 1.05);
+    RealmIso.drawUnitAt(g, id, i % 2 ? 0.6 : -0.6, t * 2 + i, x, h - 14 + hop, id === 'cavalry:B' ? 0.82 : id === 'd-sw-ogre' ? 0.72 : 1.05);
   });
   requestAnimationFrame(menuParade);
 }
@@ -88,9 +103,14 @@ $q('#menu').addEventListener('wheel', e => e.stopPropagation());
 $q('#mDice').addEventListener('click', () => { $q('#mSeed').value = randomSeed(); });
 $q('#mSlots').addEventListener('click', e => { const b = e.target.closest('[data-slot]'); if (!b) return; const i = +b.dataset.slot; menuOpts.slots[i] = SLOT_CYCLE[(SLOT_CYCLE.indexOf(menuOpts.slots[i]) + 1) % SLOT_CYCLE.length]; slotsSave(); renderSlots(); });
 $q('#mSlots').addEventListener('contextmenu', e => { const b = e.target.closest('[data-slot]'); if (!b) return; e.preventDefault(); const i = +b.dataset.slot; menuOpts.slots[i] = SLOT_CYCLE[(SLOT_CYCLE.indexOf(menuOpts.slots[i]) + SLOT_CYCLE.length - 1) % SLOT_CYCLE.length]; slotsSave(); renderSlots(); });
+$q('#mSlots').addEventListener('click', e => { const b = e.target.closest('[data-srace]'); if (!b || b.disabled) return; const i = +b.dataset.srace; menuOpts.races[i] = RACE_CYCLE[(RACE_CYCLE.indexOf(menuOpts.races[i]) + 1) % RACE_CYCLE.length]; racesSave(); renderSlots(); });
+$q('#mRace').addEventListener('click', e => { const b = e.target.closest('[data-race]'); if (!b) return; menuOpts.race = b.dataset.race; racesSave(); renderSlots(); });
 $q('#mQuick').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (!b) return; menuOpts.slots = menuOpts.slots.map(() => b.dataset.q); slotsSave(); renderSlots(); });
 $q('#mPractice').addEventListener('click', () => { menuOpts.practice = !menuOpts.practice; renderMenuToggles(); });
 $q('#mStart').addEventListener('click', startGame);
+$q('#mNew').addEventListener('click', () => menuScreen('setup'));
+$q('#mBack').addEventListener('click', () => menuScreen('main'));
+$q('#menu').addEventListener('keydown', e => { if (e.key === 'Escape' && !$q('#mSetup').hidden) { e.stopPropagation(); menuScreen('main'); } });
 $q('#mSeed').addEventListener('keydown', e => { if (e.key === 'Enter') startGame(); e.stopPropagation(); });
 $q('#mHow').addEventListener('click', () => { const el = $q('#mHowText'); el.hidden = !el.hidden; $q('#mHow').setAttribute('aria-expanded', !el.hidden); });
 
@@ -109,14 +129,16 @@ function musicFadeTo(v, secs) {
   const from = a.volume, t0 = performance.now();
   MUSIC.fade = setInterval(() => { const f = Math.min(1, (performance.now() - t0) / (secs * 1000)); a.volume = Math.max(0, Math.min(1, from + (v - from) * f)); if (f >= 1) { clearInterval(MUSIC.fade); if (v === 0 && !MUSIC.on) a.pause(); } }, 50);
 }
+// the volume the music should play at: half while the game is paused
+const musicTarget = () => MUSIC.vol * (S.started && S.paused ? 0.5 : 1);
 function musicStart() {
-  if (!MUSIC.on || S.paused) return;
+  if (!MUSIC.on) return;
   const a = musicEl(); MUSIC.started = true;
   const p = a.play(); if (p && p.catch) p.catch(() => { MUSIC.started = false; });
-  musicFadeTo(MUSIC.vol, 3);
+  musicFadeTo(musicTarget(), 3);
 }
 function musicSet(on) { MUSIC.on = on; musicSave(); musicRender(); if (on) musicStart(); else if (MUSIC.el) musicFadeTo(0, 0.6); }
-function musicVolume(v) { MUSIC.vol = v; musicSave(); musicRender(); if (MUSIC.on && MUSIC.el && !MUSIC.el.paused) { clearInterval(MUSIC.fade); MUSIC.el.volume = v; } }
+function musicVolume(v) { MUSIC.vol = v; musicSave(); musicRender(); if (MUSIC.on && MUSIC.el && !MUSIC.el.paused) { clearInterval(MUSIC.fade); MUSIC.el.volume = musicTarget(); } }
 function musicRender() {
   for (const id of ['#musBtn', '#mMusic']) { const b = $q(id); if (!b) continue; b.setAttribute('aria-pressed', MUSIC.on ? 'true' : 'false'); if (b.querySelector('span')) b.querySelector('span').textContent = MUSIC.on ? 'On' : 'Off'; }
   for (const id of ['#musVol', '#mMusVol']) { const r = $q(id); if (r && +r.value !== Math.round(MUSIC.vol * 100)) r.value = Math.round(MUSIC.vol * 100); }
