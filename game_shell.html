@@ -355,6 +355,11 @@ body.in-menu .help, body.in-menu .res, body.in-menu .prov, body.in-menu .minimap
 .menu-logo { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(46px, 9vw, 68px); line-height: 1; color: var(--sun); -webkit-text-stroke: 3px var(--ink); paint-order: stroke fill; text-shadow: 0 5px 0 var(--ink); letter-spacing: 0.01em; }
 .menu-tag { margin: -2px 0 0; font-weight: 700; color: var(--muted); font-size: 14px; }
 #mParade { width: 100%; height: 96px; display: block; }
+.menu-start.menu-mp { background: #8a6fc9; font-size: 22px; }   /* Multiplayer: a second, quieter button under New Game */
+.menu-soon { margin: 18px 0 22px; font-family: var(--font-display); font-size: 34px; color: var(--sun); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); }
+/* the New Game screen: no title or parade, and 50% wider so the opponents and flags fit */
+.menu-card.setup { width: min(690px, 100%); }
+.menu-card.setup .menu-logo, .menu-card.setup .menu-tag, .menu-card.setup #mParade { display: none; }
 .menu-row { display: grid; grid-template-columns: 112px 1fr; align-items: center; gap: 8px; text-align: left; }
 .menu-row label, .menu-row .lbl { font: 800 11px var(--font-ui); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .menu-seed { display: flex; gap: 6px; min-width: 0; }
@@ -469,7 +474,7 @@ body.in-menu .school-pick { display: none !important; }
 .gear:focus-visible { outline: 3px solid #e8a817; outline-offset: 2px; }
 body.in-menu .gear, body.in-menu .settings-wrap, body.in-menu .rcol { display: none !important; }
 .settings-wrap { position: fixed; inset: 0; z-index: 15; display: grid; place-items: center; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); background: rgba(29,26,34,0.45); }
-.settings { width: min(420px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; }
+.settings { width: min(504px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; padding: 10px 16px 16px; display: flex; flex-direction: column; gap: 10px; box-sizing: border-box; }
 .settings.how { width: min(640px, 100%); }
 .st-head { display: flex; align-items: center; gap: 10px; }
 .st-head h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 28px; color: var(--sun); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; text-shadow: 0 3px 0 var(--ink); }
@@ -477,6 +482,16 @@ body.in-menu .gear, body.in-menu .settings-wrap, body.in-menu .rcol { display: n
 .st-head .pm-x { width: 28px; height: 28px; font-size: 18px; }
 .st-main { display: flex; flex-direction: column; gap: 12px; }
 .st-main .menu-mus input { width: 140px; }
+.st-dbg { display: flex; flex-wrap: nowrap; justify-content: flex-end; gap: 10px; }
+.st-dbg label { display: inline-flex; align-items: center; gap: 4px; font: 800 12.5px var(--font-ui); text-transform: none; letter-spacing: 0; color: var(--chip-text); cursor: pointer; white-space: nowrap; }
+.st-dbg input { width: 16px; height: 16px; margin: 0; accent-color: #c8902a; cursor: pointer; }
+.st-save { display: flex; gap: 6px; }
+.st-save .menu-btn { padding: 3px 10px; font-size: 13px; }
+.st-saveinfo { margin-top: 4px; text-align: right; font: 700 11px var(--font-ui); color: var(--muted); }
+.menu-start.menu-cont { background: #3faa5a; display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
+.menu-start.menu-cont[hidden] { display: none; }
+.menu-start.menu-cont small { font: 700 12px var(--font-ui); -webkit-text-stroke: 0; color: #eafbe9; margin-top: 3px; }
+.st-seed { font: 800 14px var(--font-ui); color: var(--chip-text); user-select: all; }
 .st-btn { font: 800 16px var(--font-ui); color: var(--chip-text); border: 2.5px solid var(--ink); border-radius: 12px; padding: 6px 12px; background: var(--chip-hi); box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
 .st-btn:hover, .st-back:hover { background: #fff7d9; }
 .st-btn:active, .st-back:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
@@ -755,7 +770,13 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
       <div class="menu-row"><span class="lbl">Sound effects</span><div class="menu-mus"><button type="button" class="menu-tog" id="sfxBtn" aria-pressed="true" aria-label="Sound effects"><span>On</span></button><input type="range" id="sfxVol" min="0" max="100" value="70" aria-label="Sound effects volume"></div></div>
       <div class="menu-row"><span class="lbl">UI size</span><div class="menu-mus"><input type="range" id="uiSize" min="70" max="150" step="5" value="100" aria-label="UI size"><b class="ui-val" id="uiVal">100%</b><button type="button" class="menu-btn ui-reset" id="uiReset" title="Back to 100%">Reset</button></div></div>
       <div class="menu-row"><span class="lbl" title="Right-click opens the survey / build menu for Wayfinders and Masons, no Ctrl needed">Quick queue</span><div class="menu-mus"><button type="button" class="menu-tog" id="qqBtn" aria-pressed="false" aria-label="Quick queue" title="When on, right-clicking a province with only Wayfinders and Masons selected opens their survey / build menu without holding Ctrl"><span>Off</span></button></div></div>
-      <div class="menu-row"><span class="lbl" title="For testing: these buttons will be removed later">Debug</span><div class="menu-mus"><button type="button" class="menu-tog" id="dbgReveal" aria-pressed="false" title="Lift the fog over the whole map (click again to put it back)"><span>Reveal map: Off</span></button><button type="button" class="menu-tog" id="dbgRes" title="Adds 2000 gold, wood and food (and 2000 storage of each so it fits)"><span>+2000 resources</span></button><button type="button" class="menu-tog" id="dbgTech" title="Every technology of your race in all three trees (Magic: your school, or the first one open to your race if you haven't chosen)"><span>Research all</span></button></div></div>
+      <div class="st-saverow"><div class="menu-row"><span class="lbl" title="One save slot in this browser. The game also autosaves every 5 minutes of play.">Saved game</span><div class="st-save"><button type="button" class="menu-btn" id="stSave" title="Save now (replaces the saved game)">Save</button><button type="button" class="menu-btn" id="stExport" title="Download this game as a file: load it on another computer, or send it with a bug report">Export</button><button type="button" class="menu-btn" id="stImport" title="Load a game from a .realmsave file (this game is left without saving)">Import</button></div></div><div class="st-saveinfo" id="stSaveInfo"></div></div>
+      <div class="menu-row"><span class="lbl" title="The seed this island was made from: type it on the New Game screen to play the same map again">Map seed</span><b class="st-seed" id="stSeed">-</b></div>
+      <div class="menu-row"><span class="lbl" title="For testing: these will be removed later">Debug</span><div class="st-dbg">
+        <label title="Lift the fog over the whole map (untick to put it back)"><input type="checkbox" id="dbgReveal"> Reveal Map</label>
+        <label title="Adds 2000 gold, wood and food (and 2000 storage of each so it fits); tick again for more"><input type="checkbox" id="dbgRes"> +Resources</label>
+        <label title="Every technology of your race in all three trees (Magic: your school, or the first one open to your race if you haven't chosen)"><input type="checkbox" id="dbgTech"> All Tech</label>
+      </div></div>
       <button type="button" class="st-btn" id="stHow">How to Play</button>
       <button type="button" class="menu-start" id="stResume">Resume</button>
       <button type="button" class="st-btn st-quit" id="stQuit">Return to main menu</button>
@@ -815,7 +836,10 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
     <div class="menu-screen" id="mMain">
     <div class="menu-row"><span class="lbl">Music</span><div class="menu-mus"><button type="button" class="menu-tog" id="mMusic" aria-pressed="true"><span>On</span></button><input type="range" id="mMusVol" min="0" max="100" value="35" aria-label="Music volume"></div></div>
     <div class="menu-row"><span class="lbl">Sound effects</span><div class="menu-mus"><button type="button" class="menu-tog" id="mSfx" aria-pressed="true"><span>On</span></button><input type="range" id="mSfxVol" min="0" max="100" value="70" aria-label="Sound effects volume"></div></div>
+    <button type="button" class="menu-start menu-cont" id="mCont" hidden>Continue<small id="mContInfo"></small></button>
     <button type="button" class="menu-start" id="mNew">New Game</button>
+    <button type="button" class="menu-start menu-mp" id="mMulti">Multiplayer</button>
+    <button type="button" class="menu-how" id="mImport" title="Load a game exported from Settings (a .realmsave file)">Load a save file</button>
     <button type="button" class="menu-how" id="mHow" aria-expanded="false" aria-controls="mHowText">How to play</button>
     <ul class="menu-howtext" id="mHowText" hidden>
       <li>Send your Wayfinder into the fog to explore, and have him survey land to find its resources.</li>
@@ -826,18 +850,24 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
       <li>The gear in the top-left corner opens Settings, with the full How to Play guide.</li>
     </ul>
     </div>
+    <div class="menu-screen" id="mMultiScreen" hidden>
+    <div class="menu-sub"><button type="button" class="menu-back" id="mMultiBack" aria-label="Back to the main menu">← Back</button><h2>Multiplayer</h2><span></span></div>
+    <p class="menu-soon">Coming Soon</p>
+    </div>
     <div class="menu-screen" id="mSetup" hidden>
     <div class="menu-sub"><button type="button" class="menu-back" id="mBack" aria-label="Back to the main menu">← Back</button><h2>New Game</h2><span></span></div>
     <div class="menu-row"><label for="mSeed">Map seed</label><div class="menu-seed"><input id="mSeed" type="text" spellcheck="false" autocomplete="off" aria-label="Map seed"><button type="button" class="menu-btn" id="mDice" title="Random seed" aria-label="Random seed">🎲</button></div></div>
-    <div class="menu-row"><label for="mNation">Nation</label><input id="mNation" class="nat-name" type="text" maxlength="24" spellcheck="false" autocomplete="off" placeholder="My Realm"></div>
-    <div class="menu-row"><span class="lbl">Race</span><div class="menu-race" id="mRace" role="group" aria-label="Your race"><button type="button" class="menu-tog" data-race="realm" aria-pressed="true"><span>Realmlings</span></button><button type="button" class="menu-tog" data-race="swamp" aria-pressed="false"><span>Swamplings</span></button></div></div>
+    <div class="menu-row"><label for="mNation">Nation</label><div class="menu-seed"><input id="mNation" class="nat-name" type="text" maxlength="24" spellcheck="false" autocomplete="off" placeholder="My Realm"><button type="button" class="menu-btn" id="mNatDice" title="Random nation name" aria-label="Random nation name">🎲</button></div></div>
+    <div class="menu-row"><span class="lbl">Race</span><div class="menu-race" id="mRace" role="group" aria-label="Your race"><button type="button" class="menu-tog" data-race="realm" aria-pressed="true"><span>Realmlings</span></button><button type="button" class="menu-tog" data-race="swamp" aria-pressed="false"><span>Swamplings</span></button><button type="button" class="menu-tog" data-race="wood" aria-pressed="false"><span>Woodlings</span></button></div></div>
+    <div class="menu-row"><span class="lbl">Start position</span><div class="menu-race" id="mStartPos" role="group" aria-label="Where your capital starts" title="Realmlings always start on grassland, Swamplings in a swamp"><button type="button" class="menu-tog" data-start="center" aria-pressed="true"><span>Center</span></button><button type="button" class="menu-tog" data-start="edge" aria-pressed="false"><span>Edge</span></button><button type="button" class="menu-tog" data-start="random" aria-pressed="false"><span>Random</span></button></div></div>
     <div class="menu-row"><span class="lbl">Color</span><div class="nat-row" id="mColors"></div></div>
     <div class="menu-row"><span class="lbl">Flag</span><div class="nat-row" id="mFlags"></div></div>
     <div class="menu-row"><span class="lbl">Practice mode</span><button type="button" class="menu-tog" id="mPractice" aria-pressed="false"><span>Off</span></button></div>
     <div class="menu-row menu-opp"><span class="lbl">Opponents <small id="mOppN"></small></span><div class="opp-box"><div class="opp-slots" id="mSlots" role="group" aria-label="Computer opponents: click a slot to change it"></div><div class="opp-quick" id="mQuick"><button type="button" data-q="easy">All Easy</button><button type="button" data-q="moderate">All Moderate</button><button type="button" data-q="difficult">All Difficult</button><button type="button" data-q="closed">Close all</button></div></div></div>
     <button type="button" class="menu-start" id="mStart">Start game</button>
     </div>
-    <div class="menu-foot">Playtest build · the same seed always makes the same island</div>
+    <div class="menu-foot">Playtest build <b id="mVer">v90</b> · the same seed always makes the same island</div>
+    <input type="file" id="saveFile" accept=".realmsave,.json,application/json" hidden>
   </div>
 </div>
 <div class="res chip" id="res" aria-label="Your resources"></div>

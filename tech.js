@@ -57,7 +57,7 @@ const TECHS = [
   { id: 'thugs3', tree: 'gov', tier: 3, req: 'thugs2', cost: 200, race: 'swamp', name: 'Thugging Stock Options', blurb: 'Every Thug Den holds one more Thug again (4).' }
 ];
 // Military: weapons, shields, armor and horses for the Armory. Each family must be researched in order.
-const TECH_EQUIP = { 'w-bearded': 'beardedaxe', 'w-battleaxe': 'battleaxe', 'w-waraxe': 'waraxe', 'w-pike': 'pike', 'w-polearm': 'polearm', 'w-halberd': 'halberd', 'w-bastard': 'sword', 'w-longsword': 'longsword', 'w-greatsword': 'greatsword', 'w-mace': 'mace', 'w-morningstar': 'morningstar', 'w-warhammer': 'warhammer' };
+const TECH_EQUIP = { 'w-gladius': 'gladius', 'w-rapier': 'rapier', 'w-estoc': 'estoc', 'w-bearded': 'beardedaxe', 'w-battleaxe': 'battleaxe', 'w-waraxe': 'waraxe', 'w-pike': 'pike', 'w-polearm': 'polearm', 'w-halberd': 'halberd', 'w-bastard': 'sword', 'w-longsword': 'longsword', 'w-greatsword': 'greatsword', 'w-mace': 'mace', 'w-morningstar': 'morningstar', 'w-warhammer': 'warhammer' };
 const MIL_TECHS = [
   ['w-pike', 1], ['w-bastard', 1], ['w-mace', 1], ['s-round', 1], ['a-leather2', 1], ['a-chain1', 1], ['horse-breeding', 1, 'stable', 60],
   ['w-polearm', 2, 'w-pike'], ['w-longsword', 2, 'w-bastard'], ['w-morningstar', 2, 'w-mace'], ['s-kite', 2, 's-round'], ['a-leather3', 2, 'a-leather2'], ['a-chain2', 2, 'a-chain1'], ['a-plate1', 2, 'a-chain1'], ['a-plate2', 2, 'a-plate1'], ['horse-training', 2, 'horse-breeding'],
@@ -68,12 +68,18 @@ MIL_TECHS.push(['battleforge', 1, null, 60], ['warforge', 2, 'battleforge', 140]
 MIL_TECHS.push(['w-bearded', 1], ['w-battleaxe', 2, 'w-bearded'], ['w-waraxe', 3, 'w-battleaxe'],
   ['a-stag2', 1], ['a-wyvern1', 1], ['a-stag3', 2, 'a-stag2'], ['a-wyvern2', 2, 'a-wyvern1'], ['a-dragon1', 2, 'a-wyvern1'], ['a-dragon2', 2, 'a-dragon1'],
   ['a-stag4', 3, 'a-stag3'], ['a-wyvern3', 3, 'a-wyvern2'], ['a-wyvern4', 3, 'a-wyvern3'], ['a-dragon3', 3, 'a-dragon2'], ['a-dragon4', 3, 'a-dragon3'], ['dualwield', 1, null, 40]);
+// Woodlings (v90): thrusting swords and their own armor lines (the Realmlings' three, renamed)
+MIL_TECHS.push(['w-gladius', 1], ['w-rapier', 2, 'w-gladius'], ['w-estoc', 3, 'w-rapier'],
+  ['a-spirit2', 1], ['a-mithril1', 1], ['a-spirit3', 2, 'a-spirit2'], ['a-mithril2', 2, 'a-mithril1'], ['a-ornate1', 2, 'a-mithril1'], ['a-ornate2', 2, 'a-ornate1'],
+  ['a-spirit4', 3, 'a-spirit3'], ['a-mithril3', 3, 'a-mithril2'], ['a-mithril4', 3, 'a-mithril3'], ['a-ornate3', 3, 'a-ornate2'], ['a-ornate4', 3, 'a-ornate3'],
+  ['twohand', 1]);   // v93: Two-Handed Grip, in place of Round Shields
 for (const [id, tier, req, cost] of MIL_TECHS) {
   if (id === 'dualwield') { TECHS.push({ id, tree: 'mil', tier, cost, race: 'swamp', name: 'Dual Wielding', blurb: 'Berserkers and Ogres with a one-handed weapon can carry a second one in the off hand (set it in the Armory). The off-hand weapon hits for half its attack.' }); continue; }
+  if (id === 'twohand') { TECHS.push({ id, tree: 'mil', tier, cost: TECH_COST[tier], race: 'wood', name: 'Two-Handed Grip', blurb: 'Protectors can be designed to fight two-handed (set the grip in the Armory): every other round they deal nothing, and the next a blow 2.5 times as hard, 125% of their damage over time. Champions fight this way without it.' }); continue; }
   if (id === 'horde') { TECHS.push({ id, tree: 'mil', tier, cost, name: 'The Horde', blurb: 'An army of 10 or more cavalry and no other units has 1.3 times the health. A horseshoe over the army shows when it is active.' }); continue; }
   if (id === 'battleforge' || id === 'warforge') { TECHS.push({ id, tree: 'mil', tier, cost, req, name: id === 'battleforge' ? 'Battle Forge' : 'War Forge', blurb: id === 'battleforge' ? 'Lets a Forge be upgraded to a Battle Forge (Military Tier II). Offered once two Tier I Military technologies are researched.' : 'Lets a Battle Forge be upgraded to a War Forge (Military Tier III).' }); continue; }
   let name, blurb;
-  if (id.startsWith('w-')) { const W = WEAPONS[TECH_EQUIP[id]]; name = W.name + 's'; blurb = `${W.name} for the Armory: attack ${W.atk}, ${W.twoH ? 'two-handed' : 'one-handed'}. ${FAMILY[W.fam].note}.`; }
+  if (id.startsWith('w-')) { const W = WEAPONS[TECH_EQUIP[id]]; name = W.name.endsWith('s') ? W.name : W.name + 's'; blurb = `${W.name} for the Armory: attack ${W.atk}, ${W.twoH ? 'two-handed' : 'one-handed'}. ${FAMILY[W.fam].note}.`; }
   else if (id.startsWith('s-')) { const Sh = SHIELD_DEFS[id.slice(2)]; name = Sh.name + 's'; blurb = `${Sh.name} for one-handed designs: +${Sh.armor} armor${Sh.speed < 1 ? ', but 8% slower' : ''}.`; }
   else if (id.startsWith('a-')) { const A = ARMORS[id.slice(2)]; name = A.name + ' Armor'; blurb = `${A.name} armor for the Armory: ${A.armor} armor, ${ARMOR_TYPES[A.type].note}.`; }
   else if (id === 'horse-breeding') { name = 'Horse Breeding'; blurb = 'Needs Building: Stable (Government). Cavalry can ride Arabians (fastest, fragile) or Mongolian horses (cheap to feed, at home in forest and swamp, weak charge).'; }
@@ -146,6 +152,13 @@ const MAG_TECHS = [
   ['pathfire', 1, 'school-pyro', 'pyro', 40, 'Path of Fire', 'A Warlock fires up his army: 100% faster for 10 seconds. 1-minute cooldown per Warlock.'],
   ['pathflame', 2, 'pathfire', 'pyro', 100, 'Path of Flame', 'Path of Fire: 125% faster for 15 seconds.'],
   ['pathinferno', 3, 'pathflame', 'pyro', 200, 'Path of Inferno', 'Path of Fire: 150% faster for 20 seconds.'],
+  // Elemental (Woodlings only, v93)
+  ['school-elemental', 1, null, null, 40, 'School of the Elements', 'Commit to Elemental magic: rock armor, whispering rocks, forest spirits, town portals and a grand elemental of living water.'],
+  ['rockarmor', 1, 'school-elemental', 'elemental', 40, 'Rock Armor', 'Autocast: when an army with a Druid starts a battle, plates of stone gather round it: a shield worth 10% of the army’s total health soaks up the damage before any soldier is hurt. 3-minute cooldown per army.'],
+  ['wrocks', 1, 'school-elemental', 'elemental', 40, 'Whispering Rocks', 'A Druid raises whispering stones on a mountain border of the province he stands in (20 seconds of casting). From then on you can see both provinces on either side of that border, for good. Up to 3 per Druid.'],
+  ['townportal', 2, 'school-elemental', 'elemental', 100, 'Town Portal', 'After 5 seconds of casting, a Druid and the army he is in are carried to your capital. 5-minute cooldown per Druid.'],
+  ['forestspirit', 2, 'school-elemental', 'elemental', 100, 'Forest Spirit', 'A Druid calls a spirit into a border of trees beside the province he stands in (20 seconds of casting). Both provinces along that border make 25% more gold, wood and food. One spirit per living Druid: if a Druid falls, a spirit fades.'],
+  ['gelemental', 3, 'school-elemental', 'elemental', 200, 'Grand Elemental', 'A Druid summons a towering man of living water for 2 minutes (10 seconds of casting): he hits as hard as a fully upgraded Champion and has twice its health, but no armor. He joins the Druid’s army (or forms one), fights, and can capture provinces. 5-minute cooldown per Druid.'],
   ['abandon', 3, null, '*', 300, 'Abandon Magic School', 'Costs 1000 gold to begin. When finished, your school and all of its spells are forgotten, and you can choose a new school.']
 ];
 for (const [id, tier, req, school, cost, name, blurb] of MAG_TECHS) TECHS.push({ id, tree: 'mag', tier, cost, req, school, name, blurb, gold: id === 'abandon' ? 1000 : 0 });
@@ -154,7 +167,14 @@ for (const [id, tier, req, school, cost, name, blurb] of MAG_TECHS) TECHS.push({
 for (const x of TECHS) {
   if (x.race) continue;
   if (['roads', 'roads2', 'roads3', 'granary', 'storehouse', 'w-bastard', 'w-longsword', 'w-greatsword'].includes(x.id) || /^s-|^a-(leather|chain|plate)/.test(x.id) || x.school === 'life' || x.id === 'school-life') x.race = 'realm';
-  if (/^a-(stag|wyvern|dragon)/.test(x.id) || x.school === 'pyro' || x.id === 'school-pyro') x.race = 'swamp';
+  if (/^a-(stag|wyvern|dragon)/.test(x.id) || ['w-bearded', 'w-battleaxe', 'w-waraxe'].includes(x.id) || x.school === 'pyro' || x.id === 'school-pyro') x.race = 'swamp';   // (v90: the axes were missing here, so other races could research them)
+  // Woodlings (v90): their swords and armor are theirs alone; they share Granaries, Storehouses and Herbomancy with the Realmlings;
+  // no Necromancy; no cavalry technologies until their Champions arrive (a later update)
+  if (/^a-(spirit|mithril|ornate)/.test(x.id) || ['w-gladius', 'w-rapier', 'w-estoc'].includes(x.id) || x.school === 'elemental' || x.id === 'school-elemental') x.race = 'wood';
+  else if (['granary', 'storehouse'].includes(x.id) || x.school === 'life' || x.id === 'school-life') x.race = ['realm', 'wood'];
+  else if (x.school === 'death' || x.id === 'school-death' || x.id === 'horde') x.race = x.race || ['realm', 'swamp'];
+  // v93: the Hall of Champions and the Champion techs (Weaponsmithing, Ornate Weaponsmithing) are the Woodlings' Stable and horse research
+  else if (['stable', 'horse-breeding', 'horse-training'].includes(x.id)) x.race = x.race || ['realm', 'swamp', 'wood'];
 }
 TECHS.find(x => x.id === 'traderoutes').reqSw = 'market';   // Highwaymen (the Swamplings' Trade Routes) needs no roads
 // ---------- repeatable technologies ----------
@@ -186,15 +206,15 @@ const REP_TECHS = [
 const repLv = id => S.rep[id] || 0;
 for (const [id, tree, cost, base, blurb, req, school, race] of REP_TECHS) TECHS.push({
   id, tree, tier: 1, cost, req, school, rep: true, baseName: base, baseBlurb: blurb, race,
-  get name() { const T = TECH_BY_ID[id]; return `${(T && T.swName && isSw(ME)) ? T.swName : base} ${repLv(id) + 1}`; },
-  get blurb() { const T = TECH_BY_ID[id]; return `Repeatable. ${(T && T.swBlurb && isSw(ME)) ? T.swBlurb : blurb}${repLv(id) ? ` Researched ${repLv(id)} time${repLv(id) > 1 ? 's' : ''} so far.` : ''}`; }
+  get name() { const T = TECH_BY_ID[id]; return `${(T && T.wdName && raceOf(ME) === 'wood') ? T.wdName : (T && T.swName && isSw(ME)) ? T.swName : base} ${repLv(id) + 1}`; },
+  get blurb() { const T = TECH_BY_ID[id]; return `Repeatable. ${(T && T.wdBlurb && raceOf(ME) === 'wood') ? T.wdBlurb : (T && T.swBlurb && isSw(ME)) ? T.swBlurb : blurb}${repLv(id) ? ` Researched ${repLv(id)} time${repLv(id) > 1 ? 's' : ''} so far.` : ''}`; }
 });
 const currentSchool = () => { const d = S.tech.mag.done.find(id => id.startsWith('school-')); return d ? d.slice(7) : null; };
 const TECH_BY_ID = Object.fromEntries(TECHS.map(x => [x.id, x]));
 const hasTech = id => { const x = TECH_BY_ID[id]; return !!x && S.tech[x.tree].done.includes(id); };
 const treeSize = tree => TECHS.filter(x => x.tree === tree && !x.rep && techFor(x, raceOf(ME))).length;
 // a requirement may sit in another tree (Horse Breeding needs the Stable from Government): pass the nation's other trees as `all`
-const reqOf = (x, race) => x.reqSw && race === 'swamp' ? x.reqSw : x.req;
+const reqOf = (x, race) => x.reqSw && (race === 'swamp' || race === 'wood') ? x.reqSw : x.req;   // (Community, the Woodlings' Trade Routes, needs no roads either)
 const reqMet = (x, st, all, race) => !reqOf(x, race || raceOf(ME)) || (Array.isArray(reqOf(x, race || raceOf(ME))) ? reqOf(x, race || raceOf(ME)) : [reqOf(x, race || raceOf(ME))]).every(r => st.done.includes(r) || (all ? Object.values(all).some(t => t.done.includes(r)) : hasTech(r)));
 // Battle Forge is only offered once two Tier I Military technologies are done (GPC13)
 const forgeReady = (x, st) => x.id !== 'battleforge' || st.done.filter(id => { const y = TECH_BY_ID[id]; return y && y.tier === 1 && !y.rep && y.tree === 'mil'; }).length >= 2;

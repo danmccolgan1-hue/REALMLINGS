@@ -33,16 +33,19 @@ const SCHOOLS = {
   death:  { name: 'Necromancy', color: '#6b3fa0', light: '#efe6fb', blurb: 'Cursed weapons, the risen dead, tunnels under mountains, and grave riches.', spells: ['Cursed Weapons', 'Risen Dead', 'Underworld Passage', 'Grave Robbing'] },
   arcane: { name: 'Arcane', color: '#2f6fe0', light: '#e3ecff', blurb: 'Far-seeing towers, reading minds, trading across worlds, traps and rifts.', spells: ['Arcane Scouts', 'Clear Thoughts', 'Interdimensional Trading', 'Stasis Trap', 'Teleportation Rift'] },
   // Swamplings only (they have no Herbomancy)
-  pyro:   { name: 'Pyromancy', color: '#d9542c', light: '#ffe6da', blurb: 'Fiery weapons, scouting pyres, fire traps, sacred pyres that burn wood into gold, and paths of fire.', spells: ['Fiery Weapons', 'Scouting Pyre', 'Fire Trap', 'Sacred Pyre', 'Path of Fire'], race: 'swamp' }
+  pyro:   { name: 'Pyromancy', color: '#d9542c', light: '#ffe6da', blurb: 'Fiery weapons, scouting pyres, fire traps, sacred pyres that burn wood into gold, and paths of fire.', spells: ['Fiery Weapons', 'Scouting Pyre', 'Fire Trap', 'Sacred Pyre', 'Path of Fire'], race: 'swamp' },
+  // Woodlings only (v93)
+  elemental: { name: 'Elemental', color: '#3f8fa8', light: '#ddf1f5', blurb: 'Stone that shields an army, rocks that whisper what they see, forest spirits that enrich the land, portals home, and a towering elemental of living water.', spells: ['Rock Armor', 'Whispering Rocks', 'Town Portal', 'Forest Spirit', 'Grand Elemental'], race: 'wood' }
 };
 SCHOOLS.life.race = 'realm';
-const schoolOk = (k, race) => !SCHOOLS[k].race || SCHOOLS[k].race === race;
+const schoolOk = (k, race) => raceIs(SCHOOLS[k].race, race);
 // each spell family's research line, lowest first; its tier is how many of them you know
 const LINES = {
   harvest: ['harvest', 'bountiful', 'magnificent'], skin: ['skin', 'stoneskin', 'diamondskin'], mending: ['mending', 'rejuvenation', 'restoration'], forest: ['forest', 'commune', 'arboreal'],
   curse: ['curse1', 'curse2', 'curse3'], tunnel: ['underworld', 'hallways', 'sealed'], risen: ['risen', 'necro', 'armyofdeath'], graverob: ['graverob', 'deathtax', 'charon'],
   scouts: ['arcscouts', 'arcvision'], mind: ['clearthoughts', 'mindread'], trading: ['trading', 'stockmarket', 'planar'], stasis: ['stasis', 'prison'], rift: ['rift', 'portal'],
-  fiery: ['fiery1', 'fiery2', 'fiery3'], ftrap: ['firetrap', 'blazetrap', 'molttrap'], spyre: ['scoutpyre'], pfire: ['pathfire', 'pathflame', 'pathinferno'], sacred: ['sacredpyre']
+  fiery: ['fiery1', 'fiery2', 'fiery3'], ftrap: ['firetrap', 'blazetrap', 'molttrap'], spyre: ['scoutpyre'], pfire: ['pathfire', 'pathflame', 'pathinferno'], sacred: ['sacredpyre'],
+  rock: ['rockarmor'], wrocks: ['wrocks'], tportal: ['townportal'], fspirit: ['forestspirit'], gelem: ['gelemental']
 };
 const lvl = line => LINES[line].filter(hasTech).length;
 const lineTech = line => LINES[line][Math.max(0, lvl(line) - 1)];
@@ -129,7 +132,7 @@ function castSpell(c, k) {
   if (c.cast && c.cast.spell === k) { cancelCast(c, 'Casting stopped.'); return; }
   const why = castWhy(c, k); if (why) return toast(why + '.', true);
   CAST[k].go(c); cmdKey = '';
-  sfx(k === 'rift' ? 'mg_rift' : 'mg_' + (currentSchool() === 'pyro' ? 'arcane' : currentSchool()), { prov: c.prov });
+  sfx(k === 'rift' ? 'mg_rift' : 'mg_' + (currentSchool() === 'pyro' ? 'arcane' : currentSchool() === 'elemental' ? 'life' : currentSchool()), { prov: c.prov });
 }
 // ---------- forest paths and mountain tunnels (targeted from the right-click menu) ----------
 const edgeBetween = (p, q, style, open) => { for (let i = 0; i < world.edges.length; i++) { const e = world.edges[i]; if (((e.a === p && e.b === q) || (e.a === q && e.b === p)) && (style ? e.style === style : true) && (open === undefined || e.open === open)) return i; } return -1; };

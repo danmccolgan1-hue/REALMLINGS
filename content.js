@@ -168,7 +168,7 @@ function lumberBonus() {
 }
 
 // ---------- repeatable research: soldier and Mage bonuses ----------
-const REP_FAM = { sword: 'rep-sword', blunt: 'rep-blunt', pole: 'rep-pole', stave: 'rep-stave', wand: 'rep-wand' };
+const REP_FAM = { sword: 'rep-sword', blunt: 'rep-blunt', pole: 'rep-pole', axe: 'rep-sword', stave: 'rep-stave', wand: 'rep-wand' };   // (v93: axes were missing, so the Swamplings' Axe Mastery did nothing)
 let repVer = 0; const boostCache = new Map();
 function boostStats(k, st) {
   const c = boostCache.get(k); if (c && c.st === st && c.v === repVer) return c.out;
@@ -224,7 +224,8 @@ const houseRoofed = new Map();
 // Swampling homes: little mud huts with thatched cones (2 of every 3 thatched in the nation's color, like the Realmling roofs)
 const SW_HUTS = [{ r: 11, h: 20, wall: '#8b6a45' }, { r: 9, h: 18, wall: '#a8794a' }, { r: 12, h: 21, wall: '#6e5134' }, { r: 10, h: 22, wall: '#8b6a45' }, { r: 9, h: 17, wall: '#a8794a' }, { r: 11, h: 19, wall: '#7a5a3a' }];
 function houseSprite(v, roof, race) {
-  const key = (race === 'swamp' ? 'sw' : '') + v + (roof || ''); if (race === 'swamp' || roof ? houseRoofed.has(key) : houseSprites[v]) return race === 'swamp' || roof ? houseRoofed.get(key) : houseSprites[v];
+  const own = race === 'swamp' || race === 'wood';   // (these races' homes are always kept in the colored-roof cache)
+  const key = (race === 'swamp' ? 'sw' : race === 'wood' ? 'wd' : '') + v + (roof || ''); if (own || roof ? houseRoofed.has(key) : houseSprites[v]) return own || roof ? houseRoofed.get(key) : houseSprites[v];
   const RES2 = 4, W = 100, H = 100, c = document.createElement('canvas'); c.width = W * RES2; c.height = H * RES2;
   const g = c.getContext('2d'), L = HOUSE_LOOKS[v], K = RealmBuild.KIT;
   g.scale(RES2, RES2); g.translate(50, 70); g.lineJoin = 'round'; g.lineCap = 'round';
@@ -233,6 +234,12 @@ function houseSprite(v, roof, race) {
     g.beginPath(); g.ellipse(0, 2, 30, 13, 0, 0, Math.PI * 2); g.fillStyle = 'rgba(110,84,52,0.5)'; g.fill();
     SwampBuild.hut(g, 0, 0, H2.r, H2.h, 0, { wall: H2.wall, thatch: roof || '#9a8048', roof: H2.h * 1.15, smoke: false });
     if (v % 2) SwampBuild.shroom(g, 14, 10, 0.7, '#d8443a');
+    houseRoofed.set(key, c); return c;
+  }
+  // Woodling homes: hollow trees with doors (2 of every 3 doors in the nation's color)
+  if (race === 'wood') {
+    g.translate(0, 4); g.scale(0.82, 0.82);
+    WoodBuild.treeHouse(g, 0, 0, v, roof || null, 0);
     houseRoofed.set(key, c); return c;
   }
   g.beginPath(); g.ellipse(0, 2, 34, 15, 0, 0, Math.PI * 2); g.fillStyle = 'rgba(176,138,86,0.55)'; g.fill();
@@ -263,6 +270,9 @@ const CIV_TUNIC = ['#c8473d', '#3f72d9', '#4b9b4f', '#d9b45a', '#8a5aa8', '#e08a
 const CIV_SKIN = ['#f2c9a0', '#e0ad82', '#c68a5e', '#9c6a45', '#f5d6b8'];
 // Swampling townsfolk come in forest green, green, light green, teal and brown (skin and rags in the same shade)
 const SW_CIV = ['#3f6b35', '#5f9a3e', '#93c463', '#3f8a80', '#8a6a44'];
+// Woodling townsfolk: tall and slender, olive-to-purple skin, long hair, long pointed ears and purple eyes
+const WD_CIV_TUNIC = ['#c8c6c0', '#6f7f4a', '#3f8f86', '#8a63b8', '#d9cfa8', '#4f6f3c', '#a07ab8'];
+const WD_CIV_HAIR = ['#e6e2ef', '#2d2838', '#8a4a3a', '#cfd8e8', '#4a3560', '#d9b85a'];
 function syncTowns() {
   const sig = [...S.extras].map(([p, l]) => p + ':' + l.map(e => e.type + e.slot).join(',')).join('|');
   if (sig === townSig) return; townSig = sig;
@@ -336,8 +346,10 @@ function drawCiv(g, cv, t) {
   const ph = t * (cv.running ? 18 : 9) + cv.ph, sw = cv.moving ? Math.sin(ph) * 2.2 : 0, bob = cv.moving ? -Math.abs(Math.sin(ph)) * 1.1 : 0;
   g.save(); g.translate(cv.x, cv.y); g.scale(s * (cv.dir || 1), s); g.lineCap = 'round'; g.lineJoin = 'round';
   g.beginPath(); g.ellipse(0, 0.6, 4.6, 1.8, 0, 0, 7); g.fillStyle = 'rgba(29,26,34,0.22)'; g.fill();
+  const wdf = raceOf(nationOf(cv.prov)) === 'wood'; if (wdf) g.scale(0.88, 1.22);   // Woodlings: tall and slender
   for (const [lx, d] of [[-1.4, sw], [1.4, -sw]]) { g.beginPath(); g.moveTo(lx, -4.6 + bob); g.lineTo(lx + d, 0); g.lineWidth = 2.8; g.strokeStyle = OL; g.stroke(); g.lineWidth = 1.4; g.strokeStyle = '#5b4a3a'; g.stroke(); }
   const swf = isSw(nationOf(cv.prov)), swc = swf ? SW_CIV[Math.floor(cv.ph * 7) % SW_CIV.length] : null, tunic = swf ? RealmIso.shadeOf ? RealmIso.shadeOf(swc, 0.72) : swc : cv.col, skin = swf ? swc : cv.skin;
+  if (wdf) { drawWdCiv(g, cv, bob); g.restore(); return; }
   if (swf) g.translate(0.8, 1.2);   // a little hunched
   g.beginPath(); g.ellipse(0, -7.6 + bob, 3.5, 4.2, 0, 0, 7); g.fillStyle = tunic; g.fill(); g.lineWidth = 1.3; g.strokeStyle = OL; g.stroke();
   if (cv.sack) { g.beginPath(); g.arc(3.6, -6.4 + bob, 2.2, 0, 7); g.fillStyle = '#c99560'; g.fill(); g.lineWidth = 1.1; g.stroke(); }
@@ -347,6 +359,16 @@ function drawCiv(g, cv, t) {
   if (cv.hat === 'straw') { g.beginPath(); g.ellipse(0, -15 + bob, 4.2, 1.3, 0, 0, 7); g.fillStyle = '#e8cf7a'; g.fill(); g.lineWidth = 1; g.stroke(); g.beginPath(); g.ellipse(0, -16 + bob, 2, 1.4, 0, Math.PI, 0); g.fill(); g.stroke(); }
   else if (cv.hat === 'hood') { g.beginPath(); g.arc(0, -13.8 + bob, 2.9, Math.PI * 1.05, Math.PI * 1.95); g.lineWidth = 2; g.strokeStyle = cv.col; g.stroke(); }
   g.restore();
+}
+function drawWdCiv(g, cv, bob) {
+  const k = Math.floor(cv.ph * 7), skin = RealmIso.WD_SKINS[k % RealmIso.WD_SKINS.length], tunic = WD_CIV_TUNIC[Math.floor(cv.ph * 11) % WD_CIV_TUNIC.length], hair = WD_CIV_HAIR[Math.floor(cv.ph * 13) % WD_CIV_HAIR.length];
+  g.beginPath(); g.moveTo(-3.6, -14.4 + bob); g.quadraticCurveTo(-4.2, -9 + bob, -2.6, -7.4 + bob); g.lineTo(2.6, -7.4 + bob); g.quadraticCurveTo(4.2, -9 + bob, 3.6, -14.4 + bob); g.closePath(); g.fillStyle = hair; g.fill(); g.lineWidth = 1; g.strokeStyle = OL; g.stroke();   // long hair behind
+  g.beginPath(); g.ellipse(0, -7.4 + bob, 3, 4.2, 0, 0, 7); g.fillStyle = tunic; g.fill(); g.lineWidth = 1.2; g.strokeStyle = OL; g.stroke();
+  if (cv.sack) { g.beginPath(); g.arc(3.2, -6.4 + bob, 1.9, 0, 7); g.fillStyle = '#c99560'; g.fill(); g.lineWidth = 1; g.stroke(); }
+  for (const s of [-1, 1]) { g.beginPath(); g.moveTo(s * 1.8, -12.6 + bob); g.lineTo(s * 4.4, -17.4 + bob); g.lineTo(s * 2.2, -14.6 + bob); g.closePath(); g.fillStyle = skin; g.fill(); g.lineWidth = 0.8; g.strokeStyle = OL; g.stroke(); }   // long ears, pointing up
+  g.beginPath(); g.moveTo(-2.4, -14.4 + bob); g.arc(0, -14.4 + bob, 2.4, Math.PI, 0); g.quadraticCurveTo(2.2, -11.6 + bob, 0, -10.6 + bob); g.quadraticCurveTo(-2.2, -11.6 + bob, -2.4, -14.4 + bob); g.closePath(); g.fillStyle = skin; g.fill(); g.lineWidth = 1.1; g.strokeStyle = OL; g.stroke();   // a long face, pointed chin
+  g.beginPath(); g.arc(0, -14.6 + bob, 2.5, Math.PI * 1.05, Math.PI * 1.95); g.lineWidth = 1.4; g.strokeStyle = hair; g.stroke();
+  g.fillStyle = '#b26cff'; g.fillRect(0.5, -13.8 + bob, 1, 0.9);   // a purple eye glint
 }
 // houses and civilians join the depth-sorted list of things drawn on the map
 function townItems(g, t, items) {

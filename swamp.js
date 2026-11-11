@@ -449,9 +449,9 @@ function offhandRow(d, W) {
 }
 
 // ---------- AI Swamplings ----------
-const swFamily = (rc, f) => rc === 'swamp' && f === 'sword' ? 'axe' : f;
-const swArmorLine = (rc, a) => rc === 'swamp' ? ({ leather: 'stag', chain: 'wyvern', plate: 'dragon' }[a] || 'stag') : a;
-const swSchool = (rc, s, r) => rc === 'swamp' && s === 'life' ? ['death', 'arcane', 'pyro'][Math.floor(r() * 3)] : s;
+const swFamily = (rc, f) => rc === 'swamp' && f === 'sword' ? 'axe' : rc === 'wood' && f === 'sword' ? 'thrust' : f;   // (Woodlings: thrusting swords)
+const swArmorLine = (rc, a) => rc === 'swamp' ? ({ leather: 'stag', chain: 'wyvern', plate: 'dragon' }[a] || 'stag') : rc === 'wood' ? ({ leather: 'spirit', chain: 'mithril', plate: 'ornate' }[a] || 'spirit') : a;
+const swSchool = (rc, s, r) => rc === 'swamp' && s === 'life' ? ['death', 'arcane', 'pyro'][Math.floor(r() * 3)] : rc === 'wood' && (s === 'death' || s === 'pyro') ? ['life', 'arcane', 'elemental'][Math.floor(r() * 3)] : s;   // (no Necromancy for Woodlings; v93: Elemental is theirs)
 AI_MAGIC_PREFS.pyro = { sacredpyre: 20, fiery1: 12, fiery2: 10, fiery3: 8, pathfire: 6, firetrap: 6, scoutpyre: 4 };
 const _aiRedesign = aiRedesign;
 aiRedesign = function (N) {
@@ -512,21 +512,22 @@ SW_ICONS = (() => {
 const _stepGPC = stepGPC;
 stepGPC = function (t, dt) { _stepGPC(t, dt); try { stepSwamp(t); } catch (e) { reportError(e, 'swamp'); } };
 // ---------- debug buttons in Settings (for testing): reveal the whole map; +2000 of each resource ----------
-function syncDebugBtns() { const b = $q('#dbgReveal'); if (b) { b.setAttribute('aria-pressed', S.reveal ? 'true' : 'false'); b.querySelector('span').textContent = 'Reveal map: ' + (S.reveal ? 'On' : 'Off'); } }
+function syncDebugBtns() { const b = $q('#dbgReveal'); if (b) b.checked = !!S.reveal; const r = $q('#dbgRes'); if (r) r.checked = false; const tc = $q('#dbgTech'); if (tc) { tc.checked = !!S.debugTech; tc.disabled = !!S.debugTech; } const sd = $q('#stSeed'); if (sd) sd.textContent = world.pickSeed || '-'; }
 $q('#dbgReveal').addEventListener('click', e => {
-  e.stopPropagation(); if (!S.started) return toast('Start a game first.', true);
+  e.stopPropagation(); if (!S.started) { e.target.checked = false; return toast('Start a game first.', true); }
   S.reveal = !S.reveal; S.sig = ''; computeFog(); fogDirty = true; miniDirty = true; cacheDirty = true; syncDebugBtns();
   toast(S.reveal ? 'Debug: the whole map is revealed.' : 'Debug: the fog is back.');
 });
 $q('#dbgRes').addEventListener('click', e => {
-  e.stopPropagation(); if (!S.started) return toast('Start a game first.', true);
+  e.stopPropagation(); if (!S.started) { e.target.checked = false; return toast('Start a game first.', true); }
+  setTimeout(() => { e.target.checked = false; }, 600);   // ticks, then clears so it can be used again
   S.debugCap = (S.debugCap || 0) + 2000;
   for (const k of RES) S.stock[k] += 2000;
   computeIncome(); capPanelKey = ''; cmdKey = ''; barKey = '';
   toast('Debug: +2000 gold, wood and food (storage raised by 2000 each to hold it).');
 });
 $q('#dbgTech').addEventListener('click', e => {
-  e.stopPropagation(); if (!S.started) return toast('Start a game first.', true);
+  e.stopPropagation(); if (!S.started) { e.target.checked = false; return toast('Start a game first.', true); }
   const race = raceOf(ME);
   let sc = currentSchool();
   if (!sc) { sc = Object.keys(SCHOOLS).find(k => schoolOk(k, race)); S.tech.mag.done.push('school-' + sc); closeSchoolPopup(); }
@@ -540,6 +541,7 @@ $q('#dbgTech').addEventListener('click', e => {
   for (const t of TREE_KEYS) { const st = S.tech[t]; if (st.cur && st.done.includes(st.cur)) { st.cur = null; st.prog = 0; } st.opts = st.opts.filter(id => !st.done.includes(id)); if (st.tier) drawOptions(t); }
   repVer++; computeIncome(); clampStock(); registerMage();
   techKey = ''; techBtnKey = ''; cmdKey = ''; armKey = ''; provKey = ''; capPanelKey = ''; rosterKey = ''; barKey = '';
+  S.debugTech = true; syncDebugBtns();
   toast(`Debug: ${n} technologies researched (Magic school: ${SCHOOLS[sc].name}).`);
 });
 window.__swamp = { RACE, raceOf, isSw, applyRace, denCap, thugGold, swampTax, mountainBorder, warlockCount, pyreCount, S_spyres: () => S.spyres, burnArmy, speedMod };

@@ -41,16 +41,17 @@ function spawnAINations(slots, races = []) {
   const places = AI_PLACES.slice().sort(() => r() - 0.5), swPlaces = SW_AI_PLACES.slice().sort(() => r() - 0.5), emblems = FLAG_EMBLEMS.filter(e => e !== NATION.emblem).sort(() => r() - 0.5);
   const caps = [S.capital];
   const reach = hopsFrom(S.capital);
-  let k = 0, ks = 0, kr = 0;
+  let k = 0, ks = 0, kr = 0, kw = 0; const wdNames = WD_AI_NAMES.slice().sort(() => r() - 0.5);
   slots.forEach((diff, i) => {
     if (!DIFF_NAME[diff]) return;
     // each opponent is Realmling, Swampling or (Random) either; Swamplings settle in a swamp
-    const id = AI_IDS[i], rc = races[i] === 'swamp' || races[i] === 'realm' ? races[i] : (r() < 0.5 ? 'swamp' : 'realm'), cap = pickAICapital(caps, reach, r, rc === 'swamp' ? 'swamp' : 'grassland'); if (cap < 0) return;
+    const id = AI_IDS[i], rc = ['realm', 'swamp', 'wood'].includes(races[i]) ? races[i] : ['realm', 'swamp', 'wood'][Math.floor(r() * 3)], cap = pickAICapital(caps, reach, r, rc === 'swamp' ? 'swamp' : rc === 'wood' ? 'forest' : 'grassland'); if (cap < 0) return;
     RACE[id] = rc;
     caps.push(cap);
     const [c, l] = NATION_COLORS[colors[k % colors.length]];
     let name;
-    if (rc === 'swamp') { const tl = SW_AI_TITLES[Math.floor(r() * SW_AI_TITLES.length)], pl = swPlaces[ks++ % swPlaces.length]; name = r() < 0.5 ? pl + ' ' + tl : tl + ' of ' + pl; }   // "Bloodtusk Clan", "Legion of Skullmire"
+    if (rc === 'wood') name = wdNames[kw++ % wdNames.length];   // "Moonwatchers", "Hunters of the Dark"
+    else if (rc === 'swamp') { const tl = SW_AI_TITLES[Math.floor(r() * SW_AI_TITLES.length)], pl = swPlaces[ks++ % swPlaces.length]; name = r() < 0.5 ? pl + ' ' + tl : tl + ' of ' + pl; }   // "Bloodtusk Clan", "Legion of Skullmire"
     else name = AI_TITLES[Math.floor(r() * AI_TITLES.length)] + ' of ' + places[kr++ % places.length];
     PLAYERS[id] = { name, color: c, light: l };
     const N = NATIONS[id] = {

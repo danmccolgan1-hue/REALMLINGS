@@ -1,0 +1,24 @@
+<!doctype html><html><body style="margin:0;background:#e8efd8">
+<canvas id="c" width="1600" height="1100"></canvas>
+<script src="../iso.js"></script>
+<script>
+// v93: Woodling Champions (antlered great helm, two-handed great weapons) in six directions, next to an Ornate Protector
+const R = RealmIso, cv = document.getElementById('c'), g = cv.getContext('2d');
+const champ = w => R.wood({ skin:'#8a74a3', hairColor:'#eef0f4', twoHand:true, angS:0.12, angF:-0.12, armor:true, pauldrons:true, helm:'antlerhelm', helmColor:'#d7c2f2', helmTrim:'#f4e3a1', cape:'#5a3f7a', tabard:'#6f4a9a', tabardTrim:'#f4e3a1', plate:'#d7c2f2', plateTrim:'#f4e3a1', shirt:'#7a5a9a', sleeve:'#c9aee6', pants:'#4a3a5c', boots:'#b79ad6', gloves:'#b79ad6', right:w });
+const specs = [
+ ['Ornate Protector', 'footman', R.wood({ skin:'#8a74a3', hairColor:'#eef0f4', helm:'elfhelm', helmColor:'#d7c2f2', plume:'#f3eaff', plate:'#d7c2f2', plateTrim:'#f4e3a1', armor:true, pauldrons:true, shirt:'#7a5a9a', sleeve:'#c9aee6', tabard:'#8a63b8', tabardTrim:'#f4e3a1', pants:'#4a3a5c', boots:'#b79ad6', gloves:'#b79ad6', right:'estoc', angS:0.3 })],
+ ['Champion Sword', 'champion', champ('champsword')], ['Ancient Hammer', 'champion', champ('ancienthammer')], ['Wrathful Spear', 'champion', champ('wrathspear')],
+ ['Worldbreaker Axe', 'champion', champ('worldaxe')], ['Oblivion Blade', 'champion', champ('oblivion')]
+];
+const dirs = [0, Math.PI/4, Math.PI/2, 3*Math.PI/4, Math.PI, -Math.PI/2, -Math.PI/4];
+specs.forEach(([n, u, sp], i) => { R.UNITS['t'+i] = { unit:u, name:n, spec: sp }; });
+function draw(t){
+  g.clearRect(0,0,cv.width,cv.height);
+  specs.forEach(([n, u], i) => dirs.forEach((th, j) => {
+    const x = 90 + j*110 + (i>=3?800:0), y = 60 + (i%3)*350;
+    R.drawUnitAt(g, 't'+i, th, t, x, y+300, u === 'champion' ? 0.8 : 1);   // (the game draws "cavalry" at 0.8)
+    if (j===0){ g.fillStyle='#000'; g.font='14px sans-serif'; g.fillText(n, x-60, y+330); }
+  }));
+}
+draw(0.4); window.draw = draw;
+</script></body></html>

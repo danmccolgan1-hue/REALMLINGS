@@ -270,6 +270,28 @@ function applyNation() {
   territory = null; cacheDirty = true; fogDirty = true; miniDirty = true;
 }
 $q('#mNation').addEventListener('input', () => { NATION.name = $q('#mNation').value.trim().slice(0, 24); nationSave(); });
+// v94: a nation name randomizer on the New Game screen, in the style of the chosen race
+const NAME_PARTS = {
+  realm: { titles: ['Kingdom', 'Duchy', 'Realm', 'March', 'Principality', 'Dominion', 'Grand Duchy', 'Barony', 'Free Cities', 'Crown', 'County', 'Empire'],
+    places: ['Thornwall', 'Emberreach', 'Mistvale', 'Highmoor', 'Goldhaven', 'Ravenmark', 'Stonebrook', 'Willowmere', 'Frostholm', 'Sunspire', 'Duskwood', 'Briarfell', 'Ironcrest', 'Oakenshade', 'Ashford', 'Silverdale', 'Kingsbridge', 'Lionmere', 'Brightwater', 'Hollowell', 'Redcliff', 'Ambervale', 'Westmarch', 'Copperfield'] },
+  swamp: { titles: ['Clan', 'Tribe', 'Legion', 'Horde', 'Warband', 'Brood', 'Mob'],
+    places: ['Bloodtusk', 'Gorehide', 'Skullmire', 'Rotfang', 'Bonegnaw', 'Mudmaw', 'Gutripper', 'Ironjaw', 'Grimbog', 'Blackfen', 'Bilegut', 'Snaggletooth', 'Muckclaw', 'Thudfist', 'Skarrak', 'Grubsnout', 'Stinkwallow', 'Toadbelly', 'Mirefang', 'Gobsmack'] },
+  wood: { pre: ['Moon', 'Star', 'Dawn', 'Dusk', 'Silver', 'Leaf', 'Elder', 'Mist', 'Twilight', 'Ever', 'Sun', 'Glimmer', 'Thorn', 'Willow'],
+    post: ['watchers', 'wardens', 'singers', 'walkers', 'keepers', 'sworn', 'weavers', 'seekers', 'guards'],
+    groups: ['Sentinels', 'Watchers', 'Hunters', 'Ancients', 'Keepers', 'Guardians', 'Defenders', 'Wardens', 'Children'],
+    of: ['the Silver Grove', 'the Elder Bough', 'the Twilight', 'the Deepwood', 'the Gloaming', 'the Dark', 'the Whispering Stars', 'the Evergreen', 'the Moonlit Glade', 'the First Dawn', 'the Hidden Vale', 'the Ancient Oak'],
+    adj: ['Ancient', 'Eternal', 'Silverleaf', 'Starlit', 'Moonlit', 'Leafsworn', 'Evergreen', 'Twilight'] }
+};
+function randomNationName(race) {
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+  if (race === 'swamp') { const P = NAME_PARTS.swamp; return Math.random() < 0.5 ? pick(P.places) + ' ' + pick(P.titles) : pick(P.titles) + ' of ' + pick(P.places); }   // "Bloodtusk Clan", "Legion of Skullmire"
+  if (race === 'wood') { const P = NAME_PARTS.wood, r = Math.random(); return r < 0.35 ? pick(P.pre) + pick(P.post) : r < 0.75 ? pick(P.groups) + ' of ' + pick(P.of) : pick(P.adj) + ' ' + pick(P.groups); }   // "Moonwatchers", "Hunters of the Dark", "Ancient Defenders"
+  const P = NAME_PARTS.realm; return pick(P.titles) + ' of ' + pick(P.places);
+}
+$q('#mNatDice').addEventListener('click', () => {
+  const el = $q('#mNation'); let n, k = 0; do { n = randomNationName(menuOpts.race); } while ((n.length > 24 || n === el.value) && ++k < 50);   // (names must fit the 24-letter box)
+  el.value = n; NATION.name = n; nationSave();
+});
 $q('#mColors').addEventListener('click', e => { const b = e.target.closest('[data-col]'); if (!b) return; NATION.color = +b.dataset.col; nationSave(); renderNationPicker(); });
 $q('#mFlags').addEventListener('click', e => { const b = e.target.closest('[data-emb]'); if (!b) return; NATION.emblem = b.dataset.emb; nationSave(); renderNationPicker(); });
 $q('#mStart').addEventListener('click', applyNation, true);
@@ -309,7 +331,7 @@ function armiesTabHTML() {
 const myBarracks = () => { const out = []; for (const [p, l] of S.extras) if (owned(p)) for (const e of l) if (e.type === 'barracks') out.push({ p, slot: e.slot, stable: l.some(x => x.type === 'stable') }); return out; };
 function barracksSec() {
   const list = myBarracks();
-  const row = bk => { const Q = S.queues['barracks:' + bk.p] || [], on = S.selKind === 'barracks' && S.selBuilding === bk.p; return `<button type="button" class="ro-u${on ? ' on' : ''}" data-bk="${bk.p}@${bk.slot}" title="Click to select and train, double-click to go to"><img alt="" src="${buildThumb('barracks')}"><span><b>${provName(bk.p)}</b><small><i class="${Q.length ? 'busy' : 'idle'}"></i>${Q.length ? `training ${Q.length}` : 'idle'} · ${Q.some(q => q.retro) ? 'retrofitting · ' : ''}${bk.stable && !isSw(ME) ? 'infantry and cavalry' : 'infantry'}</small></span></button>`; };
+  const row = bk => { const Q = S.queues['barracks:' + bk.p] || [], on = S.selKind === 'barracks' && S.selBuilding === bk.p; return `<button type="button" class="ro-u${on ? ' on' : ''}" data-bk="${bk.p}@${bk.slot}" title="Click to select and train, double-click to go to"><img alt="" src="${buildThumb('barracks')}"><span><b>${provName(bk.p)}</b><small><i class="${Q.length ? 'busy' : 'idle'}"></i>${Q.length ? `training ${Q.length}` : 'idle'} · ${Q.some(q => q.retro) ? 'retrofitting · ' : ''}${isWd(ME) ? (bk.stable ? 'Protectors and Champions' : 'Protectors') : bk.stable && !isSw(ME) ? 'infantry and cavalry' : 'infantry'}</small></span></button>`; };
   return `<div class="ro-sec">Barracks <span>${list.length}</span></div>` + (list.length ? list.map(row).join('') : '<div class="ro-none">None yet</div>');
 }
 const armiesKey = () => myBarracks().map(bk => bk.p + (bk.stable ? 's' : '') + ':' + (S.queues['barracks:' + bk.p] || []).length).join(',') + (S.selKind === 'barracks' ? '@' + S.selBuilding : '') + '#' + S.units.filter(v => (v.kind === 'army' || v.kind === MAGE) && v.owner === ME).map(a => a.id + a.name + ':' + (a.kind === 'army' ? troopCount(a) + ':' + (a.troops[MAGE] || 0) + armyStatus(a) + hordeActive(a) + powerOf(a) : (a.cast ? 'c' : '') + (a.moving ? 'm' : '')) + a.prov + (isSel(a) ? '*' : '')).join('|') + '#' + unitTotal(MAGE) + '/' + mageCap();

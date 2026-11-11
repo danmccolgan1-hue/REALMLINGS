@@ -1,0 +1,17 @@
+<!doctype html><html><body style="margin:0;background:#8db574">
+<canvas id="c" width="1800" height="1500"></canvas>
+<script src="../iso.js"></script><script src="../buildings.js"></script><script src="../buildings2.js"></script><script src="../swampbld.js"></script><script src="../woodbld.js"></script>
+<script>
+// Woodling province buildings (v92), each beside the Realmling one it replaces (Realmling on the left, small)
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+const LIST = [['farm',0],['lumber',1],['goldmine',2],['barracks',2],['stable',1],['market',0],['granary',0],['storehouse',0],['bank',0],['forge',0],['forge',1],['forge',2],['magetower',0],['magetower',1],['magetower',2],['temple',0]];
+function draw(t, k, realm){
+  k = k || 1.7;
+  g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,cv.width,cv.height); g.lineJoin='round'; g.lineCap='round';
+  g.font='15px sans-serif'; g.fillStyle='#1d1a22';
+  LIST.forEach(([key,i],n)=>{ const cx=170+(n%5)*350, cy=300+Math.floor(n/5)*360;
+    g.save(); g.translate(cx,cy); g.scale(k,k); (realm?RealmBuildings:WoodBuild).drawOnMap(g,key,i,t,1); g.restore();
+    g.fillText(key+(i?' '+(i+1):''), cx-40, cy+90); });
+}
+draw(0.5); window.draw=draw;
+</script></body></html>

@@ -1,0 +1,13 @@
+<!doctype html><html><body style="margin:0;background:#8db574">
+<canvas id="c" width="1800" height="1100"></canvas>
+<script src="../iso.js"></script><script src="../buildings.js"></script><script src="../buildings2.js"></script><script src="../swampbld.js"></script><script src="../woodbld.js"></script>
+<script>
+const cv = document.getElementById('c'), g = cv.getContext('2d');
+function draw(t, k){
+  g.setTransform(1,0,0,1,0,0); g.clearRect(0,0,cv.width,cv.height); g.lineJoin='round'; g.lineCap='round';
+  const rows=[['realm',(g,s)=>RealmBuild.drawSettlement(g,s,t,{terrain:'forest'})],['wood',(g,s)=>WoodBuild.drawSettlement(g,s,t,{})]];
+  rows.forEach(([n,f],i)=>[0,1,2].forEach(s=>{ g.save(); g.translate(250+s*600, 330+i*520); g.scale(k||1.6,k||1.6); f(g,s); g.restore(); }));
+  g.save(); g.translate(1600, 1000); g.scale(1.6,1.6); for (let v=0; v<6; v++) WoodBuild.treeHouse(g, (v%3)*40-40, Math.floor(v/3)*40-20, v, v%3===2?null:'#c8473d', t); g.restore();
+}
+draw(0.5); window.draw=draw;
+</script></body></html>

@@ -1,0 +1,27 @@
+<!doctype html><html><body style="margin:0;background:#e8efd8">
+<canvas id="c" width="1600" height="1000"></canvas>
+<script src="../iso.js"></script>
+<script>
+const R = RealmIso, cv = document.getElementById('c'), g = cv.getContext('2d');
+const specs = [
+ ['Realm Footman', R.UNITS['swordsman:B'].spec],
+ ['Scout', R.UNITS['wd-pioneer'].spec],
+ ['Architect', R.UNITS['wd-mason'].spec],
+ ['Druid', R.UNITS['wd-mage'].spec],
+ ['Spiritweave', R.wood({ skin:'#98a065', hairColor:'#3a2f45', shirt:'#c8c6c0', sleeve:'#c8c6c0', tabard:'#9a9890', pants:'#5c5a4c', right:'dirk', angS:0.3 })],
+ ['Spiritweave III', R.wood({ skin:'#98a065', hairColor:'#e6e2ef', helm:'circlet', shirt:'#c8c6c0', sleeve:'#c8c6c0', tabard:'#9a9890', cape:'#a9a6a0', right:'spear', angS:0.15 })],
+ ['Mithril', R.wood({ skin:'#9c8fa8', hairColor:'#2d2838', helm:'elfhelm', helmColor:'#bfe8e2', shirt:'#9fd8d0', sleeve:'#9fd8d0', mail:true, tabard:'#3f8f86', pants:'#3f5f5a', right:'rapier', angS:0.3 })],
+ ['Ornate', R.wood({ skin:'#8a74a3', hairColor:'#eef0f4', helm:'elfhelm', helmColor:'#d7c2f2', plume:'#f3eaff', plate:'#d7c2f2', plateTrim:'#f4e3a1', armor:true, pauldrons:true, shirt:'#7a5a9a', sleeve:'#c9aee6', tabard:'#8a63b8', tabardTrim:'#f4e3a1', pants:'#4a3a5c', boots:'#b79ad6', gloves:'#b79ad6', right:'estoc', angS:0.3 })],
+];
+const dirs = [0, Math.PI/4, Math.PI/2, 3*Math.PI/4, Math.PI, -Math.PI/2];
+specs.forEach(([n, sp], i) => { R.UNITS['t'+i] = { unit:'footman', name:n, spec: sp }; });
+function draw(t){
+  g.clearRect(0,0,cv.width,cv.height);
+  specs.forEach(([n], i) => dirs.forEach((th, j) => {
+    const x = 90 + j*130 + (i>=4?800:0), y = 120 + (i%4)*240;
+    R.drawUnitAt(g, 't'+i, th, t, x, y+70, 0.95);
+    if (j===0){ g.fillStyle='#000'; g.font='14px sans-serif'; g.fillText(n, x-60, y+100); }
+  }));
+}
+draw(0.4); window.draw = draw;
+</script></body></html>

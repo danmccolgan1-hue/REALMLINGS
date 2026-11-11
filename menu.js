@@ -3,10 +3,14 @@
 // the map drifts behind a title card; Start builds a fresh world from the chosen seed and begins play
 const MENU_WORDS = ['amber', 'bramble', 'cinder', 'dapple', 'ember', 'fable', 'gilded', 'hollow', 'ivy', 'juniper', 'kestrel', 'lantern', 'meadow', 'nettle', 'oaken', 'pebble', 'quill', 'rook', 'sable', 'thistle', 'umber', 'vale', 'willow', 'yarrow'];
 const randomSeed = () => MENU_WORDS[Math.floor(Math.random() * MENU_WORDS.length)] + '-' + MENU_WORDS[Math.floor(Math.random() * MENU_WORDS.length)] + '-' + (10 + Math.floor(Math.random() * 90));
-const menuOpts = { practice: false, slots: ['easy', 'easy', 'moderate', 'closed', 'closed', 'closed', 'closed'], race: 'realm', races: ['random', 'random', 'random', 'random', 'random', 'random', 'random'] };
+const menuOpts = { start: 'center', practice: false, slots: ['easy', 'easy', 'moderate', 'closed', 'closed', 'closed', 'closed'], race: 'realm', races: ['random', 'random', 'random', 'random', 'random', 'random', 'random'] };
 // your race and each opponent's: Realmlings, Swamplings or (opponents only) Random
-const RACE_CYCLE = ['realm', 'swamp', 'random'], RACE_TEXT = { realm: 'R', swamp: 'S', random: '?' }, RACE_LONG = { realm: 'Realmlings', swamp: 'Swamplings', random: 'Random race' };
+const RACE_CYCLE = ['realm', 'swamp', 'wood', 'random'], RACE_TEXT = { realm: 'R', swamp: 'S', wood: 'W', random: '?' }, RACE_LONG = { realm: 'Realmlings', swamp: 'Swamplings', wood: 'Woodlings', random: 'Random race' };
 try { const v = JSON.parse(localStorage.getItem('realm-races') || 'null'); if (v && RACE_CYCLE.includes(v.race) && v.race !== 'random') menuOpts.race = v.race; if (v && Array.isArray(v.races) && v.races.length === 7 && v.races.every(x => RACE_CYCLE.includes(x))) menuOpts.races = v.races; } catch (e) {}
+// where your capital is: near the middle of the island, toward the edge, or anywhere (always on your race's home land)
+const START_POS = ['center', 'edge', 'random'];
+try { const v = localStorage.getItem('realm-start'); if (START_POS.includes(v)) menuOpts.start = v; } catch (e) {}
+function renderStartPos() { $q('#mStartPos').querySelectorAll('[data-start]').forEach(b => b.setAttribute('aria-pressed', b.dataset.start === menuOpts.start ? 'true' : 'false')); }
 function racesSave() { try { localStorage.setItem('realm-races', JSON.stringify({ race: menuOpts.race, races: menuOpts.races })); } catch (e) {} }
 // the 7 opponent slots: each is Easy, Moderate, Difficult or Closed (a closed slot spawns no nation)
 const SLOT_CYCLE = ['closed', 'easy', 'moderate', 'difficult'];
@@ -34,11 +38,12 @@ function bootMenu() {
   menuScreen('main');
 }
 // the title card has two screens: the main menu (music, sound, New Game, How to play) and the New Game setup
+// ...and a Multiplayer screen that only says Coming Soon for now
 function menuScreen(which) {
-  const setup = which === 'setup';
-  $q('#mMain').hidden = setup; $q('#mSetup').hidden = !setup;
-  if (setup) { $q('#mHowText').hidden = true; $q('#mHow').setAttribute('aria-expanded', 'false'); }
-  setTimeout(() => $q(setup ? '#mStart' : '#mNew').focus({ preventScroll: true }), 50);
+  const setup = which === 'setup', multi = which === 'multi';
+  $q('#mMain').hidden = setup || multi; $q('#mSetup').hidden = !setup; $q('#mMultiScreen').hidden = !multi; $q('.menu-card').classList.toggle('setup', setup);
+  if (setup || multi) { $q('#mHowText').hidden = true; $q('#mHow').setAttribute('aria-expanded', 'false'); }
+  setTimeout(() => $q(setup ? '#mStart' : multi ? '#mMultiBack' : '#mNew').focus({ preventScroll: true }), 50);
 }
 // on the title screen the whole island is shown, unfogged
 function showAllLand() { S.explored = new Set(G.provs.map((_, i) => i)); S.visible = new Set(S.explored); S.sig = 'menu'; fogDirty = true; miniDirty = true; }
@@ -48,7 +53,7 @@ function renderMenuToggles() {
   }
   // practice is just you: the opponent slots sit out
   $q('#mSlots').closest('.menu-row').classList.toggle('off', menuOpts.practice);
-  renderSlots();
+  renderSlots(); renderStartPos();
 }
 // slow drift of the camera across the island while the menu is up
 function menuDrift(realT) {
@@ -90,7 +95,7 @@ function menuParade(now) {
   if (S.started) return;
   const cv = $q('#mParade'), g = cv.getContext('2d'), w = cv.width, h = cv.height, t = now / 1000;
   g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, w, h);
-  const sw = menuOpts.race === 'swamp', folk = sw ? ['sw-pioneer', 'sw-mason', 'd-sw-axe', 'd-sw-spear', 'd-sw-ogre', 'sw-mage'] : ['pioneer:B', 'mason:A', 'swordsman:B', 'pikeman:C', 'cavalry:B', 'mage:A'];
+  const sw = menuOpts.race === 'swamp', folk = sw ? ['sw-pioneer', 'sw-mason', 'd-sw-axe', 'd-sw-spear', 'd-sw-ogre', 'sw-mage'] : menuOpts.race === 'wood' ? ['wd-pioneer', 'wd-mason', 'd-wd-sword', 'd-wd-spear', 'd-wd-club', 'wd-mage'] : ['pioneer:B', 'mason:A', 'swordsman:B', 'pikeman:C', 'cavalry:B', 'mage:A'];
   folk.forEach((id, i) => {
     const x = w * (i + 0.5) / folk.length, hop = -Math.abs(Math.sin(t * 6 + i * 1.1)) * 6;
     g.fillStyle = 'rgba(29,26,34,0.18)'; g.beginPath(); g.ellipse(x, h - 14, 34, 10, 0, 0, Math.PI * 2); g.fill();
@@ -109,8 +114,11 @@ $q('#mQuick').addEventListener('click', e => { const b = e.target.closest('[data
 $q('#mPractice').addEventListener('click', () => { menuOpts.practice = !menuOpts.practice; renderMenuToggles(); });
 $q('#mStart').addEventListener('click', startGame);
 $q('#mNew').addEventListener('click', () => menuScreen('setup'));
+$q('#mMulti').addEventListener('click', () => { sfx('ui_click'); menuScreen('multi'); });
+$q('#mMultiBack').addEventListener('click', () => menuScreen('main'));
+$q('#mStartPos').addEventListener('click', e => { const b = e.target.closest('[data-start]'); if (!b) return; sfx('ui_click'); menuOpts.start = b.dataset.start; try { localStorage.setItem('realm-start', menuOpts.start); } catch (er) {} renderStartPos(); });
 $q('#mBack').addEventListener('click', () => menuScreen('main'));
-$q('#menu').addEventListener('keydown', e => { if (e.key === 'Escape' && !$q('#mSetup').hidden) { e.stopPropagation(); menuScreen('main'); } });
+$q('#menu').addEventListener('keydown', e => { if (e.key === 'Escape' && (!$q('#mSetup').hidden || !$q('#mMultiScreen').hidden)) { e.stopPropagation(); menuScreen('main'); } });
 $q('#mSeed').addEventListener('keydown', e => { if (e.key === 'Enter') startGame(); e.stopPropagation(); });
 $q('#mHow').addEventListener('click', () => { const el = $q('#mHowText'); el.hidden = !el.hidden; $q('#mHow').setAttribute('aria-expanded', !el.hidden); });
 

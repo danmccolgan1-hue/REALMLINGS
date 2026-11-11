@@ -180,7 +180,7 @@ const RETRO_TIME = 2;   // seconds per soldier
 const barracksOk = (p, o, cav) => { const l = S.extras.get(p); return !!l && nationOf(p) === o && !S.occ.has(p) && l.some(e => e.type === (cav && isSw(o) ? 'stable' : 'barracks')) && (!cav || l.some(e => e.type === 'stable')); };
 const retroKey = (p, o, cav) => (cav && isSw(o) ? 'stable:' : 'barracks:') + p;
 const retroSiteName = (o, cav) => cav ? (isSw(o) ? BUILD_DEFS.stable.name : `${BUILD_DEFS.barracks.name} with a ${BUILD_DEFS.stable.name}`) : BUILD_DEFS.barracks.name;
-const retroWhere = o => isSw(o) ? `at one of your ${BUILD_DEFS.barracks.name}s (${UNIT_BASE.cav.name} at an ${BUILD_DEFS.stable.name})` : `at one of your ${BUILD_DEFS.barracks.name}s (cavalry need a ${BUILD_DEFS.stable.name} there too)`;
+const retroWhere = o => isSw(o) ? `at one of your ${BUILD_DEFS.barracks.name}s (${UNIT_BASE.cav.name} at an ${BUILD_DEFS.stable.name})` : `at one of your ${BUILD_DEFS.barracks.name}s (${UNIT_BASE.cav.name.toLowerCase()} need a ${BUILD_DEFS.stable.name} there too)`;
 // the nearest place the army can reach to retrofit to this design, or -1
 function retroSite(a, to) {
   const cav = !!DSTATS[to].cav;
@@ -674,4 +674,4 @@ function drawSpellFx(g, t) {
     g.restore();
   }
 }
-window.__v86 = { findPath: (u, q) => findPath(u, q), computeFog: () => computeFog(), spellFx, totalPick, walkDistFrom, retroSite, beginRetro, finishRetro, trainTime: (k, q) => trainTime(k, q) };
+window.__v86 = { G: () => G, order: (u, q, quiet) => order(u, q, quiet), orderGroup: (q, a) => orderGroup(q, a), canEnter: (u, q, t) => canEnter(u, q, t), EXPLORE_TIME, findPath: (u, q) => findPath(u, q), computeFog: () => computeFog(), spellFx, totalPick, walkDistFrom, retroSite, beginRetro, finishRetro, trainTime: (k, q) => trainTime(k, q) };

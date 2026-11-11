@@ -138,6 +138,7 @@ function showHow(on) { $q('#stMain').hidden = on; $q('#stHowBody').hidden = !on;
 function openSettings() {
   if (!$q('#settings').hidden) return;
   stPausedByMe = !S.paused; if (!S.paused) togglePause();
+  if (typeof syncDebugBtns === 'function') syncDebugBtns();   // map seed, debug ticks
   $q('#paused').hidden = true; showHow(false); $q('#settings').hidden = false; $q('#gearBtn').setAttribute('aria-expanded', 'true');
   $q('#stResume').focus();
 }

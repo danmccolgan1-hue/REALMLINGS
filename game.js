@@ -49,7 +49,9 @@ const fcache = document.createElement('canvas'), fctx = fcache.getContext('2d');
 const S = { xup: new Map(), occ: new Map(), occProg: new Map(), known: new Set(), dipPick: new Set(), dipHover: -1, upgrades: new Map(), battles: [], fx: [], selProv: -1, selPart: null, extras: new Map(), selBuilding: -1, selKind: 'capital', queues: {}, nextId: 3, surveyed: new Map(), stock: { ...START_STOCK }, paused: false, t: 0, pops: [], nextTick: 0, units: [], buildings: new Map(), wf: new Set(), visible: new Set(), explored: new Set(), selected: [], sig: '', last: 0, capital: -1 };
 const primary = () => S.selected[0] || null;
 const isSel = u => S.selected.includes(u);
-const SCOUT_SLOW = 4;   // a Wayfinder crosses unexplored land four times slower
+const SCOUT_SLOW = 4;   // (old) a Wayfinder crossed unexplored land four times slower
+const EXPLORE_TIME = 8;   // v87: exploring a province always takes 8 s: he walks from the border to its middle, whatever its size
+const exploring = u => u.kind === WAYFINDER && u.owner === ME && u.scouting !== null && u.scouting !== undefined;
 // unit standing spots sit beside the settlement; the four building spots sit above and below it
 const SLOTS = [[-30, 62], [30, 62], [0, 78], [-118, 42], [118, 42], [-112, -54], [112, -54]];
 // building plots: top two, bottom two, then the two side plots only a capital opens up
@@ -104,6 +106,7 @@ const BUILD_ORDER = Object.keys(BUILD_DEFS);
 const EB = 0.4;          // scale of province buildings on the map
 
 function setupGame() {
+  S.reveal = false; S.debugTech = false; S.debugCap = 0;   // debug settings don't carry over into a new game
   openNbr = world.provinces.map(() => []);
   allNbr = world.provinces.map(p => p.nbr);
   world.edges.forEach(e => {
@@ -111,20 +114,27 @@ function setupGame() {
     const a = world.vertices[e.v[0]], b = world.vertices[e.v[1]], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
     openNbr[e.a].push({ q: e.b, m }); openNbr[e.b].push({ q: e.a, m });
   });
-  // the capital: an inland grassland with plenty of open borders, near the middle of the island
-  const [x0, y0, x1, y1] = G.bounds, mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
-  let best = -1, bs = -Infinity;
-  // always grassland; prefer inland ones with many open borders near the middle of the island
-  // Swamplings start in a swamp (any province if the island has no swamp at all)
-  const homeTer = isSw(ME) ? 'swamp' : 'grassland';
-  for (const strict of [true, false]) {
-    if (best >= 0) break;
-    G.provs.forEach((p, i) => {
-      if (strict && p.terrain !== homeTer) return;
-      const sc = openNbr[i].length * 420 - Math.hypot(p.ic[0] - mx, p.ic[1] - my) - (p.coastal || p.lakeside ? 2000 : 0) - (isSw(ME) && !strict && p.terrain !== 'grassland' ? 1000 : 0);
+  // the capital (v87): always grassland for Realmlings and swamp for Swamplings; inland with open borders preferred.
+  // Where on the island depends on the menu's Start position: near the middle, out toward the edge, or anywhere.
+  const [x0, y0, x1, y1] = G.bounds, mx = (x0 + x1) / 2, my = (y0 + y1) / 2, R = Math.hypot(x1 - x0, y1 - y0) / 2;
+  const homeTer = isSw(ME) ? 'swamp' : raceOf(ME) === 'wood' ? 'forest' : 'grassland', where = (typeof menuOpts === 'object' && menuOpts.start) || 'center';
+  const home = G.provs.map((p, i) => i).filter(i => G.provs[i].terrain === homeTer);
+  const cands = home.length ? home : G.provs.map((p, i) => i);   // (an island with none of your land: the province is turned into it below)
+  const fit = i => openNbr[i].length * 420 - (G.provs[i].coastal || G.provs[i].lakeside ? 2000 : 0);
+  let best = -1;
+  if (where === 'random') {
+    const good = cands.filter(i => openNbr[i].length >= 2 && !G.provs[i].coastal && !G.provs[i].lakeside), pool = good.length ? good : cands.filter(i => openNbr[i].length >= 1);
+    best = (pool.length ? pool : cands)[Math.floor(Math.random() * (pool.length ? pool : cands).length)];
+  } else {
+    let bs = -Infinity;
+    const inland = cands.filter(i => !G.provs[i].coastal && !G.provs[i].lakeside && openNbr[i].length >= 2);
+    for (const i of (where === 'edge' && inland.length ? inland : cands)) {   // Edge: the outermost inland province, never on the coast
+      const d = Math.hypot(G.provs[i].ic[0] - mx, G.provs[i].ic[1] - my);
+      const sc = fit(i) + (where === 'edge' ? d * 1.5 : -d);
       if (sc > bs) { bs = sc; best = i; }
-    });
+    }
   }
+  if (G.provs[best].terrain !== homeTer) G.provs[best].terrain = homeTer;
   rollYields();
   S.capital = best;
   S.buildings.set(best, { stage: 2, born: -10, owner: ME });
@@ -132,7 +142,7 @@ function setupGame() {
   territory = null; computeIncome();
   setupCapitalPanel();
   usedNames.clear(); armyCounter = 0;
-  S.units = [mkUnit(1, WAYFINDER, 'Wayfinder', best, 0), mkUnit(2, MASON, 'Mason', best, 1)];
+  S.units = [mkUnit(1, WAYFINDER, 'Wayfinder', best, 3), mkUnit(2, MASON, 'Mason', best, 4)];   // v94: the Wayfinder and Mason stand well apart, left and right of the army, so each is easy to pick out
   S.nextId = Math.max(S.nextId || 0, 3);
   newArmy(best, { [footmanOf(ME)]: 3 });   // every realm starts with three infantry (Swamplings: three Axe Berserkers)
   computeIncome();
@@ -178,7 +188,9 @@ const fogState = i => S.visible.has(i) ? 'visible' : S.explored.has(i) ? 'explor
 const nationOk = (u, q) => { if (u.exiting || u.owner === RAIDERS || (u.kind === WAYFINDER && u.stealth)) return true;   // a sneaking Wayfinder / Swampstrider may cross anyone's land, war or not
   const n = nationOf(q); return !n || n === u.owner || hostile(u.owner, n) || truceLeft(u.owner, n) > 0; };
 // at war, any unit may march into unexplored land that belongs to the enemy
-const canEnter = (u, q) => (u.owner !== ME || (u.kind === WAYFINDER && (!u.autoWalk || q === u.autoWalk.to)) || u.exiting || S.explored.has(q) || (S.wars.length && nationOf(q) && hostile(ME, nationOf(q)))) && nationOk(u, q) && !(u.kind === WAYFINDER && u.owner === ME && banditsSeenIn(q)) && !(u.kind === MASON && masonDanger(u, q));
+// a Wayfinder / Swampstrider of yours only steps into unexplored land when it is the province you sent him to (tgt):
+// his route never cuts across the fog on the way (v87)
+const canEnter = (u, q, tgt) => (u.owner !== ME || u.exiting || S.explored.has(q) || (u.kind === WAYFINDER ? (q === tgt || (u.autoWalk && q === u.autoWalk.to)) : (S.wars.length && nationOf(q) && hostile(ME, nationOf(q))))) && nationOk(u, q) && !(u.kind === WAYFINDER && u.owner === ME && banditsSeenIn(q)) && !(u.kind === MASON && masonDanger(u, q));
 // Masons won't walk into a province holding a hostile army they know about (GPC05)
 const masonDanger = (u, q) => S.units.some(v => v.kind === 'army' && v.prov === q && troopCount(v) > 0 && !v.retreating && hostile(v.owner, u.owner) && (u.owner !== ME || (v.bandit ? v.seen : S.visible.has(q))));
 // an army that can't get there through open borders and gates will batter down an enemy wall on the way
@@ -188,11 +200,11 @@ function findPath(u, target) {
 }
 function findPathVia(u, target, siege) {
   if (target === u.prov) return [];
-  if (!canEnter(u, target)) return null;
+  if (!canEnter(u, target, target)) return null;
   const prev = new Map([[u.prov, null]]), q = [u.prov];
   while (q.length) {
     const a = q.shift(); if (a === target) break;
-    for (const n of pathNbr(u, a, siege)) if (!prev.has(n.q) && canEnter(u, n.q)) { prev.set(n.q, { a, m: n.m, siege: n.siege }); q.push(n.q); }
+    for (const n of pathNbr(u, a, siege)) if (!prev.has(n.q) && canEnter(u, n.q, target)) { prev.set(n.q, { a, m: n.m, siege: n.siege }); q.push(n.q); }
   }
   if (!prev.has(target)) return null;
   const hops = []; let c = target;
@@ -225,12 +237,13 @@ function order(u, target, quiet, pt) {
   if (!quiet && u.exiting && nationOf(target) !== u.owner) { toast(`${u.name} is marching home after the peace deal. You can send it to one of your own provinces.`, true); return false; }
   if (u.battle && !u.retreating) { if (!quiet) toast(`${u.name} is in battle. Use Retreat in the command card to pull out.`, true); return false; }
   if (u.retreatHome) { if (!quiet) toast(`${u.name} is retreating and takes orders again once it gets there.`, true); return false; }
+  if (exploring(u)) { if (!quiet) toast(`${u.name} is exploring ${provName(u.prov)}. Shift-click to queue orders for afterwards.`, true); return false; }
   const hops = findPath(u, target);
   if (hops === null) {
     const tn = nationOf(target);
     if (!quiet && tn && tn !== u.owner && !hostile(u.owner, tn)) { toast(`You are at peace with the ${PLAYERS[tn].name}. Your units can only cross your own land, unclaimed land, the land of a nation you are at war with, or the land of a nation you have a truce with.`, true); return false; }
     if (!quiet && !u.exiting) { u.exiting = true; const free = findPath(u, target); u.exiting = false; if (free) { toast('The only route there crosses a nation you are at peace with. Find another way, or declare war.', true); return false; } }
-    if (!quiet) toast(u.kind === WAYFINDER ? 'No open route there. Trees, mountains, rivers and ruins block the way.' : `The ${u.name} can only enter explored provinces, and needs an open route.`, true);
+    if (!quiet) toast(u.kind === WAYFINDER ? (S.explored.has(target) ? 'No open route there. Trees, mountains, rivers and ruins block the way.' : 'He can only explore a province next to land you know. Explore the land in between first.') : `The ${u.name} can only enter explored provinces, and needs an open route.`, true);
     return false;
   }
   if (u.build) { cancelBuild(u); toast('Construction cancelled. Resources refunded.'); }
@@ -272,6 +285,14 @@ function orderGroup(target, append, pt) {
     if (ok.length && !full.length) toast(`Move queued (${ok.map(u => u.name + ': ' + (u.surveyQueue.length + (u.pendingSurvey >= 0 ? 1 : 0)) + ' orders').join(', ')}).`);
     if (!now.length) return;
     S.selected = now; orderGroup(target, false, pt); S.selected = units; return;
+  }
+  const busyX = units.filter(exploring);
+  if (busyX.length) {
+    // exploring Wayfinders finish first: the order waits in their queue (a plain click replaces what was queued)
+    for (const u of busyX) { u.surveyQueue = []; u.pendingSurvey = -1; u.autoWalk = null; u.surveyQueue.push({ move: target, pt: spots.get(u) }); }
+    toast(`${busyX.map(u => u.name).join(' and ')} ${busyX.length > 1 ? 'are' : 'is'} exploring and will go there once the province is explored.`);
+    const rest = units.filter(u => !exploring(u)); if (!rest.length) return;
+    S.selected = rest; orderGroup(target, false, pt); S.selected = units; return;
   }
   for (const u of units) { u.surveyQueue = []; u.pendingSurvey = -1; u.autoWalk = null; }
   if (units.length === 1) { if (order(units[0], target, false, spots.get(units[0]))) sndMove(units); return; }
@@ -471,7 +492,7 @@ function sideStrength(armies, prov, defender, foe) {
   const T = TERRAIN_MOD[world.provinces[prov].terrain], cavFrac = foe ? foe.cavFrac : 0;
   // Swamplings in a swamp: +20% damage, and their Ogres don't suffer the cavalry penalty; Fiery Weapons can make a round's blows land twice as hard
   const swampy = world.provinces[prov].terrain === 'swamp';
-  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; if (crit > 1) { a.fieryHit = S.t; a.fieryHits = (a.fieryHits || 0) + 1; } for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(a.troops[k], st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (1 + (a.curse || 0)); } }
+  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; if (crit > 1) { a.fieryHit = S.t; a.fieryHits = (a.fieryHits || 0) + 1; } for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(a.troops[k], st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (1 + (a.curse || 0)) * (st.two ? twoMul(a) : 1); } }   // (v93 two-handing: wood.js twoMul)
   return s;
 }
 const rawStrength = armies => armies.reduce((n, a) => n + Object.entries(a.troops).reduce((m, [k, c]) => { const st = statsOf(k, a.owner); return m + c * st.atk * (hpOf(a, k) / 30) / (1 - st.red); }, 0), 0);
@@ -515,7 +536,10 @@ function stepBattles(t) {
 function applyDamage(b, armies, dmg, t, pierce = 0) {
   const total = armies.reduce((n, a) => n + troopCount(a), 0); if (!total) return;
   // armor soaks part of each blow (blunt weapons get through half of it); swords parry some more
-  const mix = sideMix(armies); dmg *= (1 - mix.red * (1 - 0.5 * pierce)) * (1 - mix.parry);
+  const mix = sideMix(armies);
+  // Woodlings in a forest: +20% armor
+  if (isWd(armies[0].owner) && world.provinces[b.prov].terrain === 'forest' && mix.red > 0 && mix.red < 1) { const A = mix.red * ARMOR_K / (1 - mix.red) * 1.2; mix.red = A / (A + ARMOR_K); }
+  dmg *= (1 - mix.red * (1 - 0.5 * pierce)) * (1 - mix.parry);
   const owner = armies[0].owner;
   S.fx.push({ kind: 'num', prov: b.prov, owner, n: Math.round(dmg), t0: t });
   for (const a of armies) {
@@ -851,7 +875,7 @@ function update(realT) {
       let time = dt;
       while (time > 0 && u.path.length) {
         if (siegeHold(u, time)) { time = 0; break; }
-        const wp = u.path[0], sp = SPEED * unitSpeed(u) / (u.scouting !== null ? SCOUT_SLOW : 1) * (onRoad(u, wp) ? roadSpeed() : 1) / (u.stealth && !stealthFree(u) ? 3 : 1), dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy);
+        const wp = u.path[0], sp = u.scouting !== null && u.exploreSp ? u.exploreSp : SPEED * unitSpeed(u) / (u.scouting !== null ? SCOUT_SLOW : 1) * (onRoad(u, wp) ? roadSpeed() : 1) / (u.stealth && !stealthFree(u) ? 3 : 1), dx = wp.x - u.x, dy = wp.y - u.y, d = Math.hypot(dx, dy);
         if (d > 0.5) u.th = Math.round(Math.atan2(dx, dy) / (Math.PI / 4)) * (Math.PI / 4);
         if (d <= sp * time) {
           u.x = wp.x; u.y = wp.y; time -= d / sp; u.path.shift();
@@ -862,8 +886,19 @@ function update(realT) {
             if (u.retreating && !hostilesIn(u.prov, u.owner).length) u.retreating = false;
             u.scouting = (u.kind === WAYFINDER && u.owner === ME && !S.explored.has(wp.enter)) ? wp.enter : null;
             if (u.kind === WAYFINDER && u.owner === ME && banditFlee(u)) { time = 0; continue; }
-          } else if (u.scouting !== null && u.scouting === u.prov) {
-            S.wf.add(u.prov); u.scouting = null;
+            if (u.scouting !== null) {
+              // into the fog: he leaves your control and heads for the middle of the province, wherever you clicked;
+              // the walk is paced to take EXPLORE_TIME, so every province takes the same time to explore
+              const P = G.provs[u.prov], c = clampInto(u.prov, P.ic[0], P.ic[1]), from = [u.x, u.y];
+              const pts = (segClear(u.prov, from, c) ? [] : navRoute(u.prov, from, c)).concat([c]);
+              let L = 0, at = from; for (const q of pts) { L += Math.hypot(q[0] - at[0], q[1] - at[1]); at = q; }
+              u.path = pts.map((q, i) => ({ x: q[0], y: q[1], explore: i === pts.length - 1 }));
+              u.exploreSp = Math.max(L, 1) / EXPLORE_TIME; u.exploreT0 = S.t; u.slot = -1; cmdKey = ''; rosterKey = '';
+            }
+          } else if (u.scouting !== null && u.scouting === u.prov && (wp.explore || !u.exploreSp)) {
+            // at the middle: the province is explored
+            S.wf.add(u.prov); u.scouting = null; u.exploreSp = 0; cmdKey = ''; rosterKey = '';
+            if (u.final !== undefined && u.final !== u.prov && order(u, u.final, true)) { time = 0; continue; }   // (only if he was going on: normally he stops here)
           }
           if (!u.path.length && !wp.slot) { u.slot = freeSlot(u.prov, u); const [x, y] = slotPos(u.prov, u.slot); u.path.push({ x, y, slot: true }); }
           else if (!u.path.length && wp.slot) { u.moving = false; u.th = 0; u.arrived = S.t; if (u.fleeing) { u.fleeing = false; cmdKey = ''; rosterKey = ''; } if (u.retreating) u.retreating = false; if (u.retreatHome) { u.retreatHome = false; cmdKey = ''; rosterKey = ''; if (u.owner === ME) toast(`${u.name} is back under your command at ${provName(u.prov)}.`); } if (u.exiting && (nationOf(u.prov) === u.owner || u.exitTo === u.prov)) { u.exiting = false; u.exitTo = undefined; } }
@@ -1800,7 +1835,7 @@ window.addEventListener('blur', () => { edgeMouse.in = false; });
 let selKey = '';
 function selUI() {
   const el = $q('#sel');
-  const st = u => u.scouting !== null ? 'scouting unexplored land' : (u.surveyQueue && surveysIn(u) && !u.survey) ? `heading to survey (${surveysIn(u)} queued)` : (u.surveyQueue && movesIn(u)) ? `on the move (${movesIn(u)} more queued)` : u.moving ? 'on the move' : u.build ? 'building an outpost' : u.survey ? 'surveying' : 'idle';
+  const st = u => u.scouting !== null ? 'exploring (takes orders once done)' : (u.surveyQueue && surveysIn(u) && !u.survey) ? `heading to survey (${surveysIn(u)} queued)` : (u.surveyQueue && movesIn(u)) ? `on the move (${movesIn(u)} more queued)` : u.moving ? 'on the move' : u.build ? 'building an outpost' : u.survey ? 'surveying' : 'idle';
   const bq = S.selBuilding >= 0 ? (S.queues[srcKey()] || []) : null;
   const txt = (bq ? srcKey() + bq.length : '') + (S.selected.map(u => u.name + st(u) + !!u.battle + !!u.retreating + (u.troops ? troopText(u) + powerOf(u) : '')).join('|') || 'none');
   if (txt === selKey) return; selKey = txt;
@@ -1831,7 +1866,7 @@ let panelFor = '';
 function buildPanel() {
   const panel = $q('#cap'), kinds = trainable(S.selKind, S.selBuilding), isCap = S.selKind === 'capital';
   const hasStable = !isCap && extrasIn(S.selBuilding).some(e => e.type === 'stable');
-  const title = isCap ? 'Capital' : 'Barracks', sub = isCap ? `Trains ${UNIT_DEFS[WAYFINDER].name}s and ${UNIT_DEFS[MASON].name}s` + ' · +5 of each resource every 10 s' : (hasStable ? 'Trains infantry · Stable here: cavalry too' : 'Trains infantry · build a Stable in this province for cavalry');
+  const title = isCap ? 'Capital' : 'Barracks', sub = isCap ? `Trains ${UNIT_DEFS[WAYFINDER].name}s and ${UNIT_DEFS[MASON].name}s` + ' · +5 of each resource every 10 s' : (isWd(ME) ? (hasStable ? 'Trains Protectors · Hall of Champions here: Champions too' : 'Trains Protectors · build a Hall of Champions in this province for Champions') : hasStable ? 'Trains infantry · Stable here: cavalry too' : 'Trains infantry · build a Stable in this province for cavalry');
   panel.innerHTML = `<div class="cap-head"><b>${title}</b><span>${sub}</span></div><div class="cap-cards" style="grid-template-columns: repeat(${Math.min(kinds.length, 3)}, minmax(0, 1fr))">` +
     kinds.map(kind => { const d = UNIT_DEFS[kind]; return `<div class="cap-card"><canvas width="96" height="112" data-kind="${kind}" aria-hidden="true"></canvas><div class="cap-info"><b>${d.name}</b><small>${d.blurb}</small><div class="cap-cost">${costHTML(d.cost)}</div><div class="cap-up">Upkeep ${costHTML(d.upkeep, '−')} <em>per 10 s</em></div><button type="button" data-train="${kind}" id="train-${d.name.toLowerCase()}">Train</button></div></div>`; }).join('') +
     `</div><div class="cap-queue" id="capQueue"></div>`;
@@ -1906,7 +1941,7 @@ function portrait(kind) {
   if (kind === 'army') kind = footmanOf(ME);   // a Swampling army shows an Axe Berserker
   if (portraitURL[kind]) return portraitURL[kind];
   const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
-  const cav = isCav(kind) && !isOgre(kind); drawUnitFor(g, kind, ME, false, Math.PI / 4, 0.4, 32, cav ? 60 : 62, cav ? 0.3 : isOgre(kind) ? 0.36 : 0.5);
+  const cav = isCav(kind) && !isOgre(kind); drawUnitFor(g, kind, ME, false, Math.PI / 4, 0.4, 32, cav ? 60 : 62, cav ? 0.3 : isOgre(kind) ? 0.36 : isWd(ME) ? 0.44 : 0.5);   // (Woodlings are taller)
   return portraitURL[kind] = c.toDataURL();
 }
 function cmdInfo(id) {
@@ -1975,7 +2010,7 @@ function cmdInfo(id) {
   }
   const m = S.selected.find(v => v.kind === MASON), d = type === 'outpost' ? { name: 'Outpost', cost: OUTPOST_COST } : BUILD_DEFS[type];
   let why = !m ? 'No Mason selected' : m.build ? 'He is already building' : buildCheck(m.prov, type);   // Z3: walking is fine, he stops and builds where he is
-  const desc = type === 'outpost' ? 'Claims this province. It must be surveyed and border your land.' : d.gives ? 'Adds ' + Object.entries(d.gives).map(([k, v]) => '+' + v + ' ' + k).join(', ') + ' every 10 s.' + (type === 'farm' ? ' Up to 4 per province.' : type === 'lumber' ? ' One per tree border.' : '') + (m && owned(m.prov) && buildCap(m.prov, type) > 1 ? ` ${countOf(m.prov, type)}/${buildCap(m.prov, type)} here.` : '') : type === 'barracks' ? 'Trains the infantry you design in the Armory. With a Stable in the same province, your cavalry designs too.' : type === 'stable' ? 'Lets a Barracks in this province train Cavalry.' : '';
+  const desc = type === 'outpost' ? 'Claims this province. It must be surveyed and border your land.' : d.gives ? 'Adds ' + Object.entries(d.gives).map(([k, v]) => '+' + v + ' ' + k).join(', ') + ' every 10 s.' + (type === 'farm' ? ' Up to 4 per province.' : type === 'lumber' ? ' One per tree border.' : '') + (m && owned(m.prov) && buildCap(m.prov, type) > 1 ? ` ${countOf(m.prov, type)}/${buildCap(m.prov, type)} here.` : '') : type === 'barracks' ? (isWd(ME) ? 'Trains the Protectors you design in the Armory. With a Hall of Champions in the same province, your Champions too.' : 'Trains the infantry you design in the Armory. With a Stable in the same province, your cavalry designs too.') : type === 'stable' ? (isWd(ME) ? 'Lets a Barracks in this province train Champions.' : 'Lets a Barracks in this province train Cavalry.') : '';
   return { name: d.name, desc: (desc || d.blurb || '') + (d.upkeep ? ' Upkeep every 10 s: ' + Object.entries(d.upkeep).map(([k, v]) => v + ' ' + k).join(', ') + '.' : '') + ' Builds where the Mason stands in ' + buildTime(type) + ' s.', cost: d.cost, why, icon: buildThumb(type) };
 }
 function cmdUse(id) {
@@ -2105,7 +2140,7 @@ function partInfo(p, part, lvE) {
   if (part === 'settlement') { const st = S.buildings.get(p).stage; return { name: STAGE_NAME[st], img: settlementThumb(st), desc: st === 2 ? `Trains ${UNIT_DEFS[WAYFINDER].name}s and ${UNIT_DEFS[MASON].name}s. +${CAPITAL_BONUS.gold} of each resource. 6 building plots.` : st === 1 ? 'A stone fort. 4 building plots.' : 'Claims the province. 2 building plots; upgrade to a Fort for 4.' }; }
   const d = BUILD_DEFS[part];
   if (d.levels) { const lv = (lvE && lvE.level) || 1; return { name: d.levels[lv - 1], img: buildThumb(part, lv), desc: `${part === 'forge' ? 'Military' : 'Magic'} research Tier ${['', 'I', 'II', 'III'][lv]} · +${[0, 2, 4, 6][lv]} points every 10 s` + (lv < 3 ? ' · select to upgrade' : '') }; }
-  return { name: d.name, img: buildThumb(part), desc: d.store ? d.note : d.gives ? Object.entries(givesOf(part)).map(([k, v]) => '+' + v + ' ' + k).join(', ') + ' every 10 s' : part === 'barracks' ? (extrasIn(p).some(e => e.type === 'stable') ? 'Trains infantry and cavalry' : 'Trains infantry') : part === 'stable' ? 'Lets this province’s Barracks train cavalry' : '' };
+  return { name: d.name, img: buildThumb(part), desc: d.store ? d.note : d.gives ? Object.entries(givesOf(part)).map(([k, v]) => '+' + v + ' ' + k).join(', ') + ' every 10 s' : part === 'barracks' ? (isWd(ME) ? (extrasIn(p).some(e => e.type === 'stable') ? 'Trains Protectors and Champions' : 'Trains Protectors') : extrasIn(p).some(e => e.type === 'stable') ? 'Trains infantry and cavalry' : 'Trains infantry') : part === 'stable' ? (isWd(ME) ? 'Lets this province’s Barracks train Champions' : 'Lets this province’s Barracks train cavalry') : '' };
 }
 function provMenu() {
   const el = $q('#prov'), p = S.selProv;

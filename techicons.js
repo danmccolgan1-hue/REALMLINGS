@@ -16,7 +16,7 @@ const ICO = {
   roman(g, n, x = 52, y = 54) { g.font = '900 15px system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = 4; g.strokeStyle = OL; g.strokeText(n, x, y); g.fillStyle = '#fff'; g.fillText(n, x, y); }
 };
 // how long each held item is, so it can be fitted into an icon diagonally
-const ITEM_SPAN = { handaxe: [-42, 12], beardedaxe: [-48, 14], battleaxe: [-62, 16], waraxe: [-74, 18], stave: [-78, 32], grandstave: [-100, 32], mythicstave: [-110, 32], wand: [-37, 6], crypticwand: [-44, 6], enigmaticwand: [-46, 6], spear: [-124, 26], pike: [-150, 30], polearm: [-140, 28], halberd: [-150, 28], shortsword: [-43, 10], sword: [-60, 12], longsword: [-73, 14], greatsword: [-96, 20], club: [-50, 14], mace: [-41, 14], morningstar: [-56, 14], warhammer: [-98, 24] };
+const ITEM_SPAN = { dirk: [-41, 10], gladius: [-47, 11], rapier: [-78, 14], estoc: [-92, 17], handaxe: [-42, 12], beardedaxe: [-48, 14], battleaxe: [-62, 16], waraxe: [-74, 18], stave: [-78, 32], grandstave: [-100, 32], mythicstave: [-110, 32], wand: [-37, 6], crypticwand: [-44, 6], enigmaticwand: [-46, 6], spear: [-124, 26], pike: [-150, 30], polearm: [-140, 28], halberd: [-150, 28], shortsword: [-43, 10], sword: [-60, 12], longsword: [-73, 14], greatsword: [-96, 20], club: [-50, 14], mace: [-41, 14], morningstar: [-56, 14], warhammer: [-98, 24] };
 function itemIcon(g, name) {
   const [a, b] = ITEM_SPAN[name] || [-40, 10], len = b - a, k = Math.min(1.6, 74 / len);
   g.save(); g.translate(32, 32); g.rotate(Math.PI / 4); g.scale(k, k); g.translate(0, -(a + b) / 2);
@@ -26,12 +26,12 @@ function shieldIcon(g, name) { g.save(); g.translate(32, 30); const k = name ===
 function armorIcon(g, type, lv) {
   const T0 = type;
   if (ARMOR_TYPES[type] && ARMOR_TYPES[type].twin) type = ARMOR_TYPES[type].twin;   // Swampling armor: drawn like its Realmling twin, in its own colors
-  const col = T0 === 'stag' ? '#b08a5a' : T0 === 'wyvern' ? '#5f8f6a' : T0 === 'dragon' ? '#e8e0c8' : type === 'leather' ? '#9a6a40' : type === 'chain' ? '#aab2bf' : '#d4dbe5';
+  const col = T0 === 'spirit' ? '#d4d2cc' : T0 === 'mithril' ? '#9fd8d0' : T0 === 'ornate' ? '#cdb4ec' : T0 === 'stag' ? '#b08a5a' : T0 === 'wyvern' ? '#5f8f6a' : T0 === 'dragon' ? '#e8e0c8' : type === 'leather' ? '#9a6a40' : type === 'chain' ? '#aab2bf' : '#d4dbe5';
   ICO.poly(g, [[18, 14], [26, 10], [32, 16], [38, 10], [46, 14], [52, 24], [46, 28], [44, 52], [20, 52], [18, 28], [12, 24]], col);
   if (type === 'chain') { g.fillStyle = 'rgba(0,0,0,0.22)'; for (let y = 20; y < 50; y += 5) for (let x = 22; x < 44; x += 5) { g.beginPath(); g.arc(x + (y % 10 ? 2.5 : 0), y, 1.1, 0, 7); g.fill(); } }
   if (type === 'plate') { g.strokeStyle = 'rgba(255,255,255,0.7)'; g.lineWidth = 3; g.beginPath(); g.moveTo(26, 20); g.lineTo(26, 46); g.stroke(); g.strokeStyle = 'rgba(0,0,0,0.2)'; g.beginPath(); g.moveTo(20, 38); g.lineTo(44, 38); g.stroke(); }
-  if (type === 'leather') { g.strokeStyle = '#6d4426'; g.lineWidth = 2; for (const y of [26, 34, 42]) { g.beginPath(); g.moveTo(21, y); g.lineTo(43, y); g.stroke(); } }
-  if (lv >= 3) { g.fillStyle = '#f4c44f'; g.beginPath(); g.arc(32, 30, 4, 0, 7); g.fill(); g.lineWidth = 1.6; g.strokeStyle = OL; g.stroke(); }
+  if (type === 'leather') { g.strokeStyle = T0 === 'spirit' ? '#8f8c84' : '#6d4426'; g.lineWidth = 2; for (const y of [26, 34, 42]) { g.beginPath(); g.moveTo(21, y); g.lineTo(43, y); g.stroke(); } }
+  if (lv >= 3) { g.fillStyle = T0 === 'spirit' || T0 === 'mithril' || T0 === 'ornate' ? '#b07aff' : '#f4c44f'; g.beginPath(); g.arc(32, 30, 4, 0, 7); g.fill(); g.lineWidth = 1.6; g.strokeStyle = OL; g.stroke(); }
   ICO.roman(g, ROMAN4[lv], 50, 54);
 }
 function horseIcon(g, H, badge) {
