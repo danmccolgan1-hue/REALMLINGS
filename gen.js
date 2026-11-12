@@ -686,6 +686,19 @@
         if (!connected(closed, i)) continue;
         U.death = i;
         for (const id of ps[i].edges) { E[id].open = false; E[id].style = 'mountains'; }
+        // a river along its side runs under the mountain there: cut that stretch out so the border shows mountains
+        const dm = new Set(ps[i].edges.map(id => Math.min(...E[id].v) + '_' + Math.max(...E[id].v)));
+        const rivers = [];
+        for (const r of w.rivers) {
+          let cur = [r.verts[0]];
+          for (let k = 1; k < r.verts.length; k++) {
+            const a = r.verts[k - 1], b = r.verts[k];
+            if (dm.has(Math.min(a, b) + '_' + Math.max(a, b))) { if (cur.length > 1) rivers.push({ verts: cur, lake: null }); cur = [b]; }
+            else cur.push(b);
+          }
+          if (cur.length > 1) rivers.push({ verts: cur, lake: r.lake });   // the lake is at the river's far end
+        }
+        w.rivers = rivers;
         const g = order(ps[i].nbr.slice()).sort((x, y) => inland(y) - inland(x))[0]; U.deathGuard = g;
         banned.add(i); for (const j of ps[i].nbr) banned.add(j); for (const j of ps[g].nbr) banned.add(j);
         break;

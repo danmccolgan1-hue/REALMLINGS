@@ -156,6 +156,7 @@ function startPath(c, q, kind, close) {
   toast(`${close ? 'Closing' : 'Opening'} a ${kind === 'forest' ? 'path through the trees' : 'tunnel under the mountains'} to ${provName(q)}: ${dur} s of casting.`);
 }
 function openEdge(i, kind) {
+  if (isDeathMtn(world.edges[i].a) || isDeathMtn(world.edges[i].b)) return;   // v95: nothing opens Death Mountain
   const e = world.edges[i], V = world.vertices, a = V[e.v[0]], b = V[e.v[1]], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   e.open = true; S.paths[i] = kind;
   openNbr[e.a].push({ q: e.b, m }); openNbr[e.b].push({ q: e.a, m });

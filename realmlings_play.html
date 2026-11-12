@@ -1605,6 +1605,19 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
         if (!connected(closed, i)) continue;
         U.death = i;
         for (const id of ps[i].edges) { E[id].open = false; E[id].style = 'mountains'; }
+        // a river along its side runs under the mountain there: cut that stretch out so the border shows mountains
+        const dm = new Set(ps[i].edges.map(id => Math.min(...E[id].v) + '_' + Math.max(...E[id].v)));
+        const rivers = [];
+        for (const r of w.rivers) {
+          let cur = [r.verts[0]];
+          for (let k = 1; k < r.verts.length; k++) {
+            const a = r.verts[k - 1], b = r.verts[k];
+            if (dm.has(Math.min(a, b) + '_' + Math.max(a, b))) { if (cur.length > 1) rivers.push({ verts: cur, lake: null }); cur = [b]; }
+            else cur.push(b);
+          }
+          if (cur.length > 1) rivers.push({ verts: cur, lake: r.lake });   // the lake is at the river's far end
+        }
+        w.rivers = rivers;
         const g = order(ps[i].nbr.slice()).sort((x, y) => inland(y) - inland(x))[0]; U.deathGuard = g;
         banned.add(i); for (const j of ps[i].nbr) banned.add(j); for (const j of ps[g].nbr) banned.add(j);
         break;
@@ -10239,6 +10252,7 @@ function startPath(c, q, kind, close) {
   toast(`${close ? 'Closing' : 'Opening'} a ${kind === 'forest' ? 'path through the trees' : 'tunnel under the mountains'} to ${provName(q)}: ${dur} s of casting.`);
 }
 function openEdge(i, kind) {
+  if (isDeathMtn(world.edges[i].a) || isDeathMtn(world.edges[i].b)) return;   // v95: nothing opens Death Mountain
   const e = world.edges[i], V = world.vertices, a = V[e.v[0]], b = V[e.v[1]], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
   e.open = true; S.paths[i] = kind;
   openNbr[e.a].push({ q: e.b, m }); openNbr[e.b].push({ q: e.a, m });
@@ -15622,46 +15636,52 @@ function uniqueItems(g, t, items) {
   if (U.heart >= 0 && S.explored.has(U.heart)) { const c = G.provs[U.heart].ic; items.push({ y: c[1] - 70, f: () => drawHeart(g, U.heart, t) }); }
 }
 function drawDeathMountain(g, p, t) {
-  const B = uqBox(p), w = B.x1 - B.x0, h = B.y1 - B.y0, cx = (B.x0 + B.x1) / 2, by = B.y1 - h * 0.08, H = Math.max(w, h) * 0.95;
-  // scorched ground over the whole province
-  g.save(); g.beginPath(); B.pts.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath();
-  g.fillStyle = '#2a2427'; g.fill(); g.clip();
-  g.fillStyle = 'rgba(140,50,30,0.35)'; for (let i = 0; i < 9; i++) { const a = i * 2.39, r = (0.2 + (i % 3) * 0.12) * w; g.beginPath(); g.ellipse(cx + Math.cos(a) * r, (B.y0 + B.y1) / 2 + Math.sin(a) * r * 0.6, 26, 9, a, 0, 7); g.fill(); }
-  g.restore();
-  g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
-  g.fillStyle = 'rgba(0,0,0,0.4)'; g.beginPath(); g.ellipse(cx, by + 8, w * 0.62, h * 0.16, 0, 0, 7); g.fill();
-  const L = B.x0 - w * 0.16, R = B.x1 + w * 0.16, X = f => L + (R - L) * f, Y = f => by - H * f;
-  // one massif with three summits; the outline is jagged
-  const outline = [[X(0), by], [X(0.06), Y(0.18)], [X(0.12), Y(0.26)], [X(0.18), Y(0.48)], [X(0.24), Y(0.66)], [X(0.28), Y(0.62)], [X(0.33), Y(0.7)], [X(0.38), Y(0.6)], [X(0.44), Y(0.82)], [X(0.5), Y(1)], [X(0.55), Y(0.9)], [X(0.6), Y(0.84)], [X(0.66), Y(0.68)], [X(0.72), Y(0.76)], [X(0.76), Y(0.72)], [X(0.82), Y(0.52)], [X(0.88), Y(0.36)], [X(0.94), Y(0.2)], [X(1), by]];
+  const B = uqBox(p), w = B.x1 - B.x0, h = B.y1 - B.y0, cx = (B.x0 + B.x1) / 2, H = Math.max(w, h) * 0.85;
+  const pts = B.pts, n = pts.length;
+  // the massif sits on the province's own lower borders: its foot follows them from the leftmost corner round
+  // the bottom to the rightmost one, and only the ridge rises above the province (as a mountain would)
+  let iL = 0, iR = 0; pts.forEach(([x], i) => { if (x < pts[iL][0]) iL = i; if (x > pts[iR][0]) iR = i; });
+  const chain = (from, to, step) => { const out = []; for (let i = from; ; i = (i + step + n) % n) { out.push(pts[i]); if (i === to) break; } return out; };
+  const a1 = chain(iR, iL, 1), a2 = chain(iR, iL, -1);
+  const avgY = c => c.reduce((s, q) => s + q[1], 0) / c.length;
+  const foot = avgY(a1) > avgY(a2) ? a1 : a2;            // right → bottom → left
+  const [xL, yL] = pts[iL], [xR, yR] = pts[iR], by = Math.max(...foot.map(q => q[1]));
+  const X = f => xL + (xR - xL) * f, Y = (f, k) => yL + (yR - yL) * f - H * k;
+  const prof = [[0.06, 0.18], [0.12, 0.26], [0.18, 0.48], [0.24, 0.66], [0.28, 0.62], [0.33, 0.7], [0.38, 0.6], [0.44, 0.82], [0.5, 1], [0.55, 0.9], [0.6, 0.84], [0.66, 0.68], [0.72, 0.76], [0.76, 0.72], [0.82, 0.52], [0.88, 0.36], [0.94, 0.2]];
+  const outline = foot.concat(prof.map(([f, k]) => [X(f), Y(f, k)]));
   const path = () => { g.beginPath(); outline.forEach(([x, y], i) => i ? g.lineTo(x, y) : g.moveTo(x, y)); g.closePath(); };
+  g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
   path(); g.fillStyle = '#211d22'; g.fill(); g.lineWidth = 8; g.strokeStyle = OL; g.stroke();
   g.save(); path(); g.clip();
   // lit faces on the left of each summit, deep shadow on the right
-  for (const [sx, sy] of [[0.24, 0.66], [0.5, 1], [0.72, 0.76]]) {
-    g.beginPath(); g.moveTo(X(sx), Y(sy)); g.lineTo(X(sx - 0.2), by); g.lineTo(X(sx - 0.03), by); g.closePath(); g.fillStyle = 'rgba(150,140,165,0.2)'; g.fill();
-    g.beginPath(); g.moveTo(X(sx), Y(sy)); g.lineTo(X(sx + 0.03), by); g.lineTo(X(sx + 0.22), by); g.closePath(); g.fillStyle = 'rgba(0,0,0,0.3)'; g.fill();
-    g.beginPath(); g.moveTo(X(sx), Y(sy)); g.lineTo(X(sx + 0.01), by); g.lineWidth = 2.5; g.strokeStyle = 'rgba(0,0,0,0.5)'; g.stroke();
+  for (const [sx, sk] of [[0.24, 0.66], [0.5, 1], [0.72, 0.76]]) {
+    const tx = X(sx), ty = Y(sx, sk);
+    g.beginPath(); g.moveTo(tx, ty); g.lineTo(X(sx - 0.24), by + 20); g.lineTo(X(sx - 0.03), by + 20); g.closePath(); g.fillStyle = 'rgba(150,140,165,0.2)'; g.fill();
+    g.beginPath(); g.moveTo(tx, ty); g.lineTo(X(sx + 0.03), by + 20); g.lineTo(X(sx + 0.26), by + 20); g.closePath(); g.fillStyle = 'rgba(0,0,0,0.3)'; g.fill();
+    g.beginPath(); g.moveTo(tx, ty); g.lineTo(X(sx + 0.01), by + 20); g.lineWidth = 2.5; g.strokeStyle = 'rgba(0,0,0,0.5)'; g.stroke();
   }
   // strata
-  g.strokeStyle = 'rgba(90,80,100,0.35)'; g.lineWidth = 3; for (let k = 1; k < 6; k++) { const y = by - H * k * 0.14; g.beginPath(); g.moveTo(L, y + Math.sin(k) * 10); g.quadraticCurveTo(cx, y - 18, R, y + Math.cos(k) * 10); g.stroke(); }
+  g.strokeStyle = 'rgba(90,80,100,0.35)'; g.lineWidth = 3; for (let k = 1; k < 7; k++) { const y = by - H * k * 0.14; g.beginPath(); g.moveTo(xL - 20, y + Math.sin(k) * 10); g.quadraticCurveTo(cx, y - 18, xR + 20, y + Math.cos(k) * 10); g.stroke(); }
   // glowing lava running down from the summit
-  const glow = 0.65 + Math.sin(t * 2) * 0.2;
+  const glow = 0.65 + Math.sin(t * 2) * 0.2, top = [X(0.5), Y(0.5, 1)];
   for (const [dx, k] of [[-0.06, 0], [0.04, 1], [0.12, 2], [-0.14, 3], [0.2, 4]]) {
-    g.beginPath(); let x = X(0.5 + dx * 0.3), y = Y(0.92 - k * 0.04); g.moveTo(x, y);
-    for (let s2 = 0; s2 < 8; s2++) { x += dx * w * 0.1 + Math.sin(s2 * 2.1 + k) * 12; y += H * 0.11; g.lineTo(x, y); }
+    g.beginPath(); let x = top[0] + dx * w * 0.1, y = top[1] + H * (0.08 + k * 0.04); g.moveTo(x, y);
+    for (let s2 = 0; s2 < 9; s2++) { x += dx * w * 0.1 + Math.sin(s2 * 2.1 + k) * 12; y += H * 0.11; g.lineTo(x, y); }
     g.strokeStyle = `rgba(255,${80 + k * 18},30,${glow})`; g.lineWidth = 9; g.stroke(); g.strokeStyle = 'rgba(255,225,130,0.85)'; g.lineWidth = 3; g.stroke();
   }
   g.restore();
   // the crater glows; ash and smoke rise
-  g.beginPath(); g.ellipse(X(0.5), Y(1) + 8, 22, 8, 0, 0, 7); g.fillStyle = `rgba(255,120,40,${glow})`; g.fill();
-  const gr = g.createRadialGradient(X(0.5), Y(1), 4, X(0.5), Y(1), 90); gr.addColorStop(0, `rgba(255,110,40,${0.45 * glow})`); gr.addColorStop(1, 'rgba(255,110,40,0)'); g.fillStyle = gr; g.beginPath(); g.arc(X(0.5), Y(1), 90, 0, 7); g.fill();
-  for (let i = 0; i < 7; i++) { const ph = (t * 0.12 + i / 7) % 1, x = X(0.5) + Math.sin(i * 1.7 + t * 0.5) * 24 + ph * 90, y = Y(1) - 24 - ph * H * 0.45, r = 22 + ph * 60; g.beginPath(); g.arc(x, y, r, 0, 7); g.fillStyle = `rgba(42,38,46,${0.6 * (1 - ph)})`; g.fill(); }
-  // its name over the summit
-  if (cam.z < 0.9) {
-    g.font = Math.round(Math.max(28, 16 / cam.z)) + 'px ' + getComputedStyle(document.body).getPropertyValue('--font-display');
-    g.textAlign = 'center'; g.textBaseline = 'middle'; g.lineWidth = Math.max(6, 4 / cam.z); g.strokeStyle = OL; g.strokeText('Death Mountain', X(0.5), Y(1) - 70); g.fillStyle = '#ff9a6a'; g.fillText('Death Mountain', X(0.5), Y(1) - 70);
-  }
+  g.beginPath(); g.ellipse(top[0], top[1] + 8, 22, 8, 0, 0, 7); g.fillStyle = `rgba(255,120,40,${glow})`; g.fill();
+  const gr = g.createRadialGradient(top[0], top[1], 4, top[0], top[1], 90); gr.addColorStop(0, `rgba(255,110,40,${0.45 * glow})`); gr.addColorStop(1, 'rgba(255,110,40,0)'); g.fillStyle = gr; g.beginPath(); g.arc(top[0], top[1], 90, 0, 7); g.fill();
+  for (let i = 0; i < 7; i++) { const ph = (t * 0.12 + i / 7) % 1, x = top[0] + Math.sin(i * 1.7 + t * 0.5) * 24 + ph * 90, y = top[1] - 24 - ph * H * 0.45, r = 22 + ph * 60; g.beginPath(); g.arc(x, y, r, 0, 7); g.fillStyle = `rgba(42,38,46,${0.6 * (1 - ph)})`; g.fill(); }
   g.restore();
+}
+function convexHull(pts) {
+  const P = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]), cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const p of P) { while (lo.length >= 2 && cr(lo[lo.length - 2], lo[lo.length - 1], p) <= 0) lo.pop(); lo.push(p); }
+  for (let i = P.length - 1; i >= 0; i--) { const p = P[i]; while (up.length >= 2 && cr(up[up.length - 2], up[up.length - 1], p) <= 0) up.pop(); up.push(p); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
 }
 function drawOasis(g, p, t) {
   const c = G.provs[p].ic, x = c[0], y = c[1] - 70;
