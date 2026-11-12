@@ -89,6 +89,7 @@ function raiseWall(p, q, owner, home) {
   });
   openNbr[p] = openNbr[p].filter(n => n.q !== q); openNbr[q] = openNbr[q].filter(n => n.q !== p);
   S.roads.delete(linkKey(p, q)); S.gateOwn.set(linkKey(p, q), { home, owner }); S.brokenWalls.delete(linkKey(p, q)); wallsVer++;
+  if (S.wallCrack) world.edges.forEach((e, i) => { if ((e.a === p && e.b === q) || (e.a === q && e.b === p)) delete S.wallCrack[i]; });   // v96: a rebuilt wall is whole
   cacheDirty = true; fogDirty = true; hoverPath = undefined;
   // anyone marching through that border finds another way
   for (const u of S.units) {
@@ -163,7 +164,13 @@ function drawGate(g, a, b, col = '#3f72d9') {
   g.beginPath(); g.moveTo(mx - 9, my + 2); g.lineTo(mx - 9, my - 14); g.quadraticCurveTo(mx, my - 24, mx + 9, my - 14); g.lineTo(mx + 9, my + 2); g.closePath(); g.fillStyle = '#7b5029'; g.fill(); g.lineWidth = 2.4; g.strokeStyle = OL; g.stroke();
   g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(mx, my + 2); g.lineTo(mx, my - 18); g.stroke();
 }
-function drawWallEdge(g, a, b, f = 1, t = 0) { (wallKind() === 'stone' && !isSw(ME) ? strokeWall : strokePalisade)(g, a, b, f, t); }   // Swamplings' Spiked Walls stay sharpened stakes
+// v96: each wall is drawn by its own builder's research (stone or palisade) and race (Swamplings' Spiked Walls stay sharpened stakes);
+// a cracked stone wall (hit once by a Shockwave or an Earthquake) shows its cracks
+function drawWallEdge(g, a, b, f = 1, t = 0, i) {
+  const o = i === undefined ? ME : wallOwner(i), stone = i === undefined ? wallKind() === 'stone' : wallStone(i);
+  (stone && !isSw(o) ? strokeWall : strokePalisade)(g, a, b, f, t);
+  if (i !== undefined && S.wallCrack && S.wallCrack[i]) drawWallCracks(g, a, b, isSw(o));
+}
 function strokeWall(g, a, b, f = 1, t = 0) {
   const ex = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f], len = Math.hypot(ex[0] - a[0], ex[1] - a[1]), ux = (b[0] - a[0]) / Math.hypot(b[0] - a[0], b[1] - a[1]), uy = (b[1] - a[1]) / Math.hypot(b[0] - a[0], b[1] - a[1]);
   g.lineCap = 'round';
@@ -177,7 +184,7 @@ function drawLinks(g, t) {
   for (const k of S.roads) { const [p, q] = k.split('_').map(Number); if (S.explored.has(p) || S.explored.has(q)) strokeRoad(g, roadPath(p, q)); }
   for (const u of S.units) if (u.build && u.build.type === 'road') strokeRoad(g, roadPath(u.build.prov, u.build.to), Math.min(1, (t - u.build.t0) / u.build.dur));
   const V = world.vertices;
-  for (const i of S.walls) { const e = world.edges[i]; if (S.explored.has(e.a) || S.explored.has(e.b)) { drawWallEdge(g, V[e.v[0]], V[e.v[1]], 1, t); const c = gateCtl(linkKey(e.a, e.b)); drawGate(g, V[e.v[0]], V[e.v[1]], c && PLAYERS[c] ? PLAYERS[c].color : '#9aa3b2'); const full = WALL_HP[wallKind()]; if (S.wallHp[i] < full) drawWallHp(g, V[e.v[0]], V[e.v[1]], S.wallHp[i] / full); } }
+  for (const i of S.walls) { const e = world.edges[i]; if (S.explored.has(e.a) || S.explored.has(e.b)) { drawWallEdge(g, V[e.v[0]], V[e.v[1]], 1, t, i); const c = gateCtl(linkKey(e.a, e.b)); drawGate(g, V[e.v[0]], V[e.v[1]], c && PLAYERS[c] ? PLAYERS[c].color : '#9aa3b2'); const full = WALL_HP[wallKind()]; if (S.wallHp[i] < full) drawWallHp(g, V[e.v[0]], V[e.v[1]], S.wallHp[i] / full); } }
   for (const u of S.units) if (u.build && (u.build.type === 'wall' || u.build.type === 'rewall')) world.edges.forEach(e => { if (e.open && ((e.a === u.build.prov && e.b === u.build.to) || (e.b === u.build.prov && e.a === u.build.to))) drawWallEdge(g, V[e.v[0]], V[e.v[1]], Math.min(1, (t - u.build.t0) / u.build.dur), t); });
 }
 // a battered wall shows how much of it is left
@@ -292,12 +299,17 @@ function stepScouts(t) {
 // 4 outposts for every fort (the capital counts as one); the third Fort Charter removes the limit
 const OUTPOSTS_PER_FORT = 4, OUTPOST_UPKEEP = { wood: 1 };
 const outpostCount = () => [...S.buildings].filter(([p, b]) => b.owner === ME && b.stage === 0 && !S.upgrades.has(p)).length;
-const outpostLimit = () => hasTech('forts3') ? Infinity : OUTPOSTS_PER_FORT * ([...S.buildings].filter(([, b]) => b.owner === ME && b.stage >= 1).length + S.upgrades.size);
+// v96: each fort allows 4 outposts, +2 with Efficient Administration, +1 per Expand Administration (Fort Charters III no longer lifts the limit)
+const perFort = (o = ME) => OUTPOSTS_PER_FORT + (techOf(o, 'effadmin') ? 2 : 0) + repOf(o, 'rep-admin');
+const fortsHeldBy = (o = ME) => [...S.buildings.values()].filter(b => b.owner === o && b.stage >= 1).length + (o === ME ? S.upgrades.size : NATIONS[o] ? NATIONS[o].ups.size : 0);
+const outpostLimit = () => perFort(ME) * fortsHeldBy(ME);
+// every province you may hold: each fort (the capital counts) and the outposts it allows
+const provLimit = (o = ME) => fortsHeldBy(o) * (1 + perFort(o));
 const pendingOutposts = () => S.units.filter(u => u.owner === ME && ((u.build && u.build.type === 'outpost') || (u.pending && u.pending.type === 'outpost'))).length;
 function outpostWhy() {
   const lim = outpostLimit(); if (lim === Infinity) return null;
   const n = outpostCount() + pendingOutposts();
-  return n >= lim ? `Outpost limit reached (${n}/${lim}) · each Fort allows 4 more` : null;
+  return n >= lim ? `Outpost limit reached (${n}/${lim}) · each Fort allows ${perFort(ME)} more` : null;
 }
 
 // soldiers in your armies (Mages don't count)

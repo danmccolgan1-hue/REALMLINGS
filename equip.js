@@ -199,7 +199,7 @@ function sideMix(armies) {
 // ---------- the Armory panel ----------
 let armOpen = false, armKey = '', armSel = 'd-sword', draft = null, armSpin = 0;
 function toggleArmory(open = !armOpen) { if (open && !armOpen) sfx('ui_panel'); armOpen = open; $q('#armory').hidden = !open; armKey = ''; if (open) { if (!draft) editDesign(armSel); if (techOpen) toggleTech(false); } }
-function editDesign(id) { if (id === 'mage') { armSel = 'mage'; draft = { id: 'mage', type: 'mage', name: 'Mage', weapon: S.mageGear.weapon, shield: S.mageGear.shield }; armKey = ''; return; } const d = designById(id); if (!d) return; armSel = id; draft = { ...d }; armKey = ''; }
+function editDesign(id) { if (id === 'mage') { armSel = 'mage'; draft = { id: 'mage', type: 'mage', name: UNIT_DEFS[MAGE].name, weapon: S.mageGear.weapon, shield: S.mageGear.shield }; armKey = ''; return; } const d = designById(id); if (!d) return; armSel = id; draft = { ...d }; armKey = ''; }
 function newDesign(type) {
   const race = raceOf(ME), sw = race === 'swamp', wd = race === 'wood', ch = wd && type === 'cav';
   const n = S.designs.filter(d => d.type === type && (d.race || 'realm') === race).length + 1;
@@ -208,7 +208,7 @@ function newDesign(type) {
 }
 function saveDraft() {
   if (!draft) return;
-  if (draft.type === 'mage') { S.mageGear = { weapon: draft.weapon, shield: MAGE_WEAPONS[draft.weapon].twoH ? null : draft.shield }; registerMage(); armKey = ''; cmdKey = ''; toast(`Mages now carry a ${MAGE_WEAPONS[draft.weapon].name}${S.mageGear.shield ? ' and a ' + SHIELD_DEFS[S.mageGear.shield].name : ''}.`); return; }
+  if (draft.type === 'mage') { S.mageGear = { weapon: draft.weapon, shield: MAGE_WEAPONS[draft.weapon].twoH ? null : draft.shield }; registerMage(); armKey = ''; cmdKey = ''; toast(`${UNIT_DEFS[MAGE].name}s now carry a ${MAGE_WEAPONS[draft.weapon].name}${S.mageGear.shield ? ' and a ' + SHIELD_DEFS[S.mageGear.shield].name : ''}.`); return; }
   const name = ($q('#armName') && $q('#armName').value.trim()) || draft.name; draft.name = name.slice(0, 24);
   const cur = draft.id && designById(draft.id);
   if (cur && !cur.builtin && !designInUse(cur.id)) { Object.assign(cur, draft); registerDesign(cur); toast(`${cur.name} saved.`); }
@@ -298,17 +298,17 @@ document.addEventListener('click', e => { if (e.target.closest && e.target.close
 window.addEventListener('keydown', e => { if (!S.started || (e.target && /INPUT|TEXTAREA/.test(e.target.tagName))) return; if (e.key.toLowerCase() === 'g' && !e.ctrlKey && !e.metaKey) toggleArmory(); else if (e.key === 'Escape' && armOpen) toggleArmory(false); });
 
 function renderMageEditor(list) {
-  const st = mageStats(draft), W = MAGE_WEAPONS[draft.weapon];
-  const lines = [['stave', 'Staves', 'Two-handed, the stronger attack'], ['wand', 'Wands', 'One-handed: leaves room for a shield']].map(([line, name, note]) => `<div class="ar-row"><span class="ar-rl">${name}<small>${note}</small></span><div class="ar-eqs">${Object.entries(MAGE_WEAPONS).filter(([, w]) => w.line === line).map(([k, w]) => equipButton('weapon', k, w, draft.weapon === k, lockWhy(w))).join('')}</div></div>`).join('');
-  const shields = `<div class="ar-row"><span class="ar-rl">Shield<small>${W.twoH ? 'Staves need both hands' : 'Wands only'}</small></span><div class="ar-eqs"><button type="button" class="ar-eq${!draft.shield || W.twoH ? ' on' : ''}" data-eq="shield:none"><span class="ar-none">—</span><span>None</span></button>${Object.entries(SHIELD_DEFS).map(([k, sh]) => equipButton('shield', k, sh, draft.shield === k && !W.twoH, W.twoH ? 'Two-handed stave' : lockWhy(sh))).join('')}</div></div>`;
+  const st = mageStats(draft), W = MAGE_WEAPONS[draft.weapon], M = UNIT_DEFS[MAGE].name, staffOnly = isWd(ME);   // v96: Druids carry staves only (no wands, no shields)
+  const lines = [['stave', 'Staves', staffOnly ? 'Two-handed. Druids carry staves only' : 'Two-handed, the stronger attack'], ['wand', 'Wands', 'One-handed: leaves room for a shield']].filter(([line]) => !staffOnly || line === 'stave').map(([line, name, note]) => `<div class="ar-row"><span class="ar-rl">${name}<small>${note}</small></span><div class="ar-eqs">${Object.entries(MAGE_WEAPONS).filter(([, w]) => w.line === line).map(([k, w]) => equipButton('weapon', k, w, draft.weapon === k, lockWhy(w))).join('')}</div></div>`).join('');
+  const shields = staffOnly ? '' : `<div class="ar-row"><span class="ar-rl">Shield<small>${W.twoH ? 'Staves need both hands' : 'Wands only'}</small></span><div class="ar-eqs"><button type="button" class="ar-eq${!draft.shield || W.twoH ? ' on' : ''}" data-eq="shield:none"><span class="ar-none">—</span><span>None</span></button>${Object.entries(SHIELD_DEFS).map(([k, sh]) => equipButton('shield', k, sh, draft.shield === k && !W.twoH, W.twoH ? 'Two-handed stave' : lockWhy(sh))).join('')}</div></div>`;
   $q('#armory').innerHTML = `<div class="ar-head"><b>Armory</b><span>Design the soldiers your Barracks train. Better gear costs more.</span><button type="button" class="tp-x" data-ar="close" aria-label="Close the Armory">×</button></div>
     <div class="ar-body"><div class="ar-list">${list}</div><div class="ar-edit">
-      <div class="ar-top"><canvas id="armPrev" width="220" height="220" aria-label="Preview of the Mage"></canvas>
-        <div class="ar-sum"><div class="ar-kind" style="font-size:15px;font-weight:800;color:var(--chip-text)">Mage gear · every Mage</div>
+      <div class="ar-top"><canvas id="armPrev" width="220" height="220" aria-label="Preview of the ${M}"></canvas>
+        <div class="ar-sum"><div class="ar-kind" style="font-size:15px;font-weight:800;color:var(--chip-text)">${M} gear · every ${M}</div>
         ${statBar('Attack', st.atk, 18, st.atk)}${statBar('Health', st.hp, 75, st.hp)}${statBar('Armor', st.red, 0.65, Math.round(st.red * 100) + '%')}${statBar('Speed', st.speed, 2, st.speed.toFixed(2))}
         <div class="ar-cost"><span>Train</span>${costHTML(UNIT_DEFS[MAGE].cost)}<span>Upkeep</span>${costHTML(UNIT_DEFS[MAGE].upkeep)}</div>
-        <div class="ar-note">Mages are trained at a Mage Tower. Their gear is shared: changing it re-equips every Mage.</div>
-        <div class="ar-btns"><button type="button" class="ar-save" data-ar="save">Equip all Mages</button></div></div></div>
+        <div class="ar-note">${M}s are trained at a ${BUILD_DEFS.magetower ? BUILD_DEFS.magetower.name : 'Mage Tower'}. Their gear is shared: changing it re-equips every ${M}.</div>
+        <div class="ar-btns"><button type="button" class="ar-save" data-ar="save">Equip all ${M}s</button></div></div></div>
       <div class="ar-sec">Weapon</div>${lines}${shields}</div></div>`;
 }
 

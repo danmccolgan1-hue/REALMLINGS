@@ -237,7 +237,7 @@ function houseSprite(v, roof, race) {
     if (v % 2) SwampBuild.shroom(g, 14, 10, 0.7, '#d8443a');
     houseRoofed.set(key, c); return c;
   }
-  // Woodling homes: hollow trees with doors (2 of every 3 doors in the nation's color)
+  // Woodling homes: hollow trees with doors (2 of every 3 doors and leafy crowns in the nation's color)
   if (race === 'wood') {
     g.translate(0, 4); g.scale(0.82, 0.82);
     WoodBuild.treeHouse(g, 0, 0, v, roof || null, 0);
@@ -301,7 +301,7 @@ function civTarget(cv) {
   else { const st = S.buildings.get(p) ? S.buildings.get(p).stage : 0, rx = st === 2 ? 80 : 40; x = c[0] + (Math.random() - 0.5) * rx * 2; y = c[1] + (st === 2 ? 64 : 36) + Math.random() * 14; }
   [cv.tx, cv.ty] = clampInto(p, x, y);
 }
-const civsShown = () => cam.z >= civZ;
+const civsShown = () => cam.z >= civZ && !(VIEW && VIEW.calm);   // v96: the Settings toggle hides villagers
 const civDangerMemo = { t: -1, m: new Map() };
 function civDanger(p) {
   if (civDangerMemo.t !== S.t) { civDangerMemo.t = S.t; civDangerMemo.m.clear(); }

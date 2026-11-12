@@ -247,7 +247,7 @@ const SW_TEXT = {
     earthquake: [null, 'A Warlock standing in an enemy province your army occupies can cast an Earthquake: after 2 minutes every building in that province is destroyed, and every wall on its borders.'],
     mushroom: [null, 'Swamplings know this from the start: mushroom beds in swamps.']
   },
-  reps: { 'rep-trade': ['Thug Guilds', 'Thug Dens make 5% more gold.'], 'rep-sword': ['Axe Mastery', 'Axes deal 5% more damage.'], 'rep-horsespeed': ['Swift Ogres', 'Ogres run 5% faster.'], 'rep-cavhp': ['Hardy Ogres', 'Ogres have 5% more health.'], 'rep-magecap': ['Warlock Academy', 'Raises the Warlock limit by 1.'], 'rep-masons': ['Swampwrights’ Lodge', 'Raises the Swampwright limit by 1.'], 'rep-wayfinders': ['Swampstriders’ Pack', 'Raises the Swampstrider limit by 1.'] },
+  reps: { 'rep-trade': ['Thug Guilds', 'Thug Dens make 5% more gold.'], 'rep-sword': ['Axe Mastery', 'Axes deal 5% more damage.'], 'rep-horsespeed': ['Swift Ogres', 'Ogres run 5% faster.'], 'rep-cavhp': ['Hardy Ogres', 'Ogres have 5% more health.'], 'rep-magecap': ['Warlock Academy', 'Raises the Warlock limit by 1.'], 'rep-masons': ['Swampwrights’ Lodge', 'Raises the Swampwright limit by 1.'], 'rep-wayfinders': ['Swampstriders’ Pack', 'Raises the Swampstrider limit by 1.'], 'rep-shockcast': ['Swift Fireball', 'Fireball takes 5% less time to cast.'] },
   trees: { mag: { locked: 'Research the Warlock Tower (Government Tier II), then build one to unlock Magic.', rate: 'Warlock Tower +2, Spire +4, Grand Spire +6 per payout', tiers: ['Warlock Tower', 'Warlock Spire', 'Warlock Grand Spire'] }, gov: { rate: 'Forts +2, Capital +3, Hot Springs +2 per payout (outposts give none)' } }
 };
 const ORIG = { saved: false };
@@ -302,7 +302,7 @@ CAST.spyre = { name: () => 'Scouting Pyre', line: 'spyre', instant: true,
   go(c) { S.stock.wood -= SPYRE.wood; S.spyres.push({ prov: c.prov, owner: ME, t0: S.t, until: S.t + SPYRE.dur }); S.cd['spyre' + c.id] = S.t + perWarlockCd(c, SPYRE.cd); computeFog(); toast(`A Scouting Pyre blazes up in ${provName(c.prov)}: for 2 minutes it sees every neighboring province in its line of sight.`); } };
 CAST.ftrap = { name: () => TECH_BY_ID[lineTech('ftrap')].name, line: 'ftrap', instant: true,
   why: c => S.ftraps.some(x => x.owner === ME && x.prov === c.prov) ? 'A fire trap is already set here' : S.ftraps.filter(x => x.owner === ME).length >= warlockCount(ME) ? `One trap per Warlock (${S.ftraps.filter(x => x.owner === ME).length}/${warlockCount(ME)})` : null,
-  go(c) { const lv = lvl('ftrap'); S.ftraps.push({ prov: c.prov, owner: ME, lv, t0: S.t, ignore: S.units.filter(v => v.kind === 'army' && v.prov === c.prov && hostile(v.owner, ME)).map(v => v.id) }); toast(`${TECH_BY_ID[lineTech('ftrap')].name} set in ${provName(c.prov)}. The next enemy army to enter is engulfed: enough fire to kill ${FIRE_TRAP[lv]} Footmen.`); } };
+  go(c) { const lv = lvl('ftrap'); S.ftraps.push({ prov: c.prov, owner: ME, lv, mult: Math.pow(1.1, repLv('rep-ftrap')), t0: S.t, ignore: S.units.filter(v => v.kind === 'army' && v.prov === c.prov && hostile(v.owner, ME)).map(v => v.id) }); toast(`${TECH_BY_ID[lineTech('ftrap')].name} set in ${provName(c.prov)}. The next enemy army to enter is engulfed: enough fire to kill ${FIRE_TRAP[lv]} Footmen.`); } };
 CAST.pfire = { name: () => TECH_BY_ID[lineTech('pfire')].name, line: 'pfire', instant: true,
   target: c => c.kind === 'army' ? c : S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === c.prov && !v.battle) || c,
   why: c => cdLeft('pfire' + c.id) > 0 ? `Ready in ${Math.ceil(cdLeft('pfire' + c.id))} s` : null,
@@ -335,7 +335,7 @@ function stepPyromancy(t) {
     const foe = S.units.find(v => v.kind === 'army' && v.prov === T.prov && hostile(v.owner, T.owner) && troopCount(v) > 0 && !v.retreating && !(T.ignore || []).includes(v.id));
     if (!foe) continue;
     S.ftraps = S.ftraps.filter(x => x !== T);
-    const killed = burnArmy(foe, FIRE_TRAP[T.lv] * arrowDmg());   // arrowDmg: exactly what it takes to bring down one Footman
+    const killed = burnArmy(foe, FIRE_TRAP[T.lv] * arrowDmg() * (T.mult || 1));   // arrowDmg: exactly what it takes to bring down one Footman
     S.trapBooms = (S.trapBooms || []).concat([{ x: foe.x, y: foe.y, t0: t, prov: T.prov }]);
     if (T.owner === ME) toast(`Your fire trap in ${provName(T.prov)} engulfs ${foe.name || 'an enemy army'}: ${killed} soldier${killed === 1 ? '' : 's'} burned.`);
     else if (foe.owner === ME) toast(`${foe.name} walks into a fire trap in ${provName(T.prov)}: ${killed} soldier${killed === 1 ? '' : 's'} lost.`, true);

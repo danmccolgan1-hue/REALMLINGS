@@ -46,7 +46,9 @@ const TECHS = [
   { id: 'traderoutes', tree: 'gov', tier: 2, req: ['roads', 'market'], cost: 110, name: 'Trade Routes', blurb: 'Your capital makes +1 gold for every Marketplace it can reach by road, through any number of your provinces.' },
   // Government, Tier III (own 2 Forts)
   { id: 'roads3', tree: 'gov', tier: 3, req: 'roads2', cost: 200, name: 'Cobblestone Roads', blurb: 'Every road is paved with cobbles: units move 50% faster along roads.' },
-  { id: 'forts3', tree: 'gov', tier: 3, req: 'forts2', cost: 200, name: 'Fort Charters III', blurb: 'Raises the Fort limit from 5 to 7 and removes the outpost limit: claim as many outposts as you can hold.' },
+  { id: 'forts3', tree: 'gov', tier: 3, req: 'forts2', cost: 200, name: 'Fort Charters III', blurb: 'Raises the Fort limit from 5 to 7.' },   // v96: no longer removes the outpost limit (Efficient / Expand Administration raise it instead)
+  { id: 'effadmin', tree: 'gov', tier: 3, cost: 200, name: 'Efficient Administration', blurb: 'Every Fort (and your capital) allows 2 more provinces: 6 outposts each instead of 4.' },   // v96
+  { id: 'autobuild', tree: 'gov', tier: 3, cost: 300, afterT3: true, playerOnly: true, name: 'Master Builders', blurb: 'Tier III+: offered once every other Tier III Government technology is done. Masons can be set to build one kind of building on their own, in every province that has room, whenever you can afford it.' },   // v96
   { id: 'farsight', tree: 'gov', tier: 3, req: 'stealth', cost: 200, name: 'Far-Seeing Wayfinders', blurb: 'Wayfinders see into every province next to the one they stand in, and every unexplored province they look into is explored for good.' },
   { id: 'sophfarms', tree: 'gov', tier: 3, req: 'reffarms', cost: 200, name: 'Sophisticated Farms', blurb: 'Every Farm gives another +1 food.' },
   { id: 'sophmills', tree: 'gov', tier: 3, req: 'refmills', cost: 200, name: 'Sophisticated Lumber Mills', blurb: 'Every Lumber Mill gives another +1 wood.' },
@@ -173,6 +175,7 @@ for (const x of TECHS) {
   if (x.race) continue;
   if (['roads', 'roads2', 'roads3', 'granary', 'storehouse', 'w-bastard', 'w-longsword', 'w-greatsword'].includes(x.id) || /^s-|^a-(leather|chain|plate)/.test(x.id) || x.school === 'life' || x.id === 'school-life') x.race = 'realm';
   if (/^skull-/.test(x.id)) x.race = 'swamp';   // v95
+  if (['crypticwand', 'enigmaticwand'].includes(x.id)) x.race = ['realm', 'swamp'];   // v96: Druids carry staves only
   if (/^a-(stag|wyvern|dragon)/.test(x.id) || ['w-bearded', 'w-battleaxe', 'w-waraxe'].includes(x.id) || x.school === 'pyro' || x.id === 'school-pyro') x.race = 'swamp';   // (v90: the axes were missing here, so other races could research them)
   // Woodlings (v90): their swords and armor are theirs alone; they share Granaries, Storehouses and Herbomancy with the Realmlings;
   // no Necromancy; no cavalry technologies until their Champions arrive (a later update)
@@ -190,6 +193,7 @@ S.rep = {};
 const REP_STEP = 1.3, REP_LEFT = 5;
 const REP_TECHS = [
   ['rep-forts', 'gov', 100, 'Garrison Charters', 'Raises the Fort limit by 1. Its cost never rises, and once offered it stays on offer.', null],
+  ['rep-admin', 'gov', 100, 'Expand Administration', 'Every Fort (and your capital) allows 1 more province.', null],   // v96
   ['rep-storage', 'gov', 100, 'Deeper Cellars', 'Raises gold, wood and food storage by 500 each.', null],
   ['rep-trade', 'gov', 100, 'Merchant Guilds', 'Trade Routes give 5% more gold.', 'traderoutes'],
   ['rep-lumber', 'gov', 100, 'Sawyer Guilds', 'Lumber Mills give 5% more wood.', null],
@@ -204,10 +208,20 @@ const REP_TECHS = [
   ['rep-cavhp', 'mil', 120, 'Hardy Riders', 'Cavalry have 5% more health.', null],
   ['rep-magecap', 'mag', 120, 'Mage Academy', 'Raises the Mage limit by 1.', null, '*'],
   ['rep-stave', 'mag', 120, 'Stave Attunement', 'Staves deal 5% more damage.', null, '*'],
-  ['rep-wand', 'mag', 120, 'Wand Attunement', 'Wands deal 5% more damage.', null, '*'],
+  ['rep-wand', 'mag', 120, 'Wand Attunement', 'Wands deal 5% more damage.', null, '*', ['realm', 'swamp']],
   ['rep-harvest', 'mag', 120, 'Fertile Fields', 'Harvest (at every rank) gives another 2% food from your Farms.', 'harvest', 'life', 'realm'],
   ['rep-graverob', 'mag', 120, 'Deeper Graves', 'Grave Robbing (at every rank) yields 2% more gold.', 'graverob', 'death'],
-  ['rep-trading', 'mag', 120, 'Planar Brokers', 'Interdimensional Trading (at every rank) yields 2% more of each resource.', 'trading', 'arcane']
+  ['rep-trading', 'mag', 120, 'Planar Brokers', 'Interdimensional Trading (at every rank) yields 2% more of each resource.', 'trading', 'arcane'],
+  // v96: casting-time repeatables for every race, and a combat repeatable or two for every school
+  ['rep-shockcast', 'mag', 120, 'Swift Shockwave', 'Shockwave takes 5% less time to cast.', null, '*'],
+  ['rep-quakecast', 'mag', 120, 'Swift Earthquake', 'Earthquake takes 5% less time to cast.', 'earthquake', '*'],
+  ['rep-gelem', 'mag', 120, 'Deep Waters', 'The Grand Elemental hits 10% harder and has 10% more health.', 'gelemental', 'elemental', 'wood'],
+  ['rep-rock', 'mag', 120, 'Bedrock', 'Rock Armor’s stone shield holds 10% more damage.', 'rockarmor', 'elemental', 'wood'],
+  ['rep-skin', 'mag', 120, 'Living Bark', 'Hardened Skin (at every rank) gives 10% more extra health.', 'skin', 'life', ['realm', 'wood']],
+  ['rep-curse', 'mag', 120, 'Lingering Curses', 'Cursed Weapons (at every rank) give 10% more extra damage.', 'curse1', 'death', ['realm', 'swamp']],
+  ['rep-stasis', 'mag', 120, 'Frozen Moments', 'Stasis traps hold an army 10% longer.', 'stasis', 'arcane'],
+  ['rep-fiery', 'mag', 120, 'Searing Flames', 'Fiery Weapons (at every rank) are 10% more likely to strike a double blow.', 'fiery1', 'pyro', 'swamp'],
+  ['rep-ftrap', 'mag', 120, 'Hotter Coals', 'Fire traps burn 10% hotter.', 'firetrap', 'pyro', 'swamp']
 ];
 const repLv = id => S.rep[id] || 0;
 for (const [id, tree, cost, base, blurb, req, school, race] of REP_TECHS) TECHS.push({
@@ -230,6 +244,8 @@ function techsLeft(tree) {
   return TECHS.filter(x => x.tree === tree && !x.rep && techFor(x, raceOf(ME)) && !st.done.includes(x.id) && x.id !== 'abandon' && !(tree === 'mag' && (x.id.startsWith('school-') ? !!sc : sc && x.school !== '*' && x.school !== sc))).length;
 }
 const repOpen = tree => techsLeft(tree) < REP_LEFT;
+// v96: a Tier III+ technology waits until every other Tier III technology of its tree is researched
+const tier3Done = tree => TECHS.every(x => x.tree !== tree || x.tier !== 3 || x.rep || x.afterT3 || !techFor(x, raceOf(ME)) || S.tech[tree].done.includes(x.id));
 // how many choices each tree offers: Retained Knowledge adds one, Retained Knowledge II another
 const techOptions = () => TECH_OPTIONS + (hasTech('retained') ? 1 : 0) + (hasTech('retained2') ? 1 : 0);
 // Forge and Mage Tower: once offered, they stay on offer until researched
@@ -266,7 +282,7 @@ function techBonus() { const y = { gold: 0, wood: 0, food: 0 }; for (const k of 
 const UPGRADE_TECHS = new Set(['battleforge', 'warforge', 'sanctum', 'arcanum']);
 function availTechs(tree) {
   const st = S.tech[tree], T = techTier(tree), rep = repOpen(tree);
-  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && techFor(x, raceOf(ME)) && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st) && forgeReady(x, st) && (!x.rep || rep));
+  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && techFor(x, raceOf(ME)) && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st) && forgeReady(x, st) && (!x.rep || rep) && (!x.afterT3 || tier3Done(tree)));
   if (tree === 'mag') { const sc = currentSchool(); avail = sc ? avail.filter(x => !x.id.startsWith('school-') && (x.school === '*' || x.school === sc)) : avail.filter(x => x.id.startsWith('school-')); }
   return avail;
 }

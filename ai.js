@@ -28,7 +28,7 @@ const aiExtraList = N => { const out = []; for (const [p, list] of S.extras) if 
 const aiHasBuilding = (N, type) => { for (const [p, list] of S.extras) if (nationOf(p) === N.id && list.some(e => e.type === type)) return true; return S.units.some(u => u.owner === N.id && u.build && u.build.type === type); };
 const aiCount = (N, type) => aiExtraList(N).filter(([, e]) => e.type === type).length + S.units.filter(u => u.owner === N.id && u.build && u.build.type === type).length;
 const armyPower = o => o ? rawStrength(S.units.filter(v => v.kind === 'army' && v.owner === o && troopCount(v) > 0)) : 0;
-const defPower = o => armyPower(o) + armyPower(allyOf(o));
+const defPower = o => armyPower(o) + alliesOf(o).reduce((n, x) => n + armyPower(x), 0);
 const canPay = (st, c) => Object.keys(c).every(k => (st[k] || 0) >= c[k]);
 const pay = (st, c) => { for (const k in c) st[k] -= c[k]; };
 
@@ -135,7 +135,7 @@ const aiForts = N => [...S.buildings.values()].filter(b => b.owner === N.id && b
 const aiFortLimit = N => FORT_LIMIT[['forts', 'forts2', 'forts3'].filter(id => aiHas(N, id)).length] + aiRep(N, 'rep-forts');
 const aiFortCount = N => aiForts(N) + N.ups.size;
 const aiOutposts = N => [...S.buildings].filter(([p, b]) => b.owner === N.id && b.stage === 0 && !N.ups.has(p)).length;
-const aiOutpostLimit = N => aiHas(N, 'forts3') ? Infinity : OUTPOSTS_PER_FORT * ([...S.buildings.values()].filter(b => b.owner === N.id && b.stage >= 1).length + N.ups.size);
+const aiOutpostLimit = N => perFort(N.id) * fortsHeldBy(N.id);
 const aiPendingOutposts = (N, self) => S.units.filter(u => u.owner === N.id && u !== self && ((u.build && u.build.type === 'outpost') || (u.aiJob && u.aiJob.type === 'outpost'))).length;
 const aiProvCount = N => provsOf(N.id).length;
 
@@ -187,11 +187,11 @@ function aiTier(N, tree) {
 const aiTechCost = (N, x) => Math.round(x.cost * (x.rep && !FLAT_REPS.has(x.id) ? Math.pow(REP_STEP, aiRep(N, x.id)) : 1) * treeCostMult(x.tree) * techCostMult(aiProvCount(N)));
 function aiTechsLeft(N, tree) {
   const st = N.tech[tree], sc = tree === 'mag' ? N.school : null;
-  return TECHS.filter(x => x.tree === tree && !x.rep && techFor(x, N.race) && !st.done.includes(x.id) && x.id !== 'abandon' && !(tree === 'mag' && (x.id.startsWith('school-') ? !!sc : sc && x.school !== '*' && x.school !== sc))).length;
+  return TECHS.filter(x => x.tree === tree && !x.rep && !x.playerOnly && techFor(x, N.race) && !st.done.includes(x.id) && x.id !== 'abandon' && !(tree === 'mag' && (x.id.startsWith('school-') ? !!sc : sc && x.school !== '*' && x.school !== sc))).length;
 }
 function aiDrawOptions(N, tree) {
   const st = N.tech[tree], T = aiTier(N, tree), n = TECH_OPTIONS + (aiHas(N, 'retained') ? 1 : 0) + (aiHas(N, 'retained2') ? 1 : 0), rep = aiTechsLeft(N, tree) < REP_LEFT;
-  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && techFor(x, N.race) && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st, N.tech, N.race) && forgeReady(x, st) && (!x.rep || rep) && x.id !== 'abandon');
+  let avail = TECHS.filter(x => x.tree === tree && x.tier <= T && techFor(x, N.race) && !st.done.includes(x.id) && x.id !== st.cur && reqMet(x, st, N.tech, N.race) && forgeReady(x, st) && (!x.rep || rep) && x.id !== 'abandon' && !x.playerOnly);
   if (tree === 'mag') avail = N.school ? avail.filter(x => !x.id.startsWith('school-') && (x.school === '*' || x.school === N.school)) : avail.filter(x => x.id.startsWith('school-'));
   const weight = x => x.id === 'forge' && aiHasBuilding(N, 'barracks') ? 1.5 : 1;
   const sh = avail.map(x => ({ x, k: Math.pow(Math.random(), 1 / weight(x)) })).sort((a, b) => b.k - a.k).map(o => o.x), top = sh.filter(x => x.tier === T && !x.rep), opts = [];
@@ -201,6 +201,26 @@ function aiDrawOptions(N, tree) {
   for (const x of sh) if (opts.length < n && !opts.includes(x)) opts.push(x);
   for (const x of opts) if (STICKY_TECHS.has(x.id) && !st.sticky.includes(x.id)) st.sticky.push(x.id);
   st.opts = opts.map(x => x.id);
+}
+// v96: a Moderate or Difficult nation that still has no school of magic after 30 minutes makes magic its priority:
+// Mage Tower research first, the tower first on the build list (no wood-upkeep veto), room made for it if need be
+const AI_MAGIC_LATE = 1800;
+const aiMagicLate = N => (N.diff === 'moderate' || N.diff === 'difficult') && !N.school && S.t >= AI_MAGIC_LATE;
+// such a nation that can pay for its Mage Tower but has no free building plot anywhere tears down
+// the building it can best spare (never the last Barracks, Forge or Temple), so the tower can go up
+function aiMakeRoomForTower(N) {
+  if (S.t < (N.roomAt || 0) || !canPay(N.stock, BUILD_DEFS.magetower.cost)) return;
+  const mine = provsOf(N.id).filter(p => !S.occ.has(p));
+  if (!mine.length || mine.some(p => !aiBuildWhy(N, p, 'magetower'))) return;   // there is room somewhere already
+  if (!mine.some(p => aiBuildWhy(N, p, 'magetower') === 'full')) return;
+  N.roomAt = S.t + 30;
+  const inc = N.income, cap = capitalOf(N.id), list = aiExtraList(N).filter(([p]) => aiBuildWhy(N, p, 'magetower') === 'full');
+  const spare = ['market', 'granary', 'storehouse', 'bank', 'stable', 'temple', 'farm', 'lumber', 'goldmine'];
+  const ok = ([, e]) => (e.type !== 'farm' || inc.food - ((BUILD_DEFS.farm.gives || {}).food || 3) > 2) && (e.type !== 'lumber' || inc.wood > 6) && (e.type !== 'temple' || aiCount(N, 'temple') > 1);
+  const pick = list.filter(ok).sort((a, b) => spare.indexOf(a[1].type) - spare.indexOf(b[1].type) || (b[0] === cap) - (a[0] === cap))
+    .find(([, e]) => spare.includes(e.type));
+  if (!pick) return;
+  const [p, e] = pick; S.extras.set(p, extrasIn(p).filter(x => x !== e)); N.income = aiIncome(N);
 }
 // what each difficulty likes to research
 const AI_MAGIC_PREFS = {
@@ -212,9 +232,11 @@ function aiTechWeight(N, tree, id) {
   const D = N.diff, x = TECH_BY_ID[id];
   if (D === 'easy') return 1;
   if (tree === 'gov') {
-    const W = { mushroom: 5, market: 8, advfarms: 6, advmills: 6, advmines: 4, forts: 9, forts2: 8, forts3: 7, reffarms: 5, refmills: 5, refmines: 4, sophfarms: 4, sophmills: 4, sophmines: 3, granary: 3, storehouse: 4, bank: 3, retained: 4, retained2: 3, forge: 4, magetower: 4, moat: 3, arrowslits: 3, stable: 2, 'rep-forts': 4, 'rep-storage': 3, 'rep-lumber': 3 };
-    if (D === 'difficult') Object.assign(W, { forts: 14, forts2: 13, forts3: 12, magetower: 16, retained: 6, market: 9, forge: 2 });
+    const W = { mushroom: 5, market: 8, advfarms: 6, advmills: 6, advmines: 4, forts: 9, forts2: 8, forts3: 7, effadmin: 9, 'rep-admin': 5, reffarms: 5, refmills: 5, refmines: 4, sophfarms: 4, sophmills: 4, sophmines: 3, granary: 3, storehouse: 4, bank: 3, retained: 4, retained2: 3, forge: 4, magetower: 4, moat: 3, arrowslits: 3, stable: 2, 'rep-forts': 4, 'rep-storage': 3, 'rep-lumber': 3 };
+    if (D === 'difficult') Object.assign(W, { forts: 14, forts2: 13, forts3: 12, magetower: 16, retained: 6, market: 9, forge: 2, walls: 60, walls2: 50 });   // v96: Difficult always takes the walls when offered
     if (D === 'moderate') Object.assign(W, { forge: 7, stable: 4, arrowslits: 4, moat: 5, magetower: N.phase === 'grow' ? 3 : 30 });
+    if (aiMagicLate(N)) W.magetower = 500;   // v96: 30 minutes in with no school of magic yet: the Mage Tower comes first
+    if (D === 'moderate' && aiProvCount(N) >= 20) Object.assign(W, { walls: 60, walls2: 50 });   // v96: Moderate goes for walls once it has 20 provinces
     return W[id] || 1;
   }
   if (tree === 'mil') {
@@ -275,13 +297,20 @@ function aiRedesign(N) {
 function aiPlan(N) {
   const D = AI_DIFF[N.diff], n = aiProvCount(N), P = { maxProvs: D.maxProvs, wf: D.wf, masons: n >= 6 ? D.masons2 : D.masons };
   const enemies = enemiesOf(N.id), threat = enemies.length > 0;
-  const enemyMax = Math.max(0, ...enemies.map(o => soldierCount(o) + (allyOf(o) && allyOf(o) !== N.id ? soldierCount(allyOf(o)) : 0)));
+  const enemyMax = Math.max(0, ...enemies.map(o => soldierCount(o) + alliesOf(o).filter(x => x !== N.id).reduce((n, x) => n + soldierCount(x), 0)));
   if (N.diff === 'moderate') {
-    // expand to 10, then research and build towards Mages, then expand to 20
+    // expand to 10, then research and build towards Mages, then expand to 20;
+    // v96: at 20 stop and build an army of about 6000 power (as far as the economy allows), then fill in any land left
     if (N.phase === 'grow' && (n >= 10 || (N.stuckSince !== null && S.t - N.stuckSince > 120 && n >= 6))) N.phase = 'mages';
     if (N.phase === 'mages' && aiMages(N) > 0) N.phase = 'grow2';
-    P.maxProvs = N.phase === 'grow2' ? 20 : 10;
+    if (N.phase === 'grow2' && (n >= 20 || (N.stuckSince !== null && S.t - N.stuckSince > 180))) { N.phase = 'army'; N.armySince = S.t; }   // (also when there is no land left to take)
+    if (N.phase === 'army' && (nationPower(N.id) >= AI_POWER_GOAL.moderate * 0.95 || (aiFoodCapped(N) && S.t - (N.armySince || 0) > 180))) N.phase = 'fill';
+    P.maxProvs = N.phase === 'fill' ? 99 : N.phase === 'grow2' || N.phase === 'army' ? 20 : 10;
+    if (N.phase === 'army' || N.phase === 'fill') P.powerGoal = AI_POWER_GOAL.moderate;
   }
+  // v96: Easy builds up to about 4000 power once it has 10 provinces; Difficult past 20 provinces builds all its food allows
+  if (N.diff === 'easy' && n >= 10) P.powerGoal = AI_POWER_GOAL.easy;
+  if (N.diff === 'difficult' && n > 20) P.powerGoal = Infinity;
   if (N.diff === 'easy') P.maxProvs = Math.min(P.maxProvs, 10);
   // soldiers wanted: a small guard and enough to meet an enemy
   let army = n < 4 ? 3 : N.diff === 'easy' ? 3 + Math.floor(n / 4) : N.diff === 'moderate' ? 5 + Math.round(n * 0.5) : 4 + Math.round(n * 0.35);
@@ -289,14 +318,17 @@ function aiPlan(N) {
   if (N.diff === 'moderate' && (N.phase === 'grow2' || N.stuckSince !== null)) army = Math.max(army, Math.round(n * 1.2) + 6);
   P.army = army;
   // forts: enough for the outpost limit, plus one early for Government Tier II (the Mage Tower)
-  P.forts = Math.max(N.diff === 'easy' ? 1 : 2, Math.ceil((Math.min(P.maxProvs, 40) - 1) / (OUTPOSTS_PER_FORT + 1)));
+  P.forts = Math.max(N.diff === 'easy' ? 1 : 2, Math.ceil((Math.min(P.maxProvs, 40) - 1) / (perFort(N.id) + 1)));
   P.wantForge = N.diff !== 'easy' && n >= (N.diff === 'difficult' ? 8 : 5);
-  P.wantTower = N.diff === 'difficult' || (N.diff === 'moderate' && N.phase !== 'grow') || (N.diff === 'easy' && n >= 8);
+  P.wantTower = N.diff === 'difficult' || (N.diff === 'moderate' && (N.phase !== 'grow' || aiMagicLate(N))) || (N.diff === 'easy' && n >= 8);
   P.wantTemple = N.diff !== 'easy' && n >= 6;
   P.useCav = N.diff === 'moderate' && n >= 8;
   return P;
 }
 
+// v96: army strength goals (power, as shown in the army list) and the food check that limits them
+const AI_POWER_GOAL = { easy: 4000, moderate: 6000 };
+const aiFoodCapped = N => N.income.food < 2 && !(N.stock.food > 400 && N.income.food >= 0);
 // ---------- every couple of seconds: the AI decides ----------
 function stepAI(t) {
   if (!S.started) return;
@@ -348,7 +380,10 @@ function aiTrain(N, P) {
   }
   // soldiers, while the army is short and food allows
   const soldiers = soldierCount(N.id) + N.queue.filter(q => MILITARY.has(q.kind)).length;
-  if (soldiers >= P.army) return;
+  // v96: a power goal keeps the Barracks busy past the head count, but only while food income stays positive
+  const goal = P.powerGoal && nationPower(N.id) + N.queue.filter(q => MILITARY.has(q.kind)).length * 75 < P.powerGoal;
+  if (soldiers >= P.army && !goal) return;
+  if (soldiers >= P.army && goal && aiFoodCapped(N) && !enemiesOf(N.id).length) return;
   const foodOk = N.income.food >= 2 || (N.stock.food > 400 && N.income.food >= -2) || enemiesOf(N.id).length;
   if (!foodOk) return;
   const barracks = aiExtraList(N).filter(([, e]) => e.type === 'barracks').map(([p]) => p);
@@ -425,13 +460,14 @@ function aiNextBuilding(N, P, skip = new Set()) {
   const has = type => aiCount(N, type) + (skip.has(type) ? 1 : 0);
   const rich = st.gold > aiStorage(N, 'gold') * 0.45 && st.wood > 250;
   const list = [];   // [type, urgent]
-  const woodLow = inc.wood < 4 + n * 0.6, foodLow = inc.food < 3 + Math.max(0, P.army - soldierCount(N.id)) * 2;
+  const woodLow = inc.wood < 4 + n * 0.6, foodLow = inc.food < 3 + Math.max(0, P.army - soldierCount(N.id)) * 2 || (P.powerGoal && nationPower(N.id) < P.powerGoal && inc.food < 5);   // v96: power goals want farms
   if (woodLow && inc.food >= 0) list.push(['lumber', true]);
   if (foodLow) list.push(['farm', true]);
   if (woodLow) list.push(['lumber', true]);
   for (const p of mine) if (yields[p].deposit && N.surveyed.has(p) && !aiBuildWhy(N, p, 'goldmine')) { list.push(['goldmine', true]); break; }
   if (!has('barracks') && (n >= 4 || enemiesOf(N.id).length)) list.push(['barracks', true]);
-  if (P.wantTower && aiHas(N, 'magetower') && !has('magetower')) list.push(['magetower', true]);
+  // v96: Moderate and Difficult put the Mage Tower first (making room for it if they must, aiMakeRoomForTower)
+  if (P.wantTower && aiHas(N, 'magetower') && !has('magetower')) { if (!aiMagicLate(N)) list.push(['magetower', true]); else { list.unshift(['magetower', true]); aiMakeRoomForTower(N); } }
   if (P.wantForge && aiHas(N, 'forge') && !has('forge')) list.push(['forge', true]);
   if (P.wantTemple && has('temple') < (rich && N.diff !== 'easy' ? Math.ceil(n / 3) : 1)) list.push(['temple', has('temple') < 1 || rich]);
   if (n >= 12 && has('barracks') < 2 && N.diff !== 'easy') list.push(['barracks', false]);
@@ -446,7 +482,7 @@ function aiNextBuilding(N, P, skip = new Set()) {
     if (skip.has(type) && !['farm', 'lumber', 'market', 'temple'].includes(type)) continue;
     const d = BUILD_DEFS[type];
     // never let a building's wood upkeep push wood income below +1 (Lumber Mills pay for themselves)
-    if (type !== 'lumber' && inc.wood - ((d.upkeep && d.upkeep.wood) || 0) < 1 && !(type === 'farm' && inc.food < 0)) continue;
+    if (type !== 'lumber' && !(type === 'magetower' && aiMagicLate(N)) && inc.wood - ((d.upkeep && d.upkeep.wood) || 0) < 1 && !(type === 'farm' && inc.food < 0)) continue;
     // saving up for a fort (the outpost limit is reached): only Lumber Mills and urgent food
     if (N.saveFort && type !== 'lumber' && !(type === 'farm' && inc.food < 0) && st.wood - (d.cost.wood || 0) < FORT_UPGRADE.cost.wood) continue;
     if (!canPay(st, d.cost)) { if (KEY_BUILDINGS.has(type) && type !== 'temple') return { type, wait: true }; continue; }
@@ -534,8 +570,9 @@ function aiFortUp(N, P) {
   const need = aiFortCount(N) < Math.min(P.forts, aiFortLimit(N)) && (aiOutposts(N) + aiPendingOutposts(N) >= aiOutpostLimit(N) - 1 || aiForts(N) < (N.diff === 'easy' ? 1 : 2) && mine.length >= 4);
   N.saveFort = need && !canPay(st, FORT_UPGRADE.cost);
   if (need && canPay(st, FORT_UPGRADE.cost)) {
+    // (v96: never a fort on an ally's border: that would end the alliance)
     const cap = capitalOf(N.id), d = hopsFrom(cap >= 0 ? cap : N.capital, allNbr);
-    const c = mine.filter(p => S.buildings.get(p).stage === 0 && !N.ups.has(p) && !S.occ.has(p)).sort((a, b) => Math.abs(d[a] - 2) - Math.abs(d[b] - 2) || provValue(b) - provValue(a))[0];
+    const c = mine.filter(p => S.buildings.get(p).stage === 0 && !N.ups.has(p) && !S.occ.has(p) && !alliesOf(N.id).some(x => allNbr[p].some(q => nationOf(q) === x))).sort((a, b) => Math.abs(d[a] - 2) - Math.abs(d[b] - 2) || provValue(b) - provValue(a))[0];
     if (c !== undefined) { pay(st, FORT_UPGRADE.cost); N.ups.set(c, { t0: S.t }); }
   }
   for (const [type, ids] of [['forge', ['battleforge', 'warforge']], ['magetower', ['sanctum', 'arcanum']]]) {
@@ -622,10 +659,11 @@ function aiWarGoal(N, a, enemies) {
 }
 // GPC12b: a nation whose armies are at least twice as strong (by estimated power, not head count) as a bordering
 // opponent's (with its ally) thinks it over for a minute, then declares war if it still holds
-const AI_WAR_THINK = 60;
+const AI_WAR_THINK = 60, AI_WAR_MARGIN = 1000;
 function aiConsiderWar(N, P) {
   if (enemiesOf(N.id).length) { N.warPlan = null; return; }
-  const myPow = armyPower(N.id), ok = o => o !== N.id && aliveNation(o) && !allied(N.id, o) && nationsBorder(N.id, o) && !declareWhy(N.id, o) && myPow >= 2 * Math.max(1, defPower(o));
+  // v96: also at least 1000 more power (as shown in the army list) than the target and its allies
+  const myPow = armyPower(N.id), ok = o => o !== N.id && aliveNation(o) && !allied(N.id, o) && nationsBorder(N.id, o) && !declareWhy(N.id, o) && myPow >= 2 * Math.max(1, defPower(o)) && (myPow - defPower(o)) * 10 >= AI_WAR_MARGIN;
   if (N.warPlan) {
     if (S.t < N.warPlan.at) { N.warCheck = N.warPlan.at; return; }
     const t = N.warPlan.target; N.warPlan = null;

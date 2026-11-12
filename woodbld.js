@@ -367,7 +367,13 @@ function treeHouse(g, x, y, v, door, t = 0) {
   // the leafy crown
   const [cx2, cy2] = ISO(x, y, T.h);
   branch(g, cx2, cy2 + 4, cx2 - T.s * 0.6, cy2 - T.s * 0.3, 3, -2); branch(g, cx2, cy2 + 4, cx2 + T.s * 0.6, cy2 - T.s * 0.35, 3, 2);
-  clump(g, cx2, cy2 - T.s * 0.45, T.s, 100 + v, T.leaf, T.hi, t);
+  // v96: a home in the nation's color wears its leaves in that color (like the other races' roofs)
+  clump(g, cx2, cy2 - T.s * 0.45, T.s, 100 + v, door || T.leaf, door ? shade(door, 0.35) : T.hi, t);
+}
+// lighten (amt > 0) or darken (amt < 0) a #rrggbb color
+function shade(hex, amt) {
+  const n = parseInt(hex.slice(1), 16), ch = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map(c => Math.round(amt >= 0 ? c + (255 - c) * amt : c * (1 + amt)));
+  return '#' + ch.map(c => c.toString(16).padStart(2, '0')).join('');
 }
 
 

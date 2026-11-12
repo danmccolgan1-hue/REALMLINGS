@@ -3,7 +3,7 @@
 // One save slot in this browser (localStorage), written by Save in Settings and by an autosave every 5 minutes of play.
 // Continue on the main menu loads it. Export / Import move a save as a file (to another computer, or to send with a bug report).
 // The map itself isn't stored: it is rebuilt from its seed, then everything that happened since is laid back on top.
-const GAME_VERSION = 'v95', SAVE_FORMAT = 1, SAVE_KEY = 'realm-save', AUTOSAVE_EVERY = 300;
+const GAME_VERSION = 'v96', SAVE_FORMAT = 1, SAVE_KEY = 'realm-save', AUTOSAVE_EVERY = 300;
 // every soldier design ever made (yours and the computer nations'), so troops of older designs still work after loading
 const ALL_DESIGNS = new Map();
 const _registerDesign = registerDesign;
@@ -138,7 +138,7 @@ function loadSave(d) {
   metBy.clear(); metQueue.length = 0; findQueue.length = 0; flagDismissed.clear(); navCache.clear();
   territory = null; repVer++; wallsVer++; townSig = ''; realmSig = ''; roadFolk.clear(); hoverPath = undefined; camTween = null;
   cmdKey = ''; rosterKey = ''; capPanelKey = ''; techKey = ''; techBtnKey = ''; armKey = ''; provKey = ''; barKey = ''; flagKey = ''; dipKey = ''; selKey = '';
-  setupCapitalPanel(); registerMage(); computeIncome(); S.sig = ''; computeFog();
+  setupCapitalPanel(); registerMage(); setupV96(true); computeIncome(); S.sig = ''; computeFog();
   { const cap = S.capital; if (cap >= 0) { const near = fitView(boxOf([cap, ...allNbr[cap]]), 0.95); f4Z = clampZ(near.z / 2); } }
   cacheDirty = true; fogDirty = true; miniDirty = true;
   S.started = true; S.last = 0; S.paused = false; S.lastSave = S.t;

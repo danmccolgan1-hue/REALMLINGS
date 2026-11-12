@@ -281,6 +281,11 @@ const QUAKE_TIME = 120, SHOCK_TIME = 120;
 const SPELL2 = { quake: { name: 'Earthquake', time: QUAKE_TIME }, shock: { get name() { return SHOCK(); }, time: SHOCK_TIME } };
 // the Swamplings' Warlocks hurl a Fireball where Realmling Mages cast a Shockwave (the same spell)
 const SHOCK = (o = ME) => isSw(o) ? 'Fireball' : 'Shockwave';
+// v96: Swift Shockwave / Swift Earthquake (repeatable Magic) shorten the cast by 5% a level (compounding), for any nation
+const repOf = (o, id) => o === ME ? repLv(id) : NATIONS[o] ? aiRep(NATIONS[o], id) : 0;
+const spellTime = (k, o) => SPELL2[k].time * Math.pow(0.95, repOf(o, k === 'quake' ? 'rep-quakecast' : 'rep-shockcast'));
+const castLen = T => T >= 60 ? `${+(T / 60).toFixed(T % 60 ? 1 : 0)} minute${T === 60 ? '' : 's'}` : `${Math.round(T)} seconds`;
+const quakeT = c => (c.quake && c.quake.T) || SPELL2[c.quake.kind].time;
 S.quakes = []; let quakeSeq = 0, quakeAim = false;
 const controls = (p, o) => { const occ = S.occ.get(p); return occ !== undefined ? occ === o : nationOf(p) === o; };
 const quakeCaster = u => u && magesIn(u) > 0;
@@ -309,9 +314,9 @@ function startSpell2(c, kind, q) {
   const why = kind === 'quake' ? quakeWhy(c) : shockWhy(c, q);
   if (why) { if (c.owner === ME) toast(SPELL2[kind].name + ': ' + why.toLowerCase() + '.', true); return false; }
   if (c.cast && typeof cancelCast === 'function') cancelCast(c);
-  c.quake = { kind, t0: S.t, to: q, id: ++quakeSeq };
+  c.quake = { kind, t0: S.t, to: q, id: ++quakeSeq, T: spellTime(kind, c.owner) };
   const where = kind === 'quake' ? provName(c.prov) : provName(q);
-  if (c.owner === ME) { toast(kind === 'quake' ? `${c.name} begins an Earthquake in ${where}: ${QUAKE_TIME / 60} minutes of casting. Moving or fighting stops it.` : `${c.name} begins a ${SHOCK()} at the wall toward ${where}: ${SHOCK_TIME / 60} minutes of casting. Moving or fighting stops it.`); sfx('mg_arcane', { prov: c.prov }); }
+  if (c.owner === ME) { toast(kind === 'quake' ? `${c.name} begins an Earthquake in ${where}: ${castLen(c.quake.T)} of casting. Moving or fighting stops it.` : `${c.name} begins a ${SHOCK()} at the wall toward ${where}: ${castLen(c.quake.T)} of casting. Moving or fighting stops it.`); sfx('mg_arcane', { prov: c.prov }); }
   else if (atWar(ME, c.owner)) { S.quakes.push({ id: c.quake.id, from: c.prov, to: q, by: c.owner, kind }); toast(`${kind === 'shock' ? SHOCK(c.owner) : 'Earthquake'} at ${provName(c.prov)}! A ${isSw(c.owner) ? 'Warlock' : 'Mage'} of the ${PLAYERS[c.owner].name} is casting.`, true); flagKey = ''; }
   cmdKey = ''; return true;
 }
@@ -330,9 +335,9 @@ function quakeStrike(c) {
   for (const k of [...S.xup.keys()]) if (+k.split('@')[0] === p) S.xup.delete(k);
   for (const v of S.units) if (v.build && v.build.prov === p && BUILD_DEFS[v.build.type]) cancelBuild(v);
   const walls = [...S.walls].filter(i => { const e = world.edges[i]; return e.a === p || e.b === p; });
-  for (const i of walls) breakWall(i, null);
+  let broke = 0, cracked = 0; for (const i of walls) { if (spellHitWall(i, null)) broke++; else cracked++; }   // v96: a stone wall only cracks on the first hit
   territory = null; cacheDirty = true; computeIncome(); provKey = '';
-  const msg = `The earth splits at ${provName(p)}: ${lost} building${lost === 1 ? '' : 's'} and ${walls.length} wall${walls.length === 1 ? '' : 's'} destroyed.`;
+  const msg = `The earth splits at ${provName(p)}: ${lost} building${lost === 1 ? '' : 's'} and ${broke} wall${broke === 1 ? '' : 's'} destroyed${cracked ? `; ${cracked} stone wall${cracked === 1 ? '' : 's'} cracked` : ''}.`;
   if (c.owner === ME) { toast(msg); sfx('war_fort_win', { vol: 0.7 }); }
   else if (nationOf(p) === ME || S.explored.has(p)) toast(msg, nationOf(p) === ME);
 }
@@ -342,12 +347,12 @@ function stepQuakes(t) {
     if (!quakeCaster(c)) { endQuake(c); continue; }
     const k = c.quake.kind;
     if (c.moving || c.battle) { endQuake(c, `${c.name} stopped casting the ${SPELL2[k].name}.`); continue; }
-    if (t - c.quake.t0 < SPELL2[k].time) continue;
+    if (t - c.quake.t0 < quakeT(c)) continue;
     const q = c.quake.to; endQuake(c);
     if (k === 'quake') { if (!quakeWhyAt(c)) { spellFx('quake', c, c.prov); quakeStrike(c); } continue; }
     const e = wallBetween(c.prov, q), i = e ? world.edges.indexOf(e) : -1;
     if (i >= 0) spellFx(isSw(c.owner) ? 'fireball' : 'shock', c, q, e);
-    if (i >= 0) { breakWall(i, c); if (c.owner === ME) toast(`The ${SHOCK()} ${isSw(ME) ? 'blasts apart' : 'shatters'} the wall between ${provName(c.prov)} and ${provName(q)}.`); }
+    if (i >= 0) { const gone = spellHitWall(i, c); if (c.owner === ME) toast(gone ? `The ${SHOCK()} ${isSw(ME) ? 'blasts apart' : 'shatters'} the wall between ${provName(c.prov)} and ${provName(q)}.` : `The ${SHOCK()} cracks the stone wall between ${provName(c.prov)} and ${provName(q)}. One more ${SHOCK()} or an Earthquake will bring it down.`); }
   }
   // banners only last while the caster is still at war with you
   if (S.quakes.length) S.quakes = S.quakes.filter(x => atWar(ME, x.by) && S.units.some(v => v.quake && v.quake.id === x.id));
@@ -363,13 +368,13 @@ const quakeWhyAt = c => S.occ.get(c.prov) !== c.owner ? 'no longer occupied' : n
 const _extraInfo = extraCmdInfo;
 extraCmdInfo = id => {
   if (id !== 'quake' && id !== 'shock') return _extraInfo(id);
-  const c = selCaster(), on = c && c.quake && c.quake.kind === id, T = SPELL2[id].time;
+  const c = selCaster(), on = c && c.quake && c.quake.kind === id, T = on ? quakeT(c) : spellTime(id, ME);
   if (id === 'quake') {
     const why = !c ? 'No Mage selected' : on ? null : castBusy(c) || quakeWhy(c);
-    return { name: on ? `Earthquake (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : 'Earthquake', desc: `Cast it while standing in an enemy province your army occupies: after ${T / 60} minutes every building in that province is destroyed, and every wall on its borders.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click to cast', icon: xIcon('quake') };
+    return { name: on ? `Earthquake (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : 'Earthquake', desc: `Cast it while standing in an enemy province your army occupies: after ${castLen(T)} every building in that province is destroyed, and every wall on its borders.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click to cast', icon: xIcon('quake') };
   }
   const why = !c ? 'No Mage selected' : on ? null : castBusy(c) || (c.moving ? 'Stop moving first' : c.battle ? 'Not during battle' : null);
-  return { name: on ? `${SHOCK()} (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : quakeAim ? 'Pick a province…' : SHOCK(), desc: `Click this, then click a neighboring province of a nation you are at war with: after ${T / 60} minutes of casting the wall on that border is destroyed. Every ${UNIT_DEFS[MAGE].name} knows it.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click, then pick a province', icon: xIcon('shock') };
+  return { name: on ? `${SHOCK()} (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : quakeAim ? 'Pick a province…' : SHOCK(), desc: `Click this, then click a neighboring province of a nation you are at war with: after ${castLen(T)} of casting the wall on that border is destroyed. Every ${UNIT_DEFS[MAGE].name} knows it.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click, then pick a province', icon: xIcon('shock') };
 };
 const _extraUse = extraCmdUse;
 extraCmdUse = id => {
@@ -395,7 +400,7 @@ magicRows = (c, q) => {
   const base = _magicRows(c, q);
   if (!c || c.prov === q || !allNbr[c.prov].includes(q) || !wallBetween(c.prov, q)) return base;
   const why = shockWhy(c, q) || castBusy(c);
-  const row = `<button type="button" class="bm-item" data-type="shock" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${xIcon('shock')}"><span class="bm-name">${SHOCK()}: destroy the wall toward ${provName(q)}<small>${why || SHOCK_TIME / 60 + ' minutes of casting'}</small></span></button>`;
+  const row = `<button type="button" class="bm-item" data-type="shock" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${xIcon('shock')}"><span class="bm-name">${SHOCK()}: destroy the wall toward ${provName(q)}<small>${why || castLen(spellTime('shock', ME)) + ' of casting'}</small></span></button>`;
   return base ? base + row : '<div class="bm-sec">Magic</div>' + row;
 };
 menuEl.addEventListener('click', e => {
@@ -407,7 +412,7 @@ menuEl.addEventListener('click', e => {
 function drawQuakes(g, t) {
   for (const u of S.units) {
     if (!u.quake || !(u.owner === ME || S.visible.has(u.prov))) continue;
-    const K = typeof UKK === 'number' ? UKK : 1, T = SPELL2[u.quake.kind].time, fb = u.quake.kind === 'shock' && isSw(u.owner), col = u.quake.kind === 'quake' ? '#8a6a3a' : fb ? '#ff7a2c' : '#6f8fc9';
+    const K = typeof UKK === 'number' ? UKK : 1, T = quakeT(u), fb = u.quake.kind === 'shock' && isSw(u.owner), col = u.quake.kind === 'quake' ? '#8a6a3a' : fb ? '#ff7a2c' : '#6f8fc9';
     const r = (u.kind === 'army' ? 40 : 26) * K, f = Math.min(1, (S.t - u.quake.t0) / T), y = u.y - (u.kind === 'army' ? 80 : 60) * K, shake = Math.sin(t * 40) * 1.5;
     g.save(); g.translate(u.x + shake, u.y); g.scale(1, 0.45); g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.lineWidth = 6; g.strokeStyle = OL; g.setLineDash([6, 6]); g.stroke(); g.lineWidth = 4; g.strokeStyle = col; g.stroke(); g.setLineDash([]);
     if (u.quake.kind === 'shock') for (let k = 0; k < 2; k++) { const w = ((t * 0.8 + k * 0.5) % 1); g.globalAlpha = 1 - w; g.beginPath(); g.arc(0, 0, r * (1 + w * 1.6), 0, Math.PI * 2); g.lineWidth = 3; g.strokeStyle = col; g.stroke(); }

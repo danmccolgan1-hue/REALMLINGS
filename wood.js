@@ -223,7 +223,7 @@ const ROCK = { pct: 0.1, cd: 180 };
 AUTO.rock = { line: 'rock', name: () => TECH_BY_ID.rockarmor.name };
 const armyHealth = a => Object.keys(a.troops).reduce((n, k) => n + (a.troops[k] > 0 ? a.troops[k] * hpOf(a, k) : 0), 0);
 function raiseRock(a, t) {
-  const hp = Math.round(armyHealth(a) * ROCK.pct); if (hp <= 0) return;
+  const hp = Math.round(armyHealth(a) * ROCK.pct * Math.pow(1.1, repOf(a.owner, 'rep-rock'))); if (hp <= 0) return;   // v96: Bedrock (rep-rock) makes the shield 10% stronger a level
   a.rock = { hp, max: hp, t0: t }; a.rockCd = t + ROCK.cd;
   a.mfx = a.mfx && isFinite(a.mfx.until) ? a.mfx : { list: [], until: Infinity }; if (!a.mfx.list.some(e => e.k === 'rock')) a.mfx.list.push({ k: 'rock', tech: 'rockarmor' });
   if (a.owner === ME) toast(`${a.name}: Rock Armor (a stone shield worth ${hp} health).`);

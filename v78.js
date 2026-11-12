@@ -121,7 +121,7 @@ function drawArmyHealth(g, u, x, y, w, K) {
 // ---------- GC10: power under the army ----------
 function drawArmyPower(g, u, x, y, t) {
   const k = Math.max(1, 0.62 / cam.z), font = getComputedStyle(document.body).getPropertyValue('--font-display');
-  const txt = '⚔ ' + powerOf(u);
+  const txt = '⚔ ' + fmtPow(powerOf(u));
   g.save(); g.font = (9.5 * k) + 'px ' + font; g.textAlign = 'center'; g.textBaseline = 'middle';
   const w = g.measureText(txt).width + 10 * k, h = 13 * k;
   g.beginPath(); g.roundRect(x - w / 2, y - h / 2, w, h, h / 2); g.fillStyle = u.owner === ME ? 'rgba(243,228,196,0.92)' : 'rgba(250,224,220,0.92)'; g.fill(); g.lineWidth = 2 * k; g.strokeStyle = OL; g.stroke();
@@ -767,7 +767,7 @@ function renderInspect() {
   }).join('');
   const [cur, max] = armyHp(a);
   el.innerHTML = `<div class="iw-head"><b>${escHTML(a.name)}</b>${a.owner === ME ? `<button type="button" class="rn-btn" data-rename="unit:${a.id}" title="Rename this army">✎</button>` : ''}<button type="button" class="pm-x" data-iw="close" aria-label="Close">×</button></div>` +
-    `<div class="iw-sub">${troopCount(a)} soldiers · power ${powerOf(a)} · health ${Math.round(cur)}/${Math.round(max)} · ${armyStatus(a)} in ${escHTML(provName(a.prov))}</div><div class="iw-cards">${cards}</div>`;
+    `<div class="iw-sub">${troopCount(a)} soldiers · power ${fmtPow(powerOf(a))} · health ${Math.round(cur)}/${Math.round(max)} · ${armyStatus(a)} in ${escHTML(provName(a.prov))}</div><div class="iw-cards">${cards}</div>`;
 }
 {
   const el = $q('#inspWin');

@@ -376,10 +376,11 @@ function stepTraining(t) {
     Q.shift();
     if (q.retro) { finishRetro(q); capPanelKey = ''; continue; }
     const spot = srcSpot(key), d = UNIT_DEFS[q.kind];
+    const rp = rallyOf(key);   // v96: a rally point sends the new unit on its way
     if (MILITARY.has(q.kind)) {
-      let a = S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === spot.prov && !v.moving && !v.battle);
+      let a = rp ? null : S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === spot.prov && !v.moving && !v.battle);
       if (a) { a.troops[q.kind] = (a.troops[q.kind] || 0) + 1; a.grew = t; toast(`${d.name} joined ${a.name} (${troopCount(a)} soldiers).`); }
-      else { a = newArmy(spot.prov, { [q.kind]: 1 }); a.born = t; toast(`${d.name} is ready and formed ${a.name}.`); }
+      else { a = newArmy(spot.prov, { [q.kind]: 1 }); a.born = t; toast(rp ? `${d.name} is ready and marches to the rally point in ${provName(rp.prov)}.` : `${d.name} is ready and formed ${a.name}.`); if (rp) rallyGo(a, rp); }
       sfx('pr_trained', { prov: spot.prov }); computeIncome(); capPanelKey = ''; continue;
     }
     if (q.kind === THUG && thugIntoDen(spot.prov, key)) { sfx('pr_trained', { prov: spot.prov }); computeIncome(); capPanelKey = ''; toast('A Thug is ready and settles into the Thug Den.'); continue; }
@@ -387,6 +388,7 @@ function stepTraining(t) {
     const u = mkUnit(S.nextId++, q.kind, d.name + (n > 1 ? ' ' + n : ''), spot.prov, 0);
     u.slot = freeSlot(spot.prov, u); [u.x, u.y] = slotPos(spot.prov, u.slot);
     u.born = t; S.units.push(u); sfx('pr_trained', { prov: spot.prov });
+    if (rp) rallyGo(u, rp);
     computeIncome(); capPanelKey = '';
     toast(`${u.name} is ready.`);
   }
@@ -492,7 +494,7 @@ function sideStrength(armies, prov, defender, foe) {
   const T = TERRAIN_MOD[world.provinces[prov].terrain], cavFrac = foe ? foe.cavFrac : 0;
   // Swamplings in a swamp: +20% damage, and their Ogres don't suffer the cavalry penalty; Fiery Weapons can make a round's blows land twice as hard
   const swampy = world.provinces[prov].terrain === 'swamp';
-  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; if (crit > 1) { a.fieryHit = S.t; a.fieryHits = (a.fieryHits || 0) + 1; } for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(a.troops[k], st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (1 + (a.curse || 0)) * (st.two ? twoMul(a) : 1); } }   // (v93 two-handing: wood.js twoMul)
+  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; if (crit > 1) { a.fieryHit = S.t; a.fieryHits = (a.fieryHits || 0) + 1; } for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(rowDeal(a, k), st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (1 + (a.curse || 0)) * (st.two ? twoMul(a) : 1); } }   // (v93 two-handing: wood.js twoMul)
   return s;
 }
 const rawStrength = armies => armies.reduce((n, a) => n + Object.entries(a.troops).reduce((m, [k, c]) => { const st = statsOf(k, a.owner); return m + c * st.atk * (hpOf(a, k) / 30) / (1 - st.red); }, 0), 0);
@@ -543,16 +545,25 @@ function applyDamage(b, armies, dmg, t, pierce = 0) {
   const owner = armies[0].owner;
   S.fx.push({ kind: 'num', prov: b.prov, owner, n: Math.round(dmg), t0: t });
   for (const a of armies) {
-    a.wounds = (a.wounds || 0) + dmg * troopCount(a) / total / (1 + (a.skin || 0));
+    // v96 rows: an army of 6 or more fights in a Front Row and a Back Row (v96.js). The front takes the blows first;
+    // once it has fallen the back row takes them, at half strength
+    const share = dmg * troopCount(a) / total / (1 + (a.skin || 0)), rowed = rowsOn(a);
+    let halved = rowed && rowFront(a) <= 0;
+    a.wounds = (a.wounds || 0) + (halved ? share * BACK_TAKE : share);
     // spill damage over: when the front soldier's health runs out he falls and the rest carries on
     for (;;) {
       const kinds = Object.keys(a.troops).filter(k => a.troops[k] > 0); if (!kinds.length) break;
-      let r = Math.random() * troopCount(a), k = kinds[0];
-      for (const kk of kinds) { r -= a.troops[kk]; if (r <= 0) { k = kk; break; } }
+      const nowRowed = rowed && rowsOn(a), front = nowRowed && rowFront(a) > 0;
+      if (nowRowed && !front && !halved) { a.wounds *= BACK_TAKE; halved = true; }   // what spills past the front row hits the back row at half strength
+      const weight = kk => front ? a.troops[kk] - rowBack(a, kk) : a.troops[kk];
+      let r = Math.random() * kinds.reduce((n, kk) => n + weight(kk), 0), k = kinds.find(kk => weight(kk) > 0) || kinds[0];
+      for (const kk of kinds) { r -= weight(kk); if (r <= 0 && weight(kk) > 0) { k = kk; break; } }
       if (a.wounds < hpOf(a, k)) break;
       a.wounds -= hpOf(a, k);
+      const fromBack = nowRowed && !front;
       // Risen Dead: every Nth soldier who falls gets straight back up
       if (a.risen && k !== MAGE && isCaster(a) && ++a.risenN >= a.risen) { a.risenN = 0; a.riseFx = t; a.risenTotal = (a.risenTotal || 0) + 1; if (a.owner === ME) sfx('mg_risen', { prov: b.prov }); continue; }
+      if (fromBack && a.back && a.back[k] > 0 && !(k === MAGE && !a.magesFront)) a.back[k]--;   // v96: a back-row soldier fell
       a.troops[k]--; if (!a.troops[k]) delete a.troops[k];
       if (a.monster) monsterLoot(a, k, b);   // SMA03: wood or gold for every monster killed
       if (a.fallen) a.fallen[k] = (a.fallen[k] || 0) + 1;
@@ -986,6 +997,7 @@ function update(realT) {
   run('minimap', () => drawMini());
   run('commands', () => renderCmd());
   run('v95', () => { stepV95(t, dt); paintCooldowns(); });
+  run('v96', () => stepV96(t, dt));
   run('fog', () => computeFog());
   run('selection', () => selUI());
 }
@@ -1820,8 +1832,7 @@ window.addEventListener('keydown', e => {
   if (k === ' ' || e.code === 'Space') { togglePause(); e.preventDefault(); return; }
   if (k === 'q') { abilityQ(); e.preventDefault(); }
   else if (k === 'r') { const a = S.selected.filter(v => v.kind === 'army' && v.battle && !v.retreating); if (a.length) { a.forEach(retreat); cmdKey = ''; } }
-  else if (k === 'f2' || k === 'f3' || k === 'f4') { zoomPreset(+k.slice(1)); e.preventDefault(); }
-  else if (k === '1' || k === '2') { S.selBuilding = -1; S.selProv = -1; S.selPart = null; const u = S.units[+k - 1]; S.selected = e.shiftKey ? [...new Set([...S.selected, u])] : [u]; hoverPath = undefined; }
+  // v96: the F2-F4 zoom presets are gone (F2-F4 are province hotkeys now, v96.js); zoomPreset is kept for later
   else if (k === 'escape') { if (surveyAim) { stopAim(); return; } if (!S.selected.length && S.selBuilding < 0 && S.selProv < 0 && !techOpen && !armOpen) { openSettings(); return; } S.selected = []; S.selBuilding = -1; S.selProv = -1; S.selPart = null; }
   else if (['arrowleft', 'arrowright', 'arrowup', 'arrowdown'].includes(k)) { keysHeld.add(k); e.preventDefault(); }
 });
@@ -1843,7 +1854,7 @@ function selUI() {
   el.hidden = !(bq && !S.selected.length) && !S.selected.length;
   if (bq && !S.selected.length) { el.title = 'Train units from the command card. Hover a button for its cost.'; el.innerHTML = `<b>${S.selKind === 'capital' ? 'Capital' : 'Barracks'}</b> · ${bq.length ? bq.length + ' in training' : 'ready to train'}`; return; }
   if (!S.selected.length) { el.innerHTML = ''; el.title = ''; return; }
-  if (S.selected.length === 1) { const u = S.selected[0]; if (u.kind === 'army') { el.title = 'Right-click a province to move. R retreats from a battle. Hold Shift to queue moves.'; el.innerHTML = `<b>${escHTML(u.name)}</b>${renameBtn(u)} · ${u.battle && !u.retreating ? '<span style="color:#b3261e">in battle</span>' : u.retreating ? 'retreating' : st(u)} · ${troopText(u)} · <span title="Estimated army power">power ${powerOf(u)}</span>`; return; } el.title = u.kind === WAYFINDER ? 'Can enter unexplored land. Right-click to move; Ctrl+right-click a province to survey it. Q surveys the province he is in. Hold Shift to queue (up to 10).' : u.kind === MASON ? 'Walks on explored land only. Right-click to move; Ctrl+right-click a province for the build menu. Q builds an outpost. Hold Shift to queue (up to 10).' : 'Walks on explored land only. Right-click a province to move.'; el.innerHTML = `<b>${escHTML(u.name)}</b>${u.kind === WAYFINDER || u.kind === MASON ? ' the ' + UNIT_DEFS[u.kind].name : ''}${renameBtn(u)} · ${st(u)}`; return; }
+  if (S.selected.length === 1) { const u = S.selected[0]; if (u.kind === 'army') { el.title = 'Right-click a province to move. R retreats from a battle. Hold Shift to queue moves.'; el.innerHTML = `<b>${escHTML(u.name)}</b>${renameBtn(u)} · ${u.battle && !u.retreating ? '<span style="color:#b3261e">in battle</span>' : u.retreating ? 'retreating' : st(u)} · ${troopText(u)} · <span title="Estimated army power">power ${fmtPow(powerOf(u))}</span>`; return; } el.title = u.kind === WAYFINDER ? 'Can enter unexplored land. Right-click to move; Ctrl+right-click a province to survey it. Q surveys the province he is in. Hold Shift to queue (up to 10).' : u.kind === MASON ? 'Walks on explored land only. Right-click to move; Ctrl+right-click a province for the build menu. Q builds an outpost. Hold Shift to queue (up to 10).' : 'Walks on explored land only. Right-click a province to move.'; el.innerHTML = `<b>${escHTML(u.name)}</b>${u.kind === WAYFINDER || u.kind === MASON ? ' the ' + UNIT_DEFS[u.kind].name : ''}${renameBtn(u)} · ${st(u)}`; return; }
   el.title = 'Right-click a province to move them all. Hold Shift to queue moves.';
   el.innerHTML = `<b>${S.selected.length} units</b> · ` + S.selected.map(u => `${u.name} (${st(u)})`).join(' · ');
 }
@@ -1964,7 +1975,7 @@ function cmdInfo(id) {
     if (q.retro) { const a = S.units.find(v => v.id === q.army); return { name: `Retrofit ${a ? a.name : 'army'} to ${UNIT_DEFS[q.kind].name}` + (+type === 0 ? '' : ' (waiting)'), desc: `${q.n} soldier${q.n > 1 ? 's' : ''}, ${RETRO_TIME} s each. ` + (+type === 0 ? `Done in ${Math.ceil(left)} s.` : `Number ${+type + 1} in the queue: one army retrofits at a time.`) + ' Click to cancel and get the resources back.', cost: q.paid, why: null, ok: 'Click to cancel', icon: portrait(q.kind) }; }
     return { name: UNIT_DEFS[q.kind].name + (+type === 0 ? ' (training)' : ' (waiting)'), desc: (+type === 0 ? `Ready in ${Math.ceil(left)} s.` : `Number ${+type + 1} in the queue.`) + ' Click to cancel and get the resources back.', cost: q.paid, why: null, ok: 'Click to cancel', icon: portrait(q.kind) };
   }
-  if (what === 'upgrade') return { name: 'Upgrade to Fort', desc: `Rebuild the outpost as a stone fort, opening 4 building plots instead of 2. Takes ${FORT_UPGRADE.time} s; no Mason needed. Forts: ${fortCount()}/${fortLimit()}. Each fort allows 4 more outposts.`, cost: FORT_UPGRADE.cost, why: upgradeWhy(S.selProv), icon: settlementThumb(1) };
+  if (what === 'upgrade') return { name: 'Upgrade to Fort', desc: `Rebuild the outpost as a stone fort, opening 4 building plots instead of 2. Takes ${FORT_UPGRADE.time} s; no Mason needed. Forts: ${fortCount()}/${fortLimit()}. Each fort allows ${perFort(ME)} more outposts.`, cost: FORT_UPGRADE.cost, why: upgradeWhy(S.selProv), icon: settlementThumb(1) };
   if (what === 'cancelup') { const u = S.upgrades.get(S.selProv); const left = u ? Math.ceil(FORT_UPGRADE.time - (S.t - u.t0)) : 0; return { name: 'Upgrading to Fort', desc: `Ready in ${left} s. Click to cancel and get the resources back.`, cost: u ? u.paid : null, why: null, ok: 'Click to cancel', icon: settlementThumb(1) }; }
   if (what === 'xup' || what === 'xcancel') {
     const p = S.selProv, e = extraAt(p, S.selPart); if (!e) return { name: 'Upgrade', desc: '', cost: null, why: 'Nothing selected', icon: '' };
@@ -2064,6 +2075,7 @@ function renderSettleCard() {
     const cells = new Array(16).fill('<div class="cmd-cell"></div>');
     if (b.stage === 0) { const info = cmdInfo(up ? 'cancelup' : 'upgrade'); cells[0] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="${up ? 'cancelup' : 'upgrade'}" aria-label="${info.name}"${cmdBg('build:outpost')}><img alt="" src="${info.icon}">${up ? '<i class="cmd-prog"><s></s></i>' : ''}</button>`; }
     if (b.stage >= 1 && (b.stage === 1 || rewallsAt(p).length)) { const info = cmdInfo('rewalls'); cells[0] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="rewalls" aria-label="${info.name}"><img alt="" src="${info.icon}"></button>`; }
+    if (b.stage === 1 && b.owner === ME) { const info = cmdInfo('dismantle'); cells[3] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="dismantle" aria-label="${info.name}"><img alt="" src="${info.icon}"></button>`; }   // v96: dismantle the fort
     $q('#cmdGrid').innerHTML = b.stage === 0 || cells[0].includes('rewalls') ? cells.join('') : '<div class="cmd-empty"></div>';
     if (cmdHover) showCmdTip(cmdHover);
   }
@@ -2224,17 +2236,19 @@ function renderRoster() {
   if (rosterTab === 'provs') {
     const full = p => extrasIn(p).length >= plotCap(p), nFull = provs.filter(full).length, shown = VIEW.hideFull ? provs.filter(p => !full(p)) : provs;
     const bar = `<div class="ro-bar"><button type="button" class="ro-hide" data-hidefull="1" aria-pressed="${VIEW.hideFull}" title="Hide provinces whose building plots are all built">${VIEW.hideFull ? '☑' : '☐'} Hide full${nFull ? ` <span>${nFull}</span>` : ''}</button></div>`;
-    el.innerHTML = tabs + bar + (shown.length ? shown.map(p => {
+    el.innerHTML = tabs + bar + roHead('provs', 'Provinces', `<span>${provs.length}</span>`) + (roHidden('provs') ? '' : shown.length ? shown.map(p => {
       const n = extrasIn(p).length, cap = plotCap(p), t = G.provs[p].terrain, st = S.buildings.get(p).stage;
       return `<button type="button" class="ro-p${S.selProv === p ? ' on' : ''}" data-prov="${p}" title="${provName(p)} · ${TER[t].label} ${STAGE_NAME[st].toLowerCase()} · ${n} of ${cap} plots built${n < cap ? ' (' + (cap - n) + ' empty)' : ''}. Click to open, double-click to go there."><b style="color:${TER_TEXT[t] || 'var(--chip-text)'}">${provName(p)}</b>${st ? `<small>${STAGE_NAME[st]}</small>` : ''}<em class="${n >= cap ? 'full' : 'miss'}">${n}/${cap}</em></button>`;
     }).join('') : `<div class="ro-none">${provs.length ? 'Every province is full' : 'No provinces yet'}</div>`);
     return;
   }
-  const group = (kind, title) => { const us = list.filter(u => u.kind === kind); return `<div class="ro-sec">${title} <span>${us.length}</span></div>` + (us.length ? us.map(u => `<button type="button" class="ro-u${isSel(u) ? ' on' : ''}" data-uid="${u.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(u.kind)}"><span><b>${u.name}</b><small><i class="${unitStatus(u) === 'idle' ? 'idle' : 'busy'}"></i>${unitStatus(u)} · ${S.explored.has(u.prov) ? provName(u.prov) : 'fog'}</small></span></button>`).join('') : '<div class="ro-none">None yet</div>'); };
+  const group = (kind, title) => { const us = list.filter(u => u.kind === kind); return roHead('u:' + kind, title, `<span>${us.length}</span>`) + (roHidden('u:' + kind) ? '' : us.length ? us.map(u => `<button type="button" class="ro-u${isSel(u) ? ' on' : ''}" data-uid="${u.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(u.kind)}"><span><b>${u.name}</b><small><i class="${unitStatus(u) === 'idle' ? 'idle' : 'busy'}"></i>${unitStatus(u)} · ${S.explored.has(u.prov) ? provName(u.prov) : 'fog'}</small></span></button>`).join('') : '<div class="ro-none">None yet</div>'); };
   el.innerHTML = tabs + group(WAYFINDER, UNIT_DEFS[WAYFINDER].name + 's') + group(MASON, UNIT_DEFS[MASON].name + 's');   // Swampstriders / Swampwrights for Swamplings
 }
 $q('#roster').addEventListener('pointerdown', e => e.stopPropagation());
 $q('#roster').addEventListener('click', e => {
+  { const c = e.target.closest('[data-rocol]'); if (c) { roToggle(c.dataset.rocol); return; } }   // v96: fold a section away
+  { const mt = e.target.closest('[data-mt]'); if (mt) { const [p, slot] = mt.dataset.mt.split('@').map(Number); selectPart(p, 'magetower@' + slot); rosterKey = ''; return; } }
   if (e.target.closest('[data-hidefull]')) { VIEW.hideFull = !VIEW.hideFull; viewSave(); rosterKey = ''; return; }
   const tb = e.target.closest('[data-rtab]');
   if (tb) { rosterTab = tb.dataset.rtab; rosterKey = ''; try { localStorage.setItem('realm-roster-tab', rosterTab); } catch (er) {} return; }
@@ -2251,8 +2265,8 @@ $q('#roster').addEventListener('click', e => {
 $q('#roster').addEventListener('dblclick', e => {
   const pb = e.target.closest('[data-prov]');
   if (pb) { const P = G.provs[+pb.dataset.prov]; flyTo({ x: P.ic[0], y: P.ic[1], z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) }); return; }
-  const bk = e.target.closest('[data-bk]');
-  if (bk) { const P = G.provs[+bk.dataset.bk.split('@')[0]]; flyTo({ x: P.ic[0], y: P.ic[1], z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) }); return; }
+  const bk = e.target.closest('[data-bk], [data-mt]');
+  if (bk) { const P = G.provs[+(bk.dataset.bk || bk.dataset.mt).split('@')[0]]; flyTo({ x: P.ic[0], y: P.ic[1], z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) }); return; }
   const b = e.target.closest('[data-uid]'); if (!b) return;
   const u = S.units.find(v => v.id === +b.dataset.uid); if (u) flyTo({ x: u.x, y: u.y, z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) });
 });

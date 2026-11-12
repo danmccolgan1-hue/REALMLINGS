@@ -16,7 +16,7 @@ const WAR = {
   gold: 20, provs: 50, total: 100, maxProvs: 5, splitAt: 10,
   stallWindow: 300, stallScore: 10, heavyLoss: 0.1,   // white peace if neither side passes 10 warscore in 5 minutes; the time tick starts after a fort falls or a battle costs a side 10% of its army
   maxVsPlayer: 2,              // no more than 2 nations may be at war with the player at the same time
-  allyTruce: 120, allyAskAgain: 300,
+  allyTruce: 600, allyAskAgain: 300,   // v96: ending an alliance gives a 10-minute truce
   totalResearch: 100,          // research points in every unlocked tree for a Total Victory
   whiteAfter: 180,             // v95: no white peace in the first 3 minutes of a war
   surrenderLock: 600           // v95: a nation that surrenders can't declare war on anyone for 10 minutes
@@ -48,7 +48,10 @@ const enemiesOf = o => warsOf(o).map(w => foeOf(w, o));
 // raiders attack everyone; nations only fight while at war with each other
 const hostile = (a, b) => a !== b && (a === RAIDERS || b === RAIDERS || (S.wars.length > 0 && atWar(a, b)));
 const truceLeft = (x, y) => Math.max(0, (S.truces.get(pairKey(x, y)) || 0) - S.t);
-const allyOf = o => { for (const A of S.allies) { if (A.a === o) return A.b; if (A.b === o) return A.a; } return 0; };
+// v96: a nation may have up to 2 allies (alliesOf); allyOf gives the first, for old callers
+const alliesOf = o => { const out = []; for (const A of S.allies) { if (A.a === o) out.push(A.b); else if (A.b === o) out.push(A.a); } return out; };
+const allyOf = o => alliesOf(o)[0] || 0;
+const MAX_ALLIES = 2;
 const allied = (x, y) => S.allies.some(A => (A.a === x && A.b === y) || (A.a === y && A.b === x));
 const provsOf = o => { const out = []; for (const [p, b] of S.buildings) if (b.owner === o) out.push(p); return out; };
 const myProvs = () => provsOf(ME);
@@ -101,8 +104,8 @@ function declareWhy(att, def) {
   { const wl = warLockLeft(att); if (wl > 0) return att === ME ? `You surrendered: no wars for ${fmtTime(wl)}` : 'They surrendered recently'; }
   const tl = truceLeft(att, def); if (tl > 0) return `Truce: ${fmtTime(tl)} left`;
   if (!nationsBorder(att, def)) return att === ME ? 'You can only declare war on a nation that borders you' : 'They don’t border each other';
-  const join = allyOf(def), pairs = [[att, def]];
-  if (join && join !== att && !atWar(att, join)) pairs.push([att, join]);
+  const pairs = [[att, def]];
+  for (const join of alliesOf(def)) if (join !== att && !allied(att, join) && !atWar(att, join)) pairs.push([att, join]);
   if (capBreak(pairs)) return att === ME ? `At most ${WAR.maxVsPlayer} nations can be at war with you at once` : `${PLAYERS[ME].name} already faces ${WAR.maxVsPlayer} enemies`;
   const st = stockOf(att), short = Object.keys(WAR.declareCost).filter(k => st[k] < WAR.declareCost[k]);
   return short.length ? 'Need ' + short.map(k => WAR.declareCost[k] + ' ' + k).join(', ') : '';
@@ -114,19 +117,20 @@ function nationsBorder(a, b) {
 }
 function newWar(att, def, parent) {
   const w = { id: ++S.warSeq, a: att, b: def, by: att, base: 0, since: S.t, nextTick: S.t + WAR.tickEvery, battles: 0, active: false, winStart: S.t, peak: 0, parent, demandAt: S.t + 30 };
-  S.wars.push(w); return w;
+  S.wars.push(w); if (S.warEver) S.warEver.add(pairKey(att, def)); return w;   // v96: remembered for the alliance rules
 }
 function declareWar(att = ME, def) {
   if (def === undefined) return toast('Pick a nation in the Diplomacy panel to declare war on.', true);
   const why = declareWhy(att, def);
   if (why) { if (att === ME) toast('Can’t declare war: ' + why.charAt(0).toLowerCase() + why.slice(1) + '.', true); return null; }
   const st = stockOf(att); for (const k in WAR.declareCost) st[k] -= WAR.declareCost[k];
-  const w = newWar(att, def, null), join = allyOf(def);
-  let jw = null; if (join && join !== att && !atWar(att, join)) jw = newWar(att, join, w.id);
-  if (att === ME || def === ME || join === ME) sfx('war_declare');
-  if (att === ME) { S.met.add(def); toast(`You declared war on the ${PLAYERS[def].name}!${jw ? ` Their ally, the ${PLAYERS[join].name}, joins the war against you.` : ''} (−${costText(WAR.declareCost)})`, true); }
-  else if (def === ME) { S.met.add(att); toast(`The ${PLAYERS[att].name} has declared war on you!${jw ? ` They are also at war with your ally, the ${PLAYERS[join].name}.` : ''}`, true); flashDip(); }
-  else if (join === ME) { S.met.add(att); toast(`The ${PLAYERS[att].name} attacked your ally, the ${PLAYERS[def].name}: you are at war with them too!`, true); flashDip(); }
+  const w = newWar(att, def, null), joins = alliesOf(def).filter(j => j !== att && !allied(att, j) && !atWar(att, j));
+  for (const j of joins) newWar(att, j, w.id);
+  const jn = joins.map(j => 'the ' + PLAYERS[j].name).join(' and '), join = joins.includes(ME) ? ME : joins[0];
+  if (att === ME || def === ME || joins.includes(ME)) sfx('war_declare');
+  if (att === ME) { S.met.add(def); toast(`You declared war on the ${PLAYERS[def].name}!${joins.length ? ` Their ${joins.length > 1 ? 'allies' : 'ally'}, ${jn}, ${joins.length > 1 ? 'join' : 'joins'} the war against you.` : ''} (−${costText(WAR.declareCost)})`, true); }
+  else if (def === ME) { S.met.add(att); toast(`The ${PLAYERS[att].name} has declared war on you!${joins.length ? ` They are also at war with your ${joins.length > 1 ? 'allies' : 'ally'}, ${jn}.` : ''}`, true); flashDip(); }
+  else if (joins.includes(ME)) { S.met.add(att); toast(`The ${PLAYERS[att].name} attacked your ally, the ${PLAYERS[def].name}: you are at war with them too!`, true); flashDip(); }
   else if (knows(att) || knows(def)) toast(`The ${PLAYERS[att].name} declared war on the ${PLAYERS[def].name}.`);
   provKey = ''; dipKey = ''; dipTerm = 'white'; S.dipPick.clear();
   return w;
@@ -199,9 +203,10 @@ function stepWar(t) {
 }
 function stepOneWar(w, t) {
   // Total Victory happens on its own the moment a war reaches 100 warscore
-  { const s = warscore(w, w.a); if (Math.abs(s) >= WAR.total) { makePeace(w, s > 0 ? w.a : w.b, { kind: 'total' }); return; } }
+  // v96: there is no Total Victory any more: at 100 warscore a flag tells you to call for peace (v96.js), and every war ends
+  // in white peace after 5 minutes unless a deal is made first (v96.js stepWarTimers)
   // a nation with every province occupied and no army left has lost: the warscore goes straight to 100 (GPC27)
-  for (const L of [w.a, w.b]) if (brokenNation(L)) { const win = foeOf(w, L); addScore(w, win, 200); if (w.a === ME || w.b === ME) toast(L === ME ? `Every province you hold is occupied and you have no army left: the ${PLAYERS[win].name} wins the war.` : `The ${PLAYERS[L].name} is fully occupied and has no army left: warscore 100%.`, L === ME); makePeace(w, win, { kind: 'total' }); return; }
+  for (const L of [w.a, w.b]) if (brokenNation(L) && !w.broken) { w.broken = L; const win = foeOf(w, L); addScore(w, win, 200); if (w.a === ME || w.b === ME) toast(L === ME ? `Every province you hold is occupied and you have no army left: the ${PLAYERS[win].name} is at 100 warscore.` : `The ${PLAYERS[L].name} is fully occupied and has no army left: warscore 100%. Call for peace in Diplomacy.`, L === ME); }
   // the time tick only runs once the war has turned serious: a fort or capital occupied, or a battle that cost a side 10% of its army
   while (t >= w.nextTick) { const s = warscore(w, w.a); if (s && w.active) addScore(w, s > 0 ? w.a : w.b, 1); w.nextTick += WAR.tickEvery; }
   // a war where neither side gets past 10 warscore in 5 minutes ends in white peace
@@ -224,7 +229,7 @@ function aiPeace(w, t) {
   const s = warscore(w, w.a), lead = s > 0 ? w.a : w.b, loser = foeOf(w, lead), sc = Math.abs(s);
   if (sc >= WAR.provs && t >= w.demandAt) {
     w.demandAt = t + 60;
-    const provs = connectedPick(lead, loser, maxTake(lead));
+    const provs = sc >= WAR.total && annexable(lead, loser) && provsOf(loser).length <= demandMax(sc, lead) ? provsOf(loser) : connectedPick(lead, loser, demandMax(sc, lead));
     makePeace(w, lead, provs.length ? { kind: 'provs', provs } : { kind: 'gold' });
   }
 }
@@ -244,8 +249,9 @@ function peaceCheck(w, kind, provs) {
   if (kind === 'provs') {
     if (s < WAR.provs) return `Needs +${WAR.provs} warscore`;
     if (!provs || !provs.length) return 'Pick at least one province';
-    if (provs.length > maxTake(ME)) return `At most ${maxTake(ME)} province${maxTake(ME) > 1 ? 's' : ''} (2 per fort you hold)`;
-    if (provs.some(p => nationOf(p) !== foe || S.buildings.get(p).stage === 2)) return 'Capitals can’t be demanded';
+    if (provs.length > demandMax(s)) return `At most ${demandMax(s)} province${demandMax(s) > 1 ? 's' : ''} at ${s} warscore (1 at 50, +1 for every 5 more)`;
+    if (provs.some(p => nationOf(p) !== foe)) return 'Only their provinces can be demanded';
+    if (provs.some(p => S.buildings.get(p).stage === 2) && !(s >= WAR.total && provsOf(foe).every(p => provs.includes(p)))) return s >= WAR.total ? 'Their capital can only be taken with every other province (annexation)' : 'Capitals can’t be demanded below 100 warscore';
     { const held = provs.filter(p => !takeable(p, ME)); if (held.length) return `${held.map(provName).join(', ')} ${held.length > 1 ? 'are' : 'is'} occupied by another nation`; }
     return seizeWhy(ME, foe, provs);
   }
@@ -359,6 +365,7 @@ function makePeace(w, winner, terms) {
     lines.push(winner === ME ? `You take ${g} gold` : loser === ME ? `You pay ${g} gold` : `The ${W} takes ${g} gold`);
   } else if (terms.kind === 'provs') {
     const provs = terms.provs.filter(p => nationOf(p) === loser && takeable(p, winner));
+    if (provsOf(loser).every(p => provs.includes(p))) { if (loser === ME) fallen = true; else annexed = loser; }   // v96: at 100 warscore a whole country can be taken
     provs.forEach(p => transferProv(p, winner));
     lines.push(winner === ME ? `You gain ${provs.length} province${provs.length > 1 ? 's' : ''}: ${provs.map(provName).join(', ')}` : loser === ME ? `You cede ${provs.length} province${provs.length > 1 ? 's' : ''}: ${provs.map(provName).join(', ')}` : `The ${W} takes ${provs.length} province${provs.length > 1 ? 's' : ''}`);
   } else if (terms.kind === 'total') {
@@ -439,7 +446,7 @@ function aiDemand(w, total) {
   const foe = foeOf(w, ME);
   let terms;
   if (total) terms = { kind: 'total' };
-  else { const mine = connectedPick(foe, ME, maxTake(foe)); terms = mine.length ? { kind: 'provs', provs: mine } : { kind: 'gold' }; }
+  else { const sc = -warscore(w, ME), mine = sc >= WAR.total && annexable(foe, ME) && provsOf(ME).length <= demandMax(sc, foe) ? provsOf(ME) : connectedPick(foe, ME, demandMax(sc, foe)); terms = mine.length ? { kind: 'provs', provs: mine } : { kind: 'gold' }; }
   S.demand = { ...terms, war: w.id, from: foe };
   const el = $q('#demand'); el.hidden = false;
   const what = terms.kind === 'total' ? (totalTerms(ME, foe) === 'annex' ? 'the annexation of your entire realm' : `${totalPick(foe, ME).length} of your provinces`)
@@ -508,22 +515,37 @@ function commonThreat(a, b, B = borderSets(), N = sizes()) {
   }
   return best;
 }
-function allyWhy(a, b, B, N) {
+// v96 alliance rules: up to 2 allies each; the same race; no fort of either on their shared border; never at war with each
+// other this game, nor with any of the other's allies; and not while the truce from a broken alliance runs
+function allyWhy(a, b) {
   if (!aliveNation(a) || !aliveNation(b) || a === b) return 'Not possible';
-  if (raceOf(a) !== raceOf(b)) return 'Realmlings and Swamplings never ally';
+  if (raceOf(a) !== raceOf(b)) return 'Only nations of the same race can ally';
   if (allied(a, b)) return 'Already allies';
-  if (allyOf(a)) return a === ME ? 'You already have an ally' : 'They already have an ally';
-  if (allyOf(b)) return b === ME ? 'You already have an ally' : 'They already have an ally';
-  if (atWar(a, b)) return 'You are at war';
-  if (warsOf(a).length || warsOf(b).length) return 'Neither side may be at war';
+  if (alliesOf(a).length >= MAX_ALLIES) return a === ME ? `You already have ${MAX_ALLIES} allies` : `They already have ${MAX_ALLIES} allies`;
+  if (alliesOf(b).length >= MAX_ALLIES) return b === ME ? `You already have ${MAX_ALLIES} allies` : `They already have ${MAX_ALLIES} allies`;
+  if (atWar(a, b) || everWar(a, b)) return a === ME || b === ME ? 'You have been at war with each other' : 'They have been at war with each other';
+  for (const [x, y] of [[a, b], [b, a]]) { const bad = alliesOf(y).find(z => everWar(x, z)); if (bad) return `${x === ME ? 'You have' : `The ${PLAYERS[x].name} has`} been at war with ${theName(y) === 'you' ? 'your' : 'their'} ally, the ${PLAYERS[bad].name}`; }
   if (truceLeft(a, b) > 0) return `Truce: ${fmtTime(truceLeft(a, b))} left`;
-  if (!commonThreat(a, b, B, N)) return 'Only against a common neighbor at least 25% larger than both of you';
+  { const f = borderFort(a, b); if (f >= 0) return `${nationOf(f) === ME ? 'Your' : 'Their'} fort at ${provName(f)} is on your shared border`; }
   return '';
 }
+// every pair of nations that has ever been at war this game
+S.warEver = new Set();
+const everWar = (a, b) => S.warEver.has(pairKey(a, b));
+// a fort (not a capital) of either nation that touches the other nation's land, or -1
+function borderFort(a, b) {
+  for (const [p, bl] of S.buildings) if (bl.stage === 1 && (bl.owner === a || bl.owner === b)) { const o = bl.owner === a ? b : a; if (allNbr[p].some(q => nationOf(q) === o)) return p; }
+  return -1;
+}
+// v96 peace terms: provinces by warscore (1 at 50, +1 for every 5 more; at 100 the whole country may be annexed)
+// at +100 the winner may take up to its full cap: 2 per fort it holds (maxTake), if that is more than the 11 the warscore steps give
+const demandMax = (s, o = ME) => s >= WAR.total ? Math.max(1 + Math.floor((WAR.total - WAR.provs) / 5), maxTake(o)) : s >= WAR.provs ? 1 + Math.floor((s - WAR.provs) / 5) : 0;
+const annexable = (winner, loser) => provsOf(loser).every(p => takeable(p, winner));
 function formAlliance(a, b, vs) {
   S.allies.push({ a, b, vs, since: S.t });
-  if (a === ME || b === ME) { const o = a === ME ? b : a; S.met.add(o); sfx('wn_ally'); toast(`You are now allied with the ${PLAYERS[o].name} against the ${PLAYERS[vs].name}.`); }
-  else if (knows(a) || knows(b)) toast(`The ${PLAYERS[a].name} and the ${PLAYERS[b].name} formed an alliance against the ${PLAYERS[vs].name}.`);
+  const against = vs && PLAYERS[vs] ? ` against the ${PLAYERS[vs].name}` : '';
+  if (a === ME || b === ME) { const o = a === ME ? b : a; S.met.add(o); sfx('wn_ally'); toast(`You are now allied with the ${PLAYERS[o].name}${against}. If anyone declares war on one of you, the other joins the war.`); }
+  else if (knows(a) || knows(b)) toast(`The ${PLAYERS[a].name} and the ${PLAYERS[b].name} formed an alliance${against}.`);
   dipKey = '';
 }
 let allyEndSeq = 0;
@@ -540,17 +562,13 @@ function endAlliance(A, why) {
 }
 function stepAlliances() {
   const B = borderSets(), N = sizes();
-  for (const A of S.allies.slice()) {
-    let why = '';
-    if (!aliveNation(A.a) || !aliveNation(A.b)) why = 'an ally fell';
-    else if (!aliveNation(A.vs)) why = 'the common threat is gone';
-    else { const n = N.get(A.vs) || 0; if (n < 1.25 * (N.get(A.a) || 0) || n < 1.25 * (N.get(A.b) || 0)) why = `the ${PLAYERS[A.vs].name} is no longer 25% larger`; else { const bc = B.get(A.vs); if (!bc || !bc.has(A.a) || !bc.has(A.b)) why = `the ${PLAYERS[A.vs].name} no longer borders you both`; } }
-    if (why) endAlliance(A, why);
-  }
+  // v96: an alliance only ends when an ally falls, when one side ends it, or a fort is built on the shared border (v96.js)
+  for (const A of S.allies.slice()) if (!aliveNation(A.a) || !aliveNation(A.b)) endAlliance(A, 'an ally fell');
+  // computer nations still look for allies against a common, larger neighbor (the rules above must hold too)
   const live = liveNations();
   for (const a of live) for (const b of live) {
-    if (a >= b || allyWhy(a, b, B, N)) continue;
-    const vs = commonThreat(a, b, B, N);
+    if (a >= b || allyWhy(a, b)) continue;
+    const vs = commonThreat(a, b, B, N); if (!vs) continue;
     if (a === ME || b === ME) { const o = a === ME ? b : a; if ((S.allyAsk.get(o) || 0) > S.t) continue; if (offerAlliance(o, vs)) S.allyAsk.set(o, S.t + WAR.allyAskAgain); continue; }
     formAlliance(a, b, vs);
   }
@@ -562,7 +580,7 @@ function flashDip() { const el = $q('#dip'); el.classList.remove('flash'); void 
 function openDip(o) { if (!dipOpen) sfx('ui_panel'); dipOpen = true; dipKey = ''; $q('#dipPanel').hidden = false; if (o !== undefined) selectDip(o); }
 function closeDip() { dipOpen = false; $q('#dipPanel').hidden = true; S.dipHover = -1; }
 function selectDip(o) { dipSel = o; dipTerm = 'white'; S.dipPick.clear(); const w = o ? warBetween(ME, o) : null; dipWar = w ? w.id : 0; dipKey = ''; }
-function preselectProvs(foe) { S.dipPick.clear(); connectedPick(ME, foe, maxTake(ME)).forEach(p => S.dipPick.add(p)); }
+function preselectProvs(foe) { S.dipPick.clear(); const w = warBetween(ME, foe), dm = w ? demandMax(warscore(w, ME)) : 0; connectedPick(ME, foe, dm).forEach(p => S.dipPick.add(p)); }
 function wsBar(s) {
   const f = (s + 100) / 200;
   return `<div class="ws" role="meter" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="${s}" aria-label="Warscore"><i class="ws-me" style="width:${Math.max(0, s) / 2}%"></i><i class="ws-them" style="width:${Math.max(0, -s) / 2}%"></i><s style="left:${f * 100}%"></s><em style="left:75%"></em><em style="left:25%"></em><em style="left:60%"></em><em style="left:40%"></em></div>`;
@@ -599,7 +617,7 @@ function showMet() {
   const o = metQueue[0], el = $q('#metPop'); if (o === undefined) return;
   if (!S.paused) { togglePause(); metPausedByMe = true; }
   $q('#paused').hidden = true;
-  const N = NATIONS[o], n = provsOf(o).length, al = allyOf(o);
+  const N = NATIONS[o], n = provsOf(o).length, al = alliesOf(o)[0] || 0;
   el.innerHTML = `<button type="button" class="pop-x" data-mp="ok" aria-label="Dismiss" title="Dismiss">×</button><img class="mp-flag" alt="" src="${flagOf(o)}"><h2><span>You have met</span>the ${PLAYERS[o].name}</h2>` +
     `<p>${n} province${n === 1 ? '' : 's'} · ${DIFF_NAME[N.diff]}${al ? ` · allied with ${al === ME ? 'you' : 'the ' + PLAYERS[al].name}` : ''}${atWar(ME, o) ? ' · at war with you' : ''}. You can see them now in Diplomacy.</p>` +
     `<div class="dm-btns"><button type="button" data-mp="look">Show me</button><button type="button" data-mp="dip">Open Diplomacy</button><button type="button" data-mp="ok">OK</button></div>`;
@@ -634,13 +652,13 @@ function renderDip(t) {
   if (!others.length || S.fallen) { chip.hidden = true; if (dipOpen) closeDip(); return; }
   chip.hidden = false;
   const mine = warsOf(ME);
-  const ck = [mine.map(w => w.id + ':' + warscore(w, ME)).join(','), allyOf(ME), S.met.size].join('|');
+  const ck = [mine.map(w => w.id + ':' + warscore(w, ME)).join(','), alliesOf(ME).join(','), S.met.size].join('|');
   if (ck !== dipChipKey) {
     dipChipKey = ck;
     chip.classList.toggle('war', mine.length > 0);
     chip.innerHTML = mine.length
       ? `<span class="dp-l">⚔ War</span>` + mine.map(w => { const o = foeOf(w, ME), s = warscore(w, ME); return `<span class="dp-w" title="War with the ${PLAYERS[o].name}">${dot(o)}<span class="dp-wn">${PLAYERS[o].name.split(' of ').pop()}</span><b class="dp-s ${s > 0 ? 'up' : s < 0 ? 'down' : ''}">${sgn(s)}</b>${wsBar(s)}</span>`; }).join('') + `<span class="dp-btn">Diplomacy</span>`
-      : `<span class="dp-l">At peace${allyOf(ME) ? ` · allied with the ${dot(allyOf(ME))}${PLAYERS[allyOf(ME)].name}` : ''}</span><span class="dp-btn">Diplomacy</span>`;
+      : `<span class="dp-l">At peace${alliesOf(ME).length ? ` · allied with ${alliesOf(ME).map(x => `the ${dot(x)}${PLAYERS[x].name}`).join(' and ')}` : ''}</span><span class="dp-btn">Diplomacy</span>`;
   }
   if (!dipOpen) return;
   if (dipSel && !aliveNation(dipSel)) dipSel = 0;
@@ -656,7 +674,7 @@ function dipListHTML() {
   const met = aiIds().filter(o => S.met.has(o)), unmet = aiIds().filter(o => !S.met.has(o) && aliveNation(o)).length;
   const rows = met.map(o => {
     const N = NATIONS[o], r = relation(o), n = provsOf(o).length;
-    return `<button type="button" class="dp-row ${r.cls}${N.alive ? '' : ' gone'}" data-dp="sel" data-o="${o}"><img alt="" src="${flagOf(o)}"><span><b>${PLAYERS[o].name}</b><small>${N.alive ? `${n} province${n === 1 ? '' : 's'} · ${DIFF_NAME[N.diff]}${allyOf(o) && allyOf(o) !== ME ? ` · allied with the ${PLAYERS[allyOf(o)].name}` : ''}` : 'Fallen'}</small></span><em>${N.alive ? r.html : ''}</em></button>`;
+    return `<button type="button" class="dp-row ${r.cls}${N.alive ? '' : ' gone'}" data-dp="sel" data-o="${o}"><img alt="" src="${flagOf(o)}"><span><b>${PLAYERS[o].name}</b><small>${N.alive ? `${n} province${n === 1 ? '' : 's'} · ${DIFF_NAME[N.diff]}${alliesOf(o).filter(x => x !== ME).length ? ` · allied with ${alliesOf(o).filter(x => x !== ME).map(x => 'the ' + PLAYERS[x].name).join(' and ')}` : ''}` : 'Fallen'}</small></span><em>${N.alive ? r.html : ''}</em></button>`;
   }).join('');
   const aiWars = S.wars.filter(w => w.a !== ME && w.b !== ME && (S.met.has(w.a) || S.met.has(w.b)));
   const warRows = aiWars.map(w => { const s = warscore(w, w.a); return `<div class="dp-aw">${dot(w.a)}${PLAYERS[w.a].name} <span>⚔</span> ${dot(w.b)}${PLAYERS[w.b].name}<b>${sgn(s)}</b></div>`; }).join('');
@@ -668,15 +686,15 @@ function dipListHTML() {
 }
 function dipNationHTML(o, w) {
   const R = PLAYERS[o], N = NATIONS[o];
-  const head = `<div class="dp-head"><button type="button" class="dp-x dp-back" data-dp="back" aria-label="Back to all nations">‹</button><img class="dp-flag" alt="" src="${flagOf(o)}"><span class="dp-ttl"><b>${R.name}</b><small>${provsOf(o).length} provinces · ${S.units.filter(v => v.owner === o && v.kind === 'army').length} armies (power ${nationPower(o)}; yours ${nationPower(ME)}) · ${DIFF_NAME[N.diff]}</small></span><button type="button" class="dp-x" data-dp="close" aria-label="Close diplomacy">×</button></div>`;
+  const head = `<div class="dp-head"><button type="button" class="dp-x dp-back" data-dp="back" aria-label="Back to all nations">‹</button><img class="dp-flag" alt="" src="${flagOf(o)}"><span class="dp-ttl"><b>${R.name}</b><small>${provsOf(o).length} provinces · ${S.units.filter(v => v.owner === o && v.kind === 'army').length} armies (power ${fmtPow(nationPower(o))}; yours ${fmtPow(nationPower(ME))}) · ${DIFF_NAME[N.diff]}</small></span><button type="button" class="dp-x" data-dp="close" aria-label="Close diplomacy">×</button></div>`;
   if (!N.alive) return head + `<p class="dp-p">This nation has fallen.</p>`;
   if (!w) {
     const why = declareWhy(ME, o), aw = allyWhy(ME, o), al = allied(ME, o);
-    const theirAlly = allyOf(o);
-    return head + `<p class="dp-p">${al ? 'You are allies: if anyone declares war on one of you, the other joins the war.' : 'You are at peace. While at peace, neither side’s armies may enter the other’s land.'}${theirAlly && theirAlly !== ME ? ` They are allied with the ${dot(theirAlly)}${PLAYERS[theirAlly].name}, who would join a war against them.` : ''}</p>` +
-      (al ? `<button type="button" class="dp-go" data-dp="unally">End the alliance <small>${WAR.allyTruce / 60}-minute truce afterwards</small></button>`
+    const theirAllies = alliesOf(o).filter(x => x !== ME);
+    return head + `<p class="dp-p">${al ? 'You are allies: if anyone declares war on one of you, the other joins the war. Building a fort on your shared border ends the alliance.' : 'You are at peace. While at peace, neither side’s armies may enter the other’s land.'}${theirAllies.length ? ` They are allied with ${theirAllies.map(x => `the ${dot(x)}${PLAYERS[x].name}`).join(' and ')}, who would join a war against them.` : ''}</p>` +
+      (al ? `<button type="button" class="dp-go" data-dp="unally">End the alliance <small>${WAR.allyTruce / 60}-minute truce afterwards; you can’t ally again until it ends</small></button>`
         : `<button type="button" class="dp-go war" data-dp="declare"${why ? ' disabled' : ''}>Declare war <small>${why || '−' + costText(WAR.declareCost)}</small></button>` +
-          `<button type="button" class="dp-go ally" data-dp="ally"${aw ? ' disabled' : ''}>Propose an alliance <small>${aw || 'Against the ' + PLAYERS[commonThreat(ME, o)].name}</small></button>`) +
+          `<button type="button" class="dp-go ally" data-dp="ally"${aw ? ' disabled' : ''}>Propose an alliance <small>${aw || 'If anyone declares war on one of you, the other joins. Up to ' + MAX_ALLIES + ' allies'}</small></button>`) +
       `<ul class="dp-rules"><li>Each enemy soldier killed: +${WAR.kill}. Destroying a whole army: +${WAR.wipe}.</li><li>Hold an enemy province unopposed to occupy it: 60 s with 1 soldier, 40 s with 2–5, 20 s with 6 or more (capitals take twice as long; retaking takes the same). Worth outpost +${WAR.occVal[0]}, fort +${WAR.occVal[1]}, capital +${WAR.occVal[2]} while held.</li><li>Every ${WAR.tickEvery} s the side ahead gains +1.</li><li>A peace deal starts a ${WAR.truce / 60}-minute truce for both sides.</li><li>No more than ${WAR.maxVsPlayer} nations can be at war with you at once.</li></ul>`;
   }
   const s = warscore(w, ME), mineBase = w.a === ME ? w.base : -w.base;
@@ -684,9 +702,10 @@ function dipNationHTML(o, w) {
   const occMe = occVal(ME, o), occThem = occVal(o, ME);
   const term = (k, name, need, desc) => { const why = peaceCheck(w, k, k === 'provs' ? [...S.dipPick] : null), locked = why && why.startsWith('Needs'); return `<label class="dp-term${dipTerm === k ? ' on' : ''}${locked ? ' locked' : ''}"><input type="radio" name="dpt" value="${k}"${dipTerm === k ? ' checked' : ''}${locked ? ' disabled' : ''}><span><b>${name}</b><small>${desc}</small></span><em>${need}</em></label>`; };
   const n = provsOf(o).length, tt = totalTerms(o, ME);
-  const cap = capitalOf(o), pickable = provsOf(o).filter(p => p !== cap && S.explored.has(p) && takeable(p, ME));
+  const cap = capitalOf(o), pickable = provsOf(o).filter(p => (p !== cap || warscore(w, ME) >= WAR.total) && (S.explored.has(p) || p === cap) && takeable(p, ME));
   const mt = maxTake(ME), theirMt = maxTake(o);
-  const pick = dipTerm === 'provs' ? `<div class="dp-pick"><div class="dp-pick-h">Choose up to ${mt} <span>${S.dipPick.size}/${mt}</span></div>` + (pickable.length ? pickable.map(p => { const b = S.buildings.get(p), on = S.dipPick.has(p), full = !on && S.dipPick.size >= mt; return `<label class="dp-prov${on ? ' on' : ''}" data-prov="${p}"><input type="checkbox" value="${p}"${on ? ' checked' : ''}${full ? ' disabled' : ''}><i style="background:${TER[G.provs[p].terrain].base}"></i><span>${provName(p)}</span><small>${STAGE_WORD[b.stage]}${S.occ.get(p) === ME ? ' · occupied' : ''}</small></label>`; }).join('') : '<small>None of their provinces you know of can be taken.</small>') + '</div>' : '';
+  const dm = demandMax(s), dmTxt = dm;
+  const pick = dipTerm === 'provs' ? `<div class="dp-pick"><div class="dp-pick-h">Choose up to ${dm} <span>${S.dipPick.size}/${dmTxt}</span><button type="button" class="dp-pk" data-dp="pickall">All</button><button type="button" class="dp-pk" data-dp="picknone">None</button></div>` + (pickable.length ? pickable.map(p => { const b = S.buildings.get(p), on = S.dipPick.has(p), full = !on && S.dipPick.size >= dm; return `<label class="dp-prov${on ? ' on' : ''}" data-prov="${p}"><input type="checkbox" value="${p}"${on ? ' checked' : ''}${full ? ' disabled' : ''}><i style="background:${TER[G.provs[p].terrain].base}"></i><span>${provName(p)}</span><small>${STAGE_WORD[b.stage]}${S.occ.get(p) === ME ? ' · occupied' : ''}</small></label>`; }).join('') : '<small>None of their provinces you know of can be taken.</small>') + '</div>' : '';
   const why = peaceCheck(w, dipTerm, dipTerm === 'provs' ? [...S.dipPick] : null);
   return head +
     `<p class="dp-p">${w.by === ME ? 'You declared this war' : 'They declared this war'}${w.parent ? ' (through an alliance)' : ''}, ${fmtTime(S.t - w.since)} ago.</p>` +
@@ -696,8 +715,7 @@ function dipNationHTML(o, w) {
     (s < 0 ? term('surrender', 'Surrender', 'losing', `The ${R.name} takes ${theirMt} of your provinces (2 per fort they hold, at least 1), and you can’t declare war on anyone for ${WAR.surrenderLock / 60} minutes.`)
       : term('white', 'White peace', 'not losing', `Everyone keeps what they had. Not in the first ${WAR.whiteAfter / 60} minutes of a war.`)) +
     term('gold', 'Take gold', '+' + WAR.gold, `Take up to ${WAR.goldTerm} gold from their treasury.`) +
-    term('provs', 'Take provinces', '+' + WAR.provs, `Up to ${mt} province${mt > 1 ? 's' : ''} (2 per fort you hold, at least 1), not the capital.`) +
-    `<div class="dp-term locked dp-auto"><span><b>Total victory</b><small>Happens on its own at ±${WAR.total}: the winner takes as many provinces as a peace deal could (2 per fort it holds, at least 1: ${tt === 'annex' ? `for you the whole country, ${n} provinces` : `${mt} for you`}, ${theirMt} for them), a minute of the loser’s gold income from its treasury, and ${WAR.totalResearch} research points in every unlocked tree.</small></span><em>${WAR.total}</em></div>` +
+    term('provs', 'Take provinces', '+' + WAR.provs, `1 province at +${WAR.provs}, one more for every 5 warscore above that (${dm ? `now: ${dm}` : 'none yet'}). At +${WAR.total}: up to ${demandMax(WAR.total)} (2 per fort you hold, if that is more than 11), and the capital too if that takes the whole country.`) +
     pick +
     `<button type="button" class="dp-go" data-dp="offer"${why ? ' disabled' : ''}>${dipTerm === 'surrender' ? 'Surrender' : 'Make peace'} <small>${why || `truce for ${WAR.truce / 60} min afterwards`}</small></button>`;
 }
@@ -711,7 +729,7 @@ dipEl.addEventListener('pointerdown', e => e.stopPropagation());
 dipEl.addEventListener('wheel', e => e.stopPropagation());
 dipEl.addEventListener('change', e => {
   if (e.target.name === 'dpt') { dipTerm = e.target.value; if (dipTerm === 'provs' && !S.dipPick.size && dipSel) preselectProvs(dipSel); }
-  else if (e.target.type === 'checkbox') { const p = +e.target.value; if (e.target.checked) { if (S.dipPick.size < maxTake(ME)) S.dipPick.add(p); } else S.dipPick.delete(p); }
+  else if (e.target.type === 'checkbox') { const p = +e.target.value, w = warBetween(ME, dipSel); if (e.target.checked) { if (S.dipPick.size < demandMax(w ? warscore(w, ME) : 0)) S.dipPick.add(p); } else S.dipPick.delete(p); }
   dipKey = '';
 });
 dipEl.addEventListener('click', e => {
@@ -722,7 +740,9 @@ dipEl.addEventListener('click', e => {
   else if (act === 'sel') selectDip(+b.dataset.o);
   else if (act === 'declare') { declareWar(ME, dipSel); selectDip(dipSel); }
   else if (act === 'ally') { const why = allyWhy(ME, dipSel); if (why) return toast(why, true); formAlliance(ME, dipSel, commonThreat(ME, dipSel)); }
-  else if (act === 'unally') { const A = S.allies.find(x => (x.a === ME && x.b === dipSel) || (x.b === ME && x.a === dipSel)); if (A) endAlliance(A, 'you ended it'); }
+  else if (act === 'pickall' || act === 'picknone') { S.dipPick.clear(); if (act === 'pickall') { const w = warBetween(ME, dipSel), dm = w ? demandMax(warscore(w, ME)) : 0, cap = capitalOf(dipSel); for (const p of provsOf(dipSel)) if (S.dipPick.size < dm && (p !== cap || warscore(w, ME) >= WAR.total) && (S.explored.has(p) || p === cap) && takeable(p, ME)) S.dipPick.add(p); } }
+  else if (act === 'unally') {   // v96: either side may end it at any time: a 10-minute truce follows (no new alliance between them until it ends)
+    const A = S.allies.find(x => (x.a === ME && x.b === dipSel) || (x.b === ME && x.a === dipSel)); if (A) endAlliance(A, 'you ended it'); }
   else if (act === 'offer') {
     const w = warBetween(ME, dipSel); if (!w) return;
     const why = peaceCheck(w, dipTerm, [...S.dipPick]); if (why) return toast(why, true);

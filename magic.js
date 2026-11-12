@@ -213,7 +213,7 @@ function stepMagic(t, dt) {
   // stasis trap
   if (S.trap) {
     const foe = S.units.find(v => v.kind === 'army' && hostile(v.owner, ME) && v.prov === S.trap.prov && troopCount(v) > 0);
-    if (foe) { const n = STASIS[lvl('stasis')] || 10; foe.stasisUntil = t + n; foe.path = []; foe.moving = false; S.trap = null; S.cd.stasis = t + STASIS_CD; toast(`${foe.name} is caught in the stasis trap for ${n} s!`); }
+    if (foe) { const n = Math.round((STASIS[lvl('stasis')] || 10) * Math.pow(1.1, repLv('rep-stasis'))); foe.stasisUntil = t + n; foe.path = []; foe.moving = false; S.trap = null; S.cd.stasis = t + STASIS_CD; toast(`${foe.name} is caught in the stasis trap for ${n} s!`); }
   }
   // the stasis keeps a trapped army in place
   for (const a of S.units) if (a.stasisUntil && a.stasisUntil > t && a.moving) { a.path = []; a.moving = false; }

@@ -79,6 +79,7 @@ function startGame() {
     spawnAINations(menuOpts.practice ? [] : menuOpts.slots, menuOpts.races);
     setupContent();   // set pieces, Bandit Gangs, the civilians' zoom level
     setupV78();       // Roaming Monsters, the F4 unit-size zoom, war record (v78)
+    setupV96(false);  // v96: hotkeys on the capital, Druids' staves, new state
     $q('#debug').hidden = true;   // debug buttons are retired
     S.started = true; S.last = 0; S.nextTick = 0;
     document.body.classList.remove('in-menu');

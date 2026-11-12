@@ -185,7 +185,7 @@ function showInspect(a) {
     return `<div class="bm-item insp"><img alt="" src="${portrait(k)}"><span class="bm-name">${n} × ${d ? d.name : k}<small>${gear}${s ? ` · Attack ${s.atk}, health ${s.hp}, armor ${Math.round(s.red * 100)}%, speed ${s.speed}` : ''} · upkeep ${Object.entries(d ? d.upkeep : {}).map(([r, v]) => v * n + ' ' + r).join(', ') || 'none'}</small></span></div>`;
   }).join('');
   const up = {}; for (const [k, n] of Object.entries(a.troops)) for (const [r, v] of Object.entries((UNIT_DEFS[k] || {}).upkeep || {})) up[r] = (up[r] || 0) + v * n;
-  popNearCard(`<div class="bm-head"><b>${a.name}</b><span>${troopCount(a)} soldiers · power ${powerOf(a)} · ${a.battle ? 'in battle' : a.moving ? 'on the move' : 'standing'} in ${provName(a.prov)}${a.wounds ? ' · wounded' : ''}</span></div>${rows}<p class="bm-note">Total upkeep every 10 s: ${Object.entries(up).map(([r, v]) => v + ' ' + r).join(', ') || 'none'}.</p><button type="button" class="bm-item bm-move" data-insp-close="1"><span class="bm-name">Close</span></button>`);
+  popNearCard(`<div class="bm-head"><b>${a.name}</b><span>${troopCount(a)} soldiers · power ${fmtPow(powerOf(a))} · ${a.battle ? 'in battle' : a.moving ? 'on the move' : 'standing'} in ${provName(a.prov)}${a.wounds ? ' · wounded' : ''}</span></div>${rows}<p class="bm-note">Total upkeep every 10 s: ${Object.entries(up).map(([r, v]) => v + ' ' + r).join(', ') || 'none'}.</p><button type="button" class="bm-item bm-move" data-insp-close="1"><span class="bm-name">Close</span></button>`);
 }
 const retroCost = (from, to) => { const a = UNIT_DEFS[from].cost || {}, b = UNIT_DEFS[to].cost || {}, c = {}; for (const r of RES) { const d = (b[r] || 0) - (a[r] || 0); if (d > 0) c[r] = d; } return c; };
 function retroPlan(armies, to) {
@@ -320,21 +320,28 @@ function armyStatus(a) { return a.battle && !a.retreating ? 'in battle' : a.retr
 function armiesTabHTML() {
   const list = S.units.filter(v => v.kind === 'army' && v.owner === ME), mages = S.units.filter(v => v.kind === MAGE && v.owner === ME);
   const MN = UNIT_DEFS[MAGE].name, MNs = MN + 's';   // Mages, or Warlocks for Swamplings
-  const row = a => { const m = a.troops[MAGE] || 0, horde = hordeActive(a); return `<button type="button" class="ro-u${isSel(a) ? ' on' : ''}" data-uid="${a.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(Object.keys(a.troops).find(k => a.troops[k] && k !== MAGE) || (m ? MAGE : 'army'))}"><span><b>${escHTML(a.name)}</b><small><i class="${a.battle ? 'idle' : 'busy'}" style="${a.battle ? 'background:#c7362b' : ''}"></i>${troopCount(a) - m}${m ? ` + ${m} ${m > 1 ? MNs : MN}` : ''}${horde ? ' · Horde' : ''} · ${armyStatus(a)} · ${S.explored.has(a.prov) ? provName(a.prov) : 'fog'}</small></span><em class="ro-pow" title="Army power">⚔ ${powerOf(a)}</em></button>`; };
+  const row = a => { const m = a.troops[MAGE] || 0, horde = hordeActive(a); return `<button type="button" class="ro-u${isSel(a) ? ' on' : ''}" data-uid="${a.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(Object.keys(a.troops).find(k => a.troops[k] && k !== MAGE) || (m ? MAGE : 'army'))}"><span><b>${escHTML(a.name)}</b><small><i class="${a.battle ? 'idle' : 'busy'}" style="${a.battle ? 'background:#c7362b' : ''}"></i>${troopCount(a) - m}${m ? ` + ${m} ${m > 1 ? MNs : MN}` : ''}${horde ? ' · Horde' : ''} · ${armyStatus(a)} · ${S.explored.has(a.prov) ? provName(a.prov) : 'fog'}</small></span><em class="ro-pow" title="Army power">⚔ ${fmtPow(powerOf(a))}</em></button>`; };
   const mrow = u => `<button type="button" class="ro-u${isSel(u) ? ' on' : ''}" data-uid="${u.id}" title="Click to select, Shift-click to add, double-click to go to"><img alt="" src="${portrait(MAGE)}"><span><b>${u.name}</b><small><i class="${u.cast ? 'busy' : u.moving ? 'busy' : 'idle'}"></i>${u.cast ? 'casting' : u.moving ? 'walking' : 'idle'} · ${S.explored.has(u.prov) ? provName(u.prov) : 'fog'}</small></span></button>`;
   const total = unitTotal(MAGE), cap = mageCap(), inArmies = list.reduce((n, a) => n + (a.troops[MAGE] || 0), 0);
-  const mageSec = `<div class="ro-sec" title="${MNs} you have, counting those in armies and in training, out of the ${MN} limit. ${MN} Academy raises the limit.">${MNs} <span class="${total >= cap ? 'full' : ''}">${total}/${cap}</span></div>` +
-    (mages.length ? mages.map(mrow).join('') : '') + (inArmies ? `<div class="ro-none">${inArmies} in armies</div>` : '') + (!mages.length && !inArmies ? `<div class="ro-none">${total ? 'In training' : 'None yet'}</div>` : '');
-  return `<div class="ro-sec">Armies <span>${list.length}</span></div>` + (list.length ? list.map(row).join('') : '<div class="ro-none">No armies yet</div>') + mageSec + barracksSec();
+  const mageSec = roHead('mages', MNs, `<span class="${total >= cap ? 'full' : ''}">${total}/${cap}</span>`, `${MNs} you have, counting those in armies and in training, out of the ${MN} limit. ${MN} Academy raises the limit.`) +
+    (roHidden('mages') ? '' : (mages.length ? mages.map(mrow).join('') : '') + (inArmies ? `<div class="ro-none">${inArmies} in armies</div>` : '') + (!mages.length && !inArmies ? `<div class="ro-none">${total ? 'In training' : 'None yet'}</div>` : ''));
+  return roHead('armies', 'Armies', `<span>${list.length}</span>`) + (roHidden('armies') ? '' : list.length ? list.map(row).join('') : '<div class="ro-none">No armies yet</div>') + mageSec + barracksSec() + towersSec();
 }
 // your Barracks, so you can train more soldiers without hunting for them on the map
 const myBarracks = () => { const out = []; for (const [p, l] of S.extras) if (owned(p)) for (const e of l) if (e.type === 'barracks') out.push({ p, slot: e.slot, stable: l.some(x => x.type === 'stable') }); return out; };
 function barracksSec() {
   const list = myBarracks();
   const row = bk => { const Q = S.queues['barracks:' + bk.p] || [], on = S.selKind === 'barracks' && S.selBuilding === bk.p; return `<button type="button" class="ro-u${on ? ' on' : ''}" data-bk="${bk.p}@${bk.slot}" title="Click to select and train, double-click to go to"><img alt="" src="${buildThumb('barracks')}"><span><b>${provName(bk.p)}</b><small><i class="${Q.length ? 'busy' : 'idle'}"></i>${Q.length ? `training ${Q.length}` : 'idle'} · ${Q.some(q => q.retro) ? 'retrofitting · ' : ''}${isWd(ME) ? (bk.stable ? 'Protectors and Champions' : 'Protectors') : bk.stable && !isSw(ME) ? 'infantry and cavalry' : 'infantry'}</small></span></button>`; };
-  return `<div class="ro-sec">Barracks <span>${list.length}</span></div>` + (list.length ? list.map(row).join('') : '<div class="ro-none">None yet</div>');
+  return roHead('barracks', BUILD_DEFS.barracks.name, `<span>${list.length}</span>`) + (roHidden('barracks') ? '' : list.length ? list.map(row).join('') : '<div class="ro-none">None yet</div>');
 }
-const armiesKey = () => myBarracks().map(bk => bk.p + (bk.stable ? 's' : '') + ':' + (S.queues['barracks:' + bk.p] || []).length).join(',') + (S.selKind === 'barracks' ? '@' + S.selBuilding : '') + '#' + S.units.filter(v => (v.kind === 'army' || v.kind === MAGE) && v.owner === ME).map(a => a.id + a.name + ':' + (a.kind === 'army' ? troopCount(a) + ':' + (a.troops[MAGE] || 0) + armyStatus(a) + hordeActive(a) + powerOf(a) : (a.cast ? 'c' : '') + (a.moving ? 'm' : '')) + a.prov + (isSel(a) ? '*' : '')).join('|') + '#' + unitTotal(MAGE) + '/' + mageCap();
+// v96: Mage Towers (Groves, Warlock Towers) in the Armies tab too
+const myTowers = () => { const out = []; for (const [p, l] of S.extras) if (owned(p)) for (const e of l) if (e.type === 'magetower') out.push({ p, slot: e.slot, level: e.level || 1 }); return out; };
+function towersSec() {
+  const list = myTowers(), D = BUILD_DEFS.magetower, MN = UNIT_DEFS[MAGE].name;
+  const row = mt => { const Q = S.queues['magetower:' + mt.p] || [], on = S.selKind === 'magetower' && S.selBuilding === mt.p; return `<button type="button" class="ro-u${on ? ' on' : ''}" data-mt="${mt.p}@${mt.slot}" title="Click to select and train ${MN}s, double-click to go to"><img alt="" src="${buildThumb('magetower', mt.level)}"><span><b>${provName(mt.p)}</b><small><i class="${Q.length ? 'busy' : 'idle'}"></i>${Q.length ? `training ${Q.length}` : 'idle'} · ${D.levels[mt.level - 1]}</small></span></button>`; };
+  return roHead('towers', D.name + 's', `<span>${list.length}</span>`) + (roHidden('towers') ? '' : list.length ? list.map(row).join('') : '<div class="ro-none">None yet</div>');
+}
+const armiesKey = () => myTowers().map(m => m.p + ':' + m.level + ':' + (S.queues['magetower:' + m.p] || []).length).join(',') + (S.selKind === 'magetower' ? '@' + S.selBuilding : '') + '|' + myBarracks().map(bk => bk.p + (bk.stable ? 's' : '') + ':' + (S.queues['barracks:' + bk.p] || []).length).join(',') + (S.selKind === 'barracks' ? '@' + S.selBuilding : '') + '#' + S.units.filter(v => (v.kind === 'army' || v.kind === MAGE) && v.owner === ME).map(a => a.id + a.name + ':' + (a.kind === 'army' ? troopCount(a) + ':' + (a.troops[MAGE] || 0) + armyStatus(a) + hordeActive(a) + powerOf(a) : (a.cast ? 'c' : '') + (a.moving ? 'm' : '')) + a.prov + (isSel(a) ? '*' : '')).join('|') + '#' + unitTotal(MAGE) + '/' + mageCap();
 
 // ---------- grid hotkeys: each command-card cell has a key, laid out like the grid ----------
 //   Q W E R
@@ -347,7 +354,7 @@ function gridLabels() {
   const kids = $q('#cmdGrid').children;
   for (let i = 0; i < kids.length && i < 16; i++) {
     const b = kids[i]; if (!b.matches('button.cmd-btn')) continue;
-    const del = b.dataset.cmd === 'dismiss' || b.dataset.cmd === 'destroy';   // IC03: deleting a unit or building is on the Delete key
+    const del = b.dataset.cmd === 'dismiss' || b.dataset.cmd === 'destroy' || b.dataset.cmd === 'dismantle';   // IC03: deleting a unit or building is on the Delete key
     const want = del ? 'Del' : GRID_KEYS[i].toUpperCase(); let k = b.querySelector('kbd');
     if (!k) { k = document.createElement('kbd'); b.appendChild(k); }
     if (k.textContent !== want) k.textContent = want;
@@ -358,10 +365,10 @@ window.addEventListener('keydown', e => {
   if (!S.started || e.ctrlKey || e.metaKey || e.altKey || e.repeat) return;
   if (e.target && /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
   if (!$q('#settings').hidden || armOpen) return;
-  if (e.key === 'Delete') { const d = $q('#cmdGrid [data-cmd="dismiss"], #cmdGrid [data-cmd="destroy"]'); if (d) { e.preventDefault(); e.stopImmediatePropagation(); d.click(); } return; }
+  if (e.key === 'Delete') { const d = $q('#cmdGrid [data-cmd="dismiss"], #cmdGrid [data-cmd="destroy"], #cmdGrid [data-cmd="dismantle"]'); if (d) { e.preventDefault(); e.stopImmediatePropagation(); d.click(); } return; }
   const i = GRID_KEYS.indexOf(e.key.toLowerCase()); if (i < 0) return;
   const b = $q('#cmdGrid').children[i];
-  if (!b || !b.matches('button.cmd-btn') || b.dataset.cmd === 'dismiss' || b.dataset.cmd === 'destroy') return;
+  if (!b || !b.matches('button.cmd-btn') || b.dataset.cmd === 'dismiss' || b.dataset.cmd === 'destroy' || b.dataset.cmd === 'dismantle') return;
   e.preventDefault(); e.stopImmediatePropagation();
   b.click();
 }, true);
