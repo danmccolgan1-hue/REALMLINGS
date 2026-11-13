@@ -56,7 +56,7 @@ function regenMana() {
 // ---------- what each spell costs ----------
 // a number is paid when the spell is cast; 'all' takes every point the caster has; 'drain' costs 1 mana a second while channeling
 const SPELL_MANA = { harvest: 'drain', mending: 25, eyes: 25, graverob: 'all', haunt: 25, trading: 'all', mind: 50, stasis: 50, rift: 100,
-  spyre: 25, ftrap: 50, pfire: 50, sacred: 0, wrocks: 25, tportal: 100, fspirit: 'drain', gelem: 100 };
+  spyre: 25, ftrap: 50, pfire: 50, sacred: 100, wrocks: 25, tportal: 100, fspirit: 'drain', gelem: 100 };
 const AUTO_MANA = 50;          // Hardened Skin, Cursed Weapons, Risen Dead, Fiery Weapons, Rock Armor
 const PATH_MANA = 100;         // Speak with the Forest, Underworld Passage, Terrascaping (opening or closing)
 const SPELL2_MANA = { shock: 50, quake: 200 };
@@ -118,7 +118,7 @@ const V98_BLURBS = {
   scoutpyre: 'A Warlock lights a pyre where he stands (3 seconds of casting, 25 mana). For 1 minute it sees every neighboring province in its line of sight. 1-minute cooldown per Warlock.',
   firetrap: 'A Warlock buries a fire trap in his province (3 seconds of casting, 50 mana). The next enemy army to enter any part of that province is engulfed: 150 damage that ignores armor, to its front line. One trap per Warlock.',
   blazetrap: 'Fire traps deal 300 damage.', molttrap: 'Fire traps deal 450 damage.',
-  sacredpyre: 'A Warlock lights a Sacred Pyre where he stands (3 seconds of casting). For 1 minute it burns 10 wood every 10 s for 110 gold. Then the nation waits 3 minutes.',
+  sacredpyre: 'A Warlock standing in one of your provinces raises a Sacred Pyre there (3 seconds of casting, 100 mana and 200 wood). For 1 minute that province makes 110 more gold every 10 s. Then the nation waits 3 minutes.',
   pathfire: 'A Warlock fires up his army (50 mana): 100% faster for 10 seconds. 1-minute cooldown per Warlock.',
   rockarmor: 'Autocast (50 mana, no cooldown): when an army with a Druid starts a battle, plates of stone gather round it: a shield worth 10% of the army’s total health soaks up the damage before any soldier is hurt.',
   wrocks: 'A Druid raises whispering stones on a mountain border of the province he stands in (3 seconds of casting, 25 mana): both provinces on either side are in sight for 1 minute.',
@@ -137,7 +137,7 @@ const GRAVE_RATE = [0, 1, 2, 3], TRADE_RATE = [0, 1 / 3, 2 / 3, 1];
 const MIND = { show: 20, cd: 40 }, RIFT_CD = [0, 120, 15];
 const SEE_TIME = 60;           // Eyes of the Forest, Whispering Rocks, Haunt, Scouting Pyre
 const FIRE_DMG = [0, 150, 300, 450];
-const SACRED = { dur: 60, gold: 110, wood: 10, cd: 180 };
+const SACRED = { dur: 60, gold: 110, wood: 200, cd: 180 };   // v101: 100 mana + 200 wood, placed in one of your provinces, +110 gold there every payout
 SPYRE.dur = SEE_TIME; SPYRE.wood = 0;
 { const D = DSTATS[GELEM_ID]; D.hp = 500; D.atk = 50; D.armor = 0; D.red = 0; UNIT_DEFS[GELEM_ID].blurb = 'A towering man of living water, summoned by a Druid for 2 minutes: 500 health, no armor, 50 damage a swing.'; }
 
@@ -258,14 +258,13 @@ function pureFront(a, dmg) {
 // Path of Fire: 50 mana
 { const go = CAST.pfire.go; CAST.pfire.go = function (c) { spendMana(c, SPELL_MANA.pfire); go(c); }; }
 // Sacred Pyre: no longer a building. 3 s; a pyre burns where the Warlock stands for 1 minute: 10 wood -> 110 gold every 10 s. 3-minute nationwide cooldown
-CAST.sacred = { name: () => TECH_BY_ID.sacredpyre.name, line: 'sacred', instant: false, why: c => resOthers(c, 'sacred'), go: c => { beginCast(c, 'sacred'); toast(`${c.name} raises a Sacred Pyre: 3 s of casting.`); } };
-FINISH.sacred = (c, cs, t) => { S.sacreds.push({ prov: c.prov, owner: ME, x: c.x + 30 * UKK, y: c.y + 4 * UKK, t0: t, until: t + SACRED.dur }); S.cd.sacred = t + SACRED.cd; sfx('mg_arcane', { prov: c.prov }); toast(`A Sacred Pyre burns in ${provName(c.prov)}: for 1 minute it turns ${SACRED.wood} wood into ${SACRED.gold} gold every 10 s.`); };
-function paySacredPyres() {
-  if (!S.sacreds.length) return;
-  let short = false;
-  for (const P of S.sacreds) { if (P.owner !== ME || P.until <= S.t) continue; if (S.stock.wood < SACRED.wood) { short = true; continue; } S.stock.wood -= SACRED.wood; S.stock.gold += SACRED.gold; }
-  if (short) toast(`A Sacred Pyre has no wood to burn (it needs ${SACRED.wood} every 10 s).`, true);
-}
+CAST.sacred = { name: () => TECH_BY_ID.sacredpyre.name, line: 'sacred', instant: false,
+  why: c => sacredWhy(c.prov) || resOthers(c, 'sacred') || (S.stock.wood < SACRED.wood ? `Needs ${SACRED.wood} wood` : null),
+  go: c => { S.stock.wood -= SACRED.wood; beginCast(c, 'sacred', { to: c.prov }); toast(`${c.name} raises a Sacred Pyre in ${provName(c.prov)}: 3 s of casting.`); } };
+// v101: the Warlock places it in the province he stands in, which must be yours (no button anywhere else)
+const sacredWhy = p => !owned(p) || S.occ.has(p) ? 'Only in one of your provinces' : S.sacreds.some(P => P.prov === p && P.until > S.t) ? 'A Sacred Pyre already burns here' : null;
+FINISH.sacred = (c, cs, t) => { const p = cs.to !== undefined ? cs.to : c.prov, P = G.provs[p].ic; if (sacredWhy(p)) { S.stock.wood += SACRED.wood; return toast('Sacred Pyre: ' + sacredWhy(p).toLowerCase() + ' (wood refunded).', true); } S.sacreds.push({ prov: p, owner: ME, x: P[0] + 34 * UKK, y: P[1] + 20 * UKK, t0: t, until: t + SACRED.dur }); S.cd.sacred = t + SACRED.cd; computeIncome(); sfx('mg_arcane', { prov: p }); toast(`A Sacred Pyre burns in ${provName(p)}: +${SACRED.gold} gold every 10 s there for 1 minute.`); };
+function paySacredPyres() {}   // v101: the pyre's gold is part of the province's income now (provinceIncome below)
 // a lone Warlock no longer raises Sacred Pyre buildings (old ones keep burning)
 { const g0 = Object.getOwnPropertyDescriptor(CMD, MAGE).get; Object.defineProperty(CMD, MAGE, { configurable: true, get() { return g0.call(CMD).filter(c => c.id !== 'pyrebuild'); } }); }
 // Rock Armor, Hardened Skin, Fiery Weapons: no cooldown (see the battle join below). Town Portal: 3 s, 100 mana
@@ -278,7 +277,7 @@ CAST.fspirit = { name: () => TECH_BY_ID.forestspirit.name, line: 'fspirit', inst
   go(c) { startCast(c, 'q:fspirit', Infinity); computeIncome(); provKey = ''; toast(`${c.name} channels a Forest Spirit: ${provName(c.prov)} makes twice the resources and research while he keeps it up (1 mana a second).`); } };
 S.fspirits = [];
 const spiritProv = (p, o) => S.units.some(c => c.owner === o && c.prov === p && c.cast && c.cast.spell === 'q:fspirit' && isCasterAny(c));
-{ const pi = provinceIncome; provinceIncome = function (p, b) { const y = pi(p, b); if (b && spiritProv(p, b.owner)) for (const k of Object.keys(y)) if (typeof y[k] === 'number' && y[k] > 0) y[k] *= 2; return y; }; }
+{ const pi = provinceIncome; provinceIncome = function (p, b) { const y = pi(p, b); if (b && S.sacreds && S.sacreds.some(P => P.prov === p && P.owner === b.owner && P.until > S.t)) y.gold = (y.gold || 0) + SACRED.gold; if (b && spiritProv(p, b.owner)) for (const k of Object.keys(y)) if (typeof y[k] === 'number' && y[k] > 0) y[k] *= 2; return y; }; }
 { const pr = provResearch; provResearch = function (p) { const r = pr(p); if (owned(p) && spiritProv(p, ME)) for (const k of Object.keys(r)) if (typeof r[k] === 'number') r[k] *= 2; return r; }; }
 { const cc = cancelCast; cancelCast = function (c, why) { const sp = c && c.cast && c.cast.spell; cc(c, why); if (sp === 'q:fspirit') { computeIncome(); provKey = ''; } }; }
 // the buttons: Eyes of the Forest after Mending, Haunt after Grave Robbing, Sacred Pyre with the Pyromancy spells
@@ -353,7 +352,7 @@ menuEl.addEventListener('click', e => {
   // sights that last a minute
   let fog = false;
   for (const key of ['eyes', 'haunts', 'wrocks']) { const L = S[key] || []; const keep = L.filter(r => r.until === undefined || r.until > t); if (keep.length !== L.length) { S[key] = keep; fog = true; } }
-  if (S.sacreds.length) S.sacreds = S.sacreds.filter(P => P.until > t);
+  if (S.sacreds.length) { const n = S.sacreds.length; S.sacreds = S.sacreds.filter(P => P.until > t); if (S.sacreds.length !== n) computeIncome(); }
   if (fog) { computeFog(); fogDirty = true; miniDirty = true; }
   // risen soldiers: never more than the army has
   for (const a of S.units) if (a.ghouls) { const n = troopCount(a) - (a.troops[MAGE] || 0); if (a.ghouls > n) a.ghouls = Math.max(0, n); }
@@ -436,7 +435,7 @@ const SPELL_FLAGS = [
   { k: 'trading', img: 'sp_trading', school: 'arcane', mana: true },
   { k: 'sacred', img: 'sp_sacred', school: 'pyro', mana: false }
 ];
-const readyCaster = (k, mana) => S.units.find(c => isCaster(c) && !c.cast && !c.battle && !c.quake && !c.exiting && (!mana || manaOf(c) >= 25) && !castWhy(c, k));
+const readyCaster = (k, mana) => S.units.find(c => isCaster(c) && !c.cast && !c.battle && !c.quake && !c.exiting && (!mana || manaOf(c) >= 25) && !castWhy(c, k));   // (the Sacred Pyre's flag also needs its 100 mana and 200 wood: castWhy checks both)
 { const fl = flagList; flagList = function () {
   const out = fl();
   if (!S.started || !currentSchool()) return out;

@@ -647,7 +647,7 @@ body.in-menu .lcol { display: none !important; }
 .ui-val { min-width: 4ch; font-variant-numeric: tabular-nums; }
 .ui-reset { padding: 1px 8px !important; font-size: 12px !important; }
 /* UI size (Settings): every panel, button and window scales; the map itself does not */
-.tut-say, .tut-end, .tut-ghost, .gear, .nation, .res, .hudbtns, .nflags, .lcol, .rcol, .cmd, #cmdTip, .minimap, .sel, #toast, .zoom, .tech-panel, .armory, .dip-panel, .demand, .bandit-pop, .school-pick, #gameover, .settings, #paused, .cap, #bmenu, #tip, .menu-card { zoom: var(--ui, 1); }
+.gear, .nation, .res, .hudbtns, .nflags, .lcol, .rcol, .cmd, #cmdTip, .minimap, .sel, #toast, .zoom, .tech-panel, .armory, .dip-panel, .demand, .bandit-pop, .school-pick, #gameover, .settings, #paused, .cap, #bmenu, #tip, .menu-card { zoom: var(--ui, 1); }
 /* square corners everywhere: windows, panels, buttons, tabs and cards. Only small status dots, pips and switches stay round. */
 *, *::before, *::after { border-radius: 0 !important; }
 .pm-own i, .res .tick, .ro-u i, .qi i, .dp-l i, .dp-head i, .dm-head i, .tb-pip, .nf b, .nat-col, .dip .dp-w i, .dp-aw i, .dp-p i { border-radius: 50% !important; }
@@ -767,60 +767,6 @@ body.in-menu .gtime { display: none; }
 .trav-btns button:disabled { opacity: 0.5; cursor: not-allowed; }
 body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { display: none !important; }
 .insp-win, .country-win, .rename-pop { zoom: var(--ui, 1); }
-
-/* v101: the tutorial */
-.menu-start.menu-tut { background: #e0a23a; font-size: 22px; }
-.menu-start.menu-tut:hover { background: #ecb04a; }
-.menu-tuts { display: flex; flex-direction: column; gap: 12px; margin: 14px 0 18px; }
-.menu-tuts .menu-start { display: flex; flex-direction: column; align-items: center; line-height: 1.05; }
-.menu-tuts .menu-start small { font: 700 12px var(--font-ui); -webkit-text-stroke: 0; color: #eaf3fc; margin-top: 4px; }
-.menu-start.menu-tut-soon:disabled { background: #9aa6b5; cursor: not-allowed; }
-.tut-obj { padding: 6px 8px 7px; }
-.tut-obj[hidden] { display: none; }
-.tut-obj h3 { margin: 0 0 3px; font: 400 14px var(--font-display); }
-.tut-obj ul { margin: 0; padding: 0 0 0 14px; display: flex; flex-direction: column; gap: 1px; }
-.tut-obj li { font-weight: 700; font-size: 12px; line-height: 1.2; }
-.tut-obj li { display: list-item; }
-.tut-obj li > span { display: inline; }
-.tut-play { float: right; width: 18px; height: 18px; margin: -1px 0 0 6px; padding: 0; border: 1px solid var(--ink); background: #ffe28a; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
-.tut-play svg { width: 9px; height: 9px; fill: var(--ink); }
-.tut-play:hover { background: #ffc93c; }
-.tut-obj li.done .tut-play { opacity: 0.7; }
-.tut-say-b { display: flex; justify-content: center; gap: 10px; }
-.tut-say-b .tut-skip { margin: 0; }
-.tut-skip:disabled { opacity: 0.4; cursor: default; }
-.tut-explain-btn { font: 900 17px var(--font-ui); letter-spacing: 0.02em; text-transform: uppercase; padding: 9px 10px; border: 2px solid var(--ink); background: #ffe7a0; cursor: pointer; text-align: center; line-height: 1.1; }
-.tut-explain-btn:hover { background: #ffd65c; }
-.tut-explain-btn[aria-pressed="true"] { background: #ffc93c; box-shadow: 0 0 16px 5px rgba(255,201,60,0.85); }
-.tut-block { position: fixed; inset: 0; z-index: 40; background: rgba(20,16,28,0.38); cursor: not-allowed; }
-.tut-block[hidden], .tut-ghost[hidden], .tut-call[hidden] { display: none; }
-.tut-call { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 41; pointer-events: none; overflow: visible; }
-.tut-ctext { font-family: var(--font-ui); font-weight: 900; fill: #ffd24a; stroke: #3b2500; stroke-width: 5px; paint-order: stroke; text-anchor: middle; letter-spacing: 0.02em; }
-.tut-arrow .ta-o { stroke: #3b2500; stroke-width: 10px; fill: none; stroke-linecap: round; }
-.tut-arrow .ta-ho { fill: #3b2500; stroke: #3b2500; stroke-width: 5px; stroke-linejoin: round; }
-.tut-arrow .ta-i { stroke: #ffd24a; stroke-width: 5px; fill: none; stroke-linecap: round; }
-.tut-arrow .ta-hi { fill: #ffd24a; }
-.tut-ghost { position: fixed; z-index: 5; left: max(16px, env(safe-area-inset-left, 0px)); bottom: calc(env(safe-area-inset-bottom, 0px) + 194px); width: 232px; height: 140px; box-sizing: border-box; border: 3px dashed #ffd24a; background: rgba(255,247,226,0.85); display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px; font-weight: 800; font-size: 13px; }
-body.tut-explain .lcol { z-index: 45; }
-body.tut-explain .lcol > :not(#tutExplain) { pointer-events: none; }
-.tut-obj li:not(.done) { color: var(--ink); font-size: 13px; }
-.tut-obj li.done { color: #8a8794; text-decoration: line-through; text-decoration-thickness: 2px; }
-.tut-say { position: fixed; z-index: 7; left: 50%; transform: translateX(-50%); bottom: calc(env(safe-area-inset-bottom, 0px) + 104px); width: min(620px, calc(100vw - 560px)); min-width: 300px; padding: 9px 14px 10px; box-sizing: border-box; }
-.tut-say[hidden] { display: none; }
-.tut-say-h { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
-.tut-say-h b { font: 400 15px var(--font-display); }
-.tut-say-h span { font-size: 11px; font-weight: 800; color: var(--muted); }
-.tut-say p { margin: 0 0 8px; font-size: 14.5px; font-weight: 600; line-height: 1.35; }
-.tut-skip { display: block; margin: 0 auto; font: 800 13px var(--font-ui); padding: 4px 18px; border: 1px solid var(--ink); background: var(--chip-hi, #fff); cursor: pointer; }
-.tut-skip:hover { background: #fff3c9; }
-.tut-end { position: fixed; z-index: 9; left: 50%; top: 40%; transform: translate(-50%, -50%); padding: 16px 22px 18px; text-align: center; width: 360px; }
-.tut-end[hidden] { display: none; }
-.tut-end h2 { margin: 0 0 6px; font: 400 26px var(--font-display); }
-.tut-end p { margin: 0 0 14px; font-weight: 600; }
-.tut-end-b { display: flex; flex-direction: column; gap: 8px; align-items: center; }
-.tut-stay { font: 700 13px var(--font-ui); border: 1px solid var(--ink); background: var(--chip-hi, #fff); padding: 4px 14px; cursor: pointer; }
-.tut-glow { outline: 3px solid #ffc93c !important; outline-offset: 2px; animation: tutGlow 1s ease-in-out infinite alternate; }
-@keyframes tutGlow { from { box-shadow: 0 0 0 0 rgba(255,201,60,0.9); } to { box-shadow: 0 0 14px 6px rgba(255,201,60,0.75); } }
 </style>
 
 <canvas id="map" aria-label="Realmlings playtest map"></canvas>
@@ -882,7 +828,7 @@ body.tut-explain .lcol > :not(#tutExplain) { pointer-events: none; }
     <li>Other nations: up to 7 computer nations (set each slot on the title card to Easy, Moderate, Difficult or Closed) live on the island and play by your rules. Easy nations stay small and peaceful; Moderate ones grow to 10 provinces, research Mages and grow to 20; Difficult ones grow, research and build as fast as they can. Moderate and Difficult nations whose armies are twice as strong (by power, not head count) as a bordering nation’s take a minute to think it over, then declare war. They treat you like any other nation, and no more than 2 nations can be at war with you at once.</li>
     <li>Diplomacy (the chip under the research bar): see every nation you have met, declare war (50 gold, only on a nation that borders you), make peace, or propose an alliance. Each war has its own warscore. A nation may have up to 2 allies, of its own race only. Two nations can only ally once they have met each other, and they can’t ally if either has a fort on their shared border, if they have ever been at war with each other, or if one has been at war with an ally of the other. If anyone declares war on one ally, the others join in. Building a fort on an ally’s border ends the alliance after a minute (a flag counts down: dismantle the fort in time to keep it). When you ally a nation, you meet every nation it has met, and it meets every nation you have. Either side may end an alliance at any time; a 10-minute truce follows, and they can’t ally again until it ends. Masons can build roads and walls across borders, and with Bridge Building (Government Tier III) a bridge across a river border, if one side is yours (Ctrl+right-click the province across the river with a Mason next to it). Units can only cross their own land, unclaimed land, the land of a nation they are at war with, or the land of a nation they have a truce with. A peace deal starts an 8-minute truce; a red flag with a dove warns you 30 s before one ends (click it to look at that nation).</li>
     <li>Meeting nations: you meet a nation when you explore its land or when one of your Wayfinders stands next to one of its provinces. The game pauses to introduce it.</li>
-    <li>At war: any of your units may march into the enemy’s land even where you haven’t explored it. A capture that is interrupted by a battle picks up where it left off if the capturing army wins. At 100 warscore a white-flag notification tells you to call for peace (there is no Total Victory). Every war ends in white peace after 5 minutes unless a deal is made first; an hourglass flag counts down the last 30 seconds (click it to open Diplomacy). Warscore: beating an army of more than 10 soldiers is +1, and +5 if it was more than half of that nation’s whole army (smaller ones give nothing). Occupying an outpost is +2, a fort +10 and a capital +25 while you hold them, and every 10 s each occupied fort adds +1 and an occupied capital +5. Occupying every province of a nation puts you at 100 at once. No peace deal can take a province another nation occupies: the winner takes what it can, never the capital. Both the occupier and the owner keep sight of an occupied province.</li>
+    <li>At war: any of your units may march into the enemy’s land even where you haven’t explored it. A capture that is interrupted by a battle picks up where it left off if the capturing army wins. At 100 warscore a white-flag notification tells you to call for peace (there is no Total Victory). Every war ends in white peace after 20 minutes unless a deal is made first; an hourglass flag counts down the last 30 seconds (click it to open Diplomacy). Warscore: beating an army of more than 10 soldiers is +1, and +5 if it was more than half of that nation’s whole army (smaller ones give nothing). Occupying an outpost is +2, a fort +10 and a capital +25 while you hold them, and every 10 s each occupied fort adds +1 and an occupied capital +5. Occupying every province of a nation puts you at 100 at once. No peace deal can take a province another nation occupies: the winner takes what it can, never the capital. Both the occupier and the owner keep sight of an occupied province.</li>
     <li>Peace deals: from +50 warscore the winner may take 1 province, and one more for every 5 warscore above that (10 at +95). At +100 it may take up to 2 provinces for every fort it holds, if that is more than 11, and the capital too if that takes the whole country. Tick the provinces you want in Diplomacy (All / None help). White peace is only for a side that isn’t losing, and not in the first 3 minutes of a war. A side with negative warscore can only surrender: the enemy takes as many provinces as it may, and the side that surrendered can’t declare war on anyone for 10 minutes.</li>
     <li>Wayfinders and Masons at war: Masons won’t walk into a province where they can see enemy soldiers. A Wayfinder or Mason who meets enemy soldiers runs back to the province he came from. For 15 seconds after that, if he meets enemy soldiers again, an army of yours has 5 seconds to reach him before he is caught. Sneaking Wayfinders can’t be seen at all. A Wayfinder standing where another nation finishes an outpost withdraws to the province he came from (if it is yours or an enemy’s), or else all the way to your capital.</li>
     <li>Armory (<kbd>G</kbd>): design your infantry and cavalry by choosing a weapon (polearms beat cavalry, blunt weapons crush armor, swords parry, axes land critical strikes), a shield for one-handed weapons, armor (leather is fast, plate is tough but slow) and, for cavalry, a horse. Military research unlocks better gear. Barracks train your designs.</li>
@@ -908,7 +854,6 @@ body.tut-explain .lcol > :not(#tutExplain) { pointer-events: none; }
     <div class="menu-row"><span class="lbl">Sound effects</span><div class="menu-mus"><button type="button" class="menu-tog" id="mSfx" aria-pressed="true"><span>On</span></button><input type="range" id="mSfxVol" min="0" max="100" value="70" aria-label="Sound effects volume"></div></div>
     <button type="button" class="menu-start menu-cont" id="mCont" hidden>Continue<small id="mContInfo"></small></button>
     <button type="button" class="menu-start" id="mNew">New Game</button>
-    <button type="button" class="menu-start menu-tut" id="mTut">Tutorial</button>
     <button type="button" class="menu-start menu-mp" id="mMulti">Multiplayer</button>
     <button type="button" class="menu-how" id="mImport" title="Load a game exported from Settings (a .realmsave file)">Load a save file</button>
     <button type="button" class="menu-how" id="mHow" aria-expanded="false" aria-controls="mHowText">How to play</button>
@@ -924,13 +869,6 @@ body.tut-explain .lcol > :not(#tutExplain) { pointer-events: none; }
     <div class="menu-screen" id="mMultiScreen" hidden>
     <div class="menu-sub"><button type="button" class="menu-back" id="mMultiBack" aria-label="Back to the main menu">← Back</button><h2>Multiplayer</h2><span></span></div>
     <p class="menu-soon">Coming Soon</p>
-    </div>
-    <div class="menu-screen" id="mTutScreen" hidden>
-    <div class="menu-sub"><button type="button" class="menu-back" id="mTutBack" aria-label="Back to the main menu">← Back</button><h2>Tutorial</h2><span></span></div>
-    <div class="menu-tuts">
-    <button type="button" class="menu-start" id="mTutBasic">Basic Tutorial<small>Explore, expand and build your first army</small></button>
-    <button type="button" class="menu-start menu-tut-soon" id="mTutCombat" disabled>Combat Tutorial<small>Coming soon</small></button>
-    </div>
     </div>
     <div class="menu-screen" id="mSetup" hidden>
     <div class="menu-sub"><button type="button" class="menu-back" id="mBack" aria-label="Back to the main menu">← Back</button><h2>New Game</h2><span></span></div>

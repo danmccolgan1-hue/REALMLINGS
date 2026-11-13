@@ -205,7 +205,7 @@ function stepWar(t) {
 function stepOneWar(w, t) {
   // Total Victory happens on its own the moment a war reaches 100 warscore
   // v96: there is no Total Victory any more: at 100 warscore a flag tells you to call for peace (v96.js), and every war ends
-  // in white peace after 5 minutes unless a deal is made first (v96.js stepWarTimers)
+  // in white peace after 20 minutes unless a deal is made first (v96.js stepWarTimers)
   // a nation with every province occupied and no army left has lost: the warscore goes straight to 100 (GPC27)
   for (const L of [w.a, w.b]) if (allOccupied(L, foeOf(w, L)) && !w.broken) { w.broken = L; const win = foeOf(w, L); addScore(w, win, 200); if (w.a === ME || w.b === ME) toast(L === ME ? `Every province you hold is occupied: the ${PLAYERS[win].name} is at 100 warscore.` : `Every province of the ${PLAYERS[L].name} is occupied: warscore 100%. Call for peace in Diplomacy.`, L === ME); }
   // the time tick only runs once the war has turned serious: a fort or capital occupied, or a battle that cost a side 10% of its army
@@ -714,7 +714,7 @@ function dipNationHTML(o, w) {
   return head +
     `<p class="dp-p">${w.by === ME ? 'You declared this war' : 'They declared this war'}${w.parent ? ' (through an alliance)' : ''}, ${fmtTime(S.t - w.since)} ago.</p>` +
     `<div class="dp-ws">${wsBar(s)}<b class="dp-s ${s > 0 ? 'up' : s < 0 ? 'down' : ''}">${sgn(s)}</b></div>` +
-    `<div class="dp-break"><span>Battles &amp; time <b>${sgn(mineBase)}</b></span><span>${w.active ? 'Time tick on' : 'Time tick off until a fort falls or a battle costs 10% of an army'}</span><span>${w.peak <= WAR.stallScore ? `White peace in ${fmtTime(Math.max(0, WAR.stallWindow - (S.t - w.winStart)))} unless someone passes ±${WAR.stallScore}` : ''}</span><span>You occupy <b>+${occMe}</b></span><span>They occupy <b>${occThem ? '−' + occThem : '0'}</b></span></div>` +
+    `<div class="dp-break"><span>Battles &amp; time <b>${sgn(mineBase)}</b></span><span>Every 10 s: +1 per occupied fort, +5 for an occupied capital</span><span>${w.peak <= WAR.stallScore ? `White peace in ${fmtTime(Math.max(0, WAR.stallWindow - (S.t - w.winStart)))} unless someone passes ±${WAR.stallScore}` : ''}</span><span>You occupy <b>+${occMe}</b></span><span>They occupy <b>${occThem ? '−' + occThem : '0'}</b></span></div>` +
     `<div class="dp-sec">Peace terms</div>` +
     (s < 0 ? term('surrender', 'Surrender', 'losing', `The ${R.name} takes ${theirMt} of your provinces (2 per fort they hold, at least 1), and you can’t declare war on anyone for ${WAR.surrenderLock / 60} minutes.`)
       : term('white', 'White peace', 'not losing', `Everyone keeps what they had. Not in the first ${WAR.whiteAfter / 60} minutes of a war.`)) +

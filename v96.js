@@ -166,8 +166,8 @@ FLAG_IMG.wptimer = bannerSVG('#8a8f99', '#5f636b', '<path d="M22 22 H42 L34 36 L
 FLAG_IMG.bandits = bannerSVG('#8b5a2b', '#6a4220', '<path d="M20 24 L44 48 M44 24 L20 48" stroke-width="5" stroke="#1d1a22"/><path d="M20 24 L44 48 M44 24 L20 48" stroke-width="2.6" stroke="#d8d2c4"/><path d="M16 44 L24 52 M48 44 L40 52" stroke-width="3.4" stroke="#8a6a3a"/>');
 FLAG_IMG.allyfort = bannerSVG('#6b3fa0', '#4f2d78', '<path d="M18 46 V30 H24 V34 H30 V26 H36 V34 H42 V30 H46 V46 Z" fill="#cfc8ba"/><path d="M28 46 V40 H36 V46" fill="#6b4a2a"/><path d="M14 22 L50 54" stroke="#c7362b" stroke-width="3.4"/>');
 
-// ---------- wars: no Total War; a flag at 100 warscore; a hidden 5-minute timer ends every war in white peace ----------
-const WAR_TIMER = 300, WAR_TIMER_SHOW = 30;
+// ---------- wars: no Total War; a flag at 100 warscore; a hidden 20-minute timer (v101; was 5) ends every war in white peace ----------
+const WAR_TIMER = 1200, WAR_TIMER_SHOW = 30;   // v101: 20 minutes (was 5)
 const warTimeLeft = w => WAR_TIMER - (S.t - w.since);
 function stepWarTimers() {
   for (const w of S.wars.slice()) {

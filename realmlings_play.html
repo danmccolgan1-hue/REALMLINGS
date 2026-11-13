@@ -816,8 +816,8 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
     <li>Click a province to open its province menu above the command card (terrain, owner, resources, buildings). Click a building there or on the map to select it.</li>
     <li>Select your capital or a Barracks to train units from the command card; hover any button for details. Queued units show on its bottom row; click one to cancel.</li>
     <li>Your capital trains Wayfinders and Masons. Units cost upkeep; the capital adds +5 of each resource.</li>
-    <li>Front and back rows: an army of 6 or more fights in two rows. The front row takes the blows first; the back row only takes damage once the front row has fallen, and then only half, but back-row soldiers also deal half damage. Mages (Druids, Warlocks) stand in the back on their own and deal full damage from there. Arrange the rows with the army’s Rows button: move all or half of a kind to the front or back. An army of 5 or fewer fights as one line.</li>
-    <li>Battles start automatically when hostile armies share a province and are fought to the last soldier. Armor soaks damage; polearms do +50% against cavalry; blunt weapons ignore half of the armor. Neither side can pull out during a battle’s first 10 seconds; after that, select your army and press Retreat (<kbd>R</kbd>). Losses depend on how big the enemy is, and the army falls back all the way to your capital (or as close as it can get) and takes no orders until it arrives.</li><li>Armies: each shows an estimated power number (⚔). An army standing still at one of your Barracks rests and gets its health back (5 s for every soldier in it: 10 soldiers take 50 s); Rest on the command card marches it to the nearest one. Retrofitting takes 10 s per soldier at a Barracks (with a Stable for cavalry); the army marches there by itself.</li>
+    <li>Front and back rows: an army of 6 or more fights in two rows of equal size (the front gets the odd one). Blows land on the front row; whenever a front-row soldier falls, a random back-row soldier steps forward. Back-row soldiers deal half damage, and take half damage only once nobody is left in front. The Mage (Druid, Warlock) always stands in the back and deals full damage; an army can have only one. With the army’s Rows button, order the smaller unit types to the front or the back; the biggest type fills the places left over. An army of 5 or fewer fights as one line.</li>
+    <li>Battles start automatically when hostile armies share a province and are fought to the last soldier. Armor soaks damage; polearms do +50% against cavalry; blunt weapons ignore half of the armor and deal 150% damage to soldiers in plate. Neither side can pull out during a battle’s first 10 seconds; after that, select your army and press Retreat (<kbd>R</kbd>). Losses depend on how big the enemy is, and the army falls back all the way to your capital (or as close as it can get) and takes no orders until it arrives.</li><li>Armies: each shows an estimated power number (⚔). An army standing still at one of your Barracks rests and gets its health back (5 s for every soldier in it: 10 soldiers take 50 s); Rest on the command card marches it to the nearest one. Retrofitting takes 10 s per soldier at a Barracks (with a Stable for cavalry); the army marches there by itself.</li>
     <li>Terrain: grassland gives cavalry +20%; forest gives defenders +25% and cavalry −25%; swamp weakens everyone.</li>
     <li>Music (<kbd>M</kbd> turns it on or off) and sound effects: set both in Settings.</li>
     <li>Research (<kbd>T</kbd>, or the button in the resource bar): Government research runs from the start, earning points from your forts (+2), capital (+3) and temples (+2); outposts give none. The bar shows each tree’s points per 10 s next to its banner (blue column: Government, red swords: Military, purple star: Magic), and each province’s menu shows what it adds. Past 10 provinces every technology costs 5% more per province, and past 20 another 15% per province. Research the Forge (Government Tier I; a Barracks makes it more likely to be offered) and build one to open Military research, and a Mage Tower to open Magic; once offered, both stay on offer until researched. Select either building to upgrade it (Forge → Battle Forge → War Forge; Mage Tower → Mage Sanctum → Mage Arcanum), which unlocks the next tier. Retained Knowledge adds a fourth and fifth choice. When a tree has fewer than 5 technologies left, repeatable technologies appear (marked ↻); each costs 30% more every time.</li>
@@ -826,13 +826,14 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
     <li>Every island has three unique provinces. <b>Death Mountain</b> is a black mountain the size of a province, walled in by mountains: nobody can enter it, it shows as soon as you see any province beside it, and every province around it makes +5 gold. A dragon (Red, Blue or Gold) circles one of those provinces. The <b>Desert Oasis</b> (+10 gold, wood and food) is ringed by palm trees that even Woodling Scouts can’t pass, and the <b>Heart of the Forest</b> (+6 gold, +20 wood, +6 food) by trees; each has one way in, held by a boss (the Skeleton King, the Walking Inferno or the Scarab Army; General Sherman, Ursa Major or the Winged Serpent). Both can be settled once the boss is beaten. Bosses fight by power: an army 10–20% stronger usually wins, 50% stronger almost surely. Armies that march into a boss’s province are stopped there and must fight. Each boss leaves an artifact, listed in your Country Breakdown (click your nation’s badge).</li>
     <li>Lost bands of travelers wander some provinces. When your unit stops beside them, share food and they join you as Footmen, or rob them for gold with an army. Surveying a desert has a 1 in 8 chance to turn up Forgotten Treasure (+200 gold). One swamp on each map holds the Intact Ruins of an ancient temple: survey it and your nation gains a Tier I Government technology (or 3 minutes of Government research if you already know them all). A province where your Wayfinder found bandits or monsters glows burgundy until they are beaten. A Wayfinder who finds them scurries back unharmed, and can’t go back in until they are beaten. Beat them with an army for a 50 gold bounty; you can’t build an outpost where they are.</li>
     <li>Other nations: up to 7 computer nations (set each slot on the title card to Easy, Moderate, Difficult or Closed) live on the island and play by your rules. Easy nations stay small and peaceful; Moderate ones grow to 10 provinces, research Mages and grow to 20; Difficult ones grow, research and build as fast as they can. Moderate and Difficult nations whose armies are twice as strong (by power, not head count) as a bordering nation’s take a minute to think it over, then declare war. They treat you like any other nation, and no more than 2 nations can be at war with you at once.</li>
-    <li>Diplomacy (the chip under the research bar): see every nation you have met, declare war (50 gold, only on a nation that borders you), make peace, or propose an alliance. Each war has its own warscore. A nation may have up to 2 allies, of its own race only. Two nations can’t ally if either has a fort on their shared border, if they have ever been at war with each other, or if one has been at war with an ally of the other. If anyone declares war on one ally, the others join in. Building a fort on an ally’s border ends the alliance after a minute (a flag counts down: dismantle the fort in time to keep it). Either side may end an alliance at any time; a 10-minute truce follows, and they can’t ally again until it ends. Units can only cross their own land, unclaimed land, the land of a nation they are at war with, or the land of a nation they have a truce with. A peace deal starts an 8-minute truce; a red flag with a dove warns you 30 s before one ends (click it to look at that nation).</li>
+    <li>Diplomacy (the chip under the research bar): see every nation you have met, declare war (50 gold, only on a nation that borders you), make peace, or propose an alliance. Each war has its own warscore. A nation may have up to 2 allies, of its own race only. Two nations can only ally once they have met each other, and they can’t ally if either has a fort on their shared border, if they have ever been at war with each other, or if one has been at war with an ally of the other. If anyone declares war on one ally, the others join in. Building a fort on an ally’s border ends the alliance after a minute (a flag counts down: dismantle the fort in time to keep it). When you ally a nation, you meet every nation it has met, and it meets every nation you have. Either side may end an alliance at any time; a 10-minute truce follows, and they can’t ally again until it ends. Masons can build roads and walls across borders, and with Bridge Building (Government Tier III) a bridge across a river border, if one side is yours (Ctrl+right-click the province across the river with a Mason next to it). Units can only cross their own land, unclaimed land, the land of a nation they are at war with, or the land of a nation they have a truce with. A peace deal starts an 8-minute truce; a red flag with a dove warns you 30 s before one ends (click it to look at that nation).</li>
     <li>Meeting nations: you meet a nation when you explore its land or when one of your Wayfinders stands next to one of its provinces. The game pauses to introduce it.</li>
-    <li>At war: any of your units may march into the enemy’s land even where you haven’t explored it. A capture that is interrupted by a battle picks up where it left off if the capturing army wins. At 100 warscore a white-flag notification tells you to call for peace (there is no Total Victory). Every war ends in white peace after 5 minutes unless a deal is made first; an hourglass flag counts down the last 30 seconds (click it to open Diplomacy). A nation with every province occupied and no army left drops to −100 at once. No peace deal can take a province another nation occupies: the winner takes what it can, never the capital. Both the occupier and the owner keep sight of an occupied province.</li>
+    <li>At war: any of your units may march into the enemy’s land even where you haven’t explored it. A capture that is interrupted by a battle picks up where it left off if the capturing army wins. At 100 warscore a white-flag notification tells you to call for peace (there is no Total Victory). Every war ends in white peace after 20 minutes unless a deal is made first; an hourglass flag counts down the last 30 seconds (click it to open Diplomacy). Warscore: beating an army of more than 10 soldiers is +1, and +5 if it was more than half of that nation’s whole army (smaller ones give nothing). Occupying an outpost is +2, a fort +10 and a capital +25 while you hold them, and every 10 s each occupied fort adds +1 and an occupied capital +5. Occupying every province of a nation puts you at 100 at once. No peace deal can take a province another nation occupies: the winner takes what it can, never the capital. Both the occupier and the owner keep sight of an occupied province.</li>
     <li>Peace deals: from +50 warscore the winner may take 1 province, and one more for every 5 warscore above that (10 at +95). At +100 it may take up to 2 provinces for every fort it holds, if that is more than 11, and the capital too if that takes the whole country. Tick the provinces you want in Diplomacy (All / None help). White peace is only for a side that isn’t losing, and not in the first 3 minutes of a war. A side with negative warscore can only surrender: the enemy takes as many provinces as it may, and the side that surrendered can’t declare war on anyone for 10 minutes.</li>
     <li>Wayfinders and Masons at war: Masons won’t walk into a province where they can see enemy soldiers. A Wayfinder or Mason who meets enemy soldiers runs back to the province he came from. For 15 seconds after that, if he meets enemy soldiers again, an army of yours has 5 seconds to reach him before he is caught. Sneaking Wayfinders can’t be seen at all. A Wayfinder standing where another nation finishes an outpost withdraws to the province he came from (if it is yours or an enemy’s), or else all the way to your capital.</li>
     <li>Armory (<kbd>G</kbd>): design your infantry and cavalry by choosing a weapon (polearms beat cavalry, blunt weapons crush armor, swords parry, axes land critical strikes), a shield for one-handed weapons, armor (leather is fast, plate is tough but slow) and, for cavalry, a horse. Military research unlocks better gear. Barracks train your designs.</li>
-    <li>Every Mage knows Shockwave: Ctrl+right-click (or use the command card on) a neighboring province of a nation you are at war with, and after 2 minutes of casting the wall on that border is destroyed. Earthquake (Magic Tier III research) is cast in an enemy province your army occupies: after 2 minutes every building there and every wall on its borders is destroyed. Terrascaping (Herbomancy Tier III) grows trees along an open border, leaving a forest path in the middle (5 minutes).</li>
+    <li>Every Mage knows Shockwave (50 mana): Ctrl+right-click (or use the command card on) a neighboring province of a nation you are at war with, and after 15 seconds of casting the wall on that border is destroyed. Earthquake (Magic Tier III research, 200 mana, so it needs Magic Abundance) is cast in an enemy province your army occupies: after 30 seconds every building there and every wall on its borders is destroyed. Terrascaping (Herbomancy Tier III, 100 mana) grows trees along an open border, leaving a forest path in the middle (5 minutes).</li>
+    <li>Mana: every Mage, Warlock and Druid carries mana, shown as a blue bar over him (or over the army he is in). A new one starts with 25 and holds up to 100 (Magic Well: 150, Magic Abundance: 200). Every 10 s each of them regains 1 mana for every Tier I Magic Barracks you own (Mage Tower, Warlock Tower, Grove), 2 for every Tier II and 3 for every Tier III, but nothing while he is casting; the blue star in the resource bar shows how much. Spells cost mana: most are a 3-second cast, battle spells (skins, curses, the risen dead, fiery weapons, rock armor) cost 50 when they fire, and channeled spells (Harvest, Forest Spirit) drain 1 mana a second. Grave Robbing and Interdimensional Trading turn all of a Magic User’s mana into resources; a flag appears when they (or a Sacred Pyre) are ready to cast.</li>
     <li>Magic: research the Mage Tower (Government Tier II) and build one, then choose a school: Herbomancy, Necromancy or Arcane. Train Mages at the tower (you can have 1 at first; Apprentice and Mage Academy raise the limit, and the Armies tab shows how many you have); select a Mage to cast spells from the command card, or have him join an army so its battle spells (skins, curses, the risen dead) fire on their own. Ctrl+right-click a neighboring province with a Mage to open forest paths or mountain tunnels. Every Mage knows Earthquake: 30 s of casting from land you control (or unclaimed land) raise a wall with your gate on the border with a neighbor. Nations at war with the caster get an “Earthquake at …” banner.</li>
     <li>Storage: the nation holds at most 2000 of each resource; Granaries, Storehouses and Banks add 1000 each. You start allowed a single fort; each Fort Charter adds 2, and the repeatable Garrison Charters (+1) never gets dearer and stays on offer once it appears.</li>
     <li>With road or wall research, select a Mason and Ctrl+right-click a neighboring province to build a road (dirt, then gravel, then cobblestone: 25%, 35%, 50% faster) or a wall (palisade, then stone) on that border. Roads must join two of your own provinces. Every wall has a gate that only its owner’s units can pass; once walls are researched, forts raise walls with gates on their open borders. A captured fort’s gates open for the occupier and shut out the owner. Armies at war with a wall’s owner batter it down when there is no other way through: that takes 2 minutes, and the army needs at least 6 soldiers. At peace, select a fort (or your capital) and press Rebuild walls to put its broken walls back for 50 wood each; it takes 15 s.</li>
@@ -2501,7 +2502,11 @@ function humanoid(g, s, R, t, seated) {
       add(ds > 0 ? ds + 1.5 : ds - 0.4, () => {
         const fac = Math.cos(0.5 + R.th), w = Math.max(0.3, Math.abs(fac));
         g.save(); g.translate(R.X(sp[0], sp[1]), sp[2] + ds * TILT * 0.4); g.scale(w, 1);
-        item(g, name === 'buckler' ? 'buckler' : (fac < -0.08 ? 'heater-back' : 'heater-knight'), 0, 0, 0, t, false);
+        // v99: the shield of the design (Round, Kite, Tower); seen from behind it is darker, with its straps
+        const kind = name === 'buckler' ? 'buckler' : name === 'heater-knight' || !name ? null : name;
+        if (!kind) item(g, fac < -0.08 ? 'heater-back' : 'heater-knight', 0, 0, 0, t, false);
+        else if (fac < -0.08 && kind !== 'buckler') { g.save(); try { g.filter = 'brightness(0.62) saturate(0.7)'; } catch (e) {} item(g, kind, 0, 0, 0, t, false); g.restore(); for (const yy of [-6, 8]) { rr(g, -10, yy, 20, 4.5, 2); ink(g, P.leatherD, 1.6); } }
+        else item(g, kind, 0, 0, 0, t, false);
         g.restore();
       });
     }
@@ -4324,14 +4329,14 @@ const SETTLE = [
   // fort: a ring of huts behind spiked stakes, a watch platform
   [{ x: -40, y: -36, r: 16, h: 20, smoke: true }, { x: 10, y: -46, r: 14, h: 17 }, { x: 40, y: -6, r: 15, h: 19 }, { x: -46, y: 12, r: 13, h: 16 }],
   // capital: a great chieftain hut with horns, many huts, totems and a bonfire
-  [{ x: -6, y: -40, r: 30, h: 30, smoke: true, horns: true, big: true }, { x: -64, y: -30, r: 16, h: 19 }, { x: 46, y: -54, r: 15, h: 18, smoke: true }, { x: 64, y: -6, r: 17, h: 20 }, { x: -64, y: 22, r: 14, h: 17 }, { x: 38, y: 34, r: 13, h: 16 }]
+  [{ x: -6, y: -40, r: 32, h: 58, smoke: true, horns: true, big: true }, { x: -64, y: -30, r: 17, h: 26, smoke: true }, { x: 46, y: -54, r: 16, h: 25, smoke: true }, { x: 64, y: -6, r: 18, h: 28 }, { x: -64, y: 22, r: 15, h: 22 }, { x: 38, y: 34, r: 14, h: 20 }]
 ];
 function drawSettlement(g, stage, t, opts = {}) {
   const R = [70, 100, 130][stage] || 70;
   g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.scale(0.8, 0.8);
   ground(g, R);
   const items = [];
-  for (const h of SETTLE[stage] || SETTLE[0]) items.push({ d: h.x + h.y, f: () => hut(g, h.x, h.y, h.r, h.h, t, { smoke: h.smoke, horns: h.horns, wall: h.big ? CLAY : MUD, roof: h.big ? 34 : undefined }) });
+  for (const h of SETTLE[stage] || SETTLE[0]) items.push({ d: h.x + h.y, f: () => hut(g, h.x, h.y, h.r, h.h, t, { smoke: h.smoke, horns: h.horns, wall: h.big ? CLAY : MUD, roof: h.big ? 62 : undefined }) });
   items.push({ d: 30, f: () => { const [fx, fy] = ISO(8, 22, 0); campfire(g, 8, 22, t); void fx; void fy; } });
   items.push({ d: -30 + 60, f: () => skullPole(g, -30, 30, 28) });
   if (stage >= 1) {
@@ -4339,7 +4344,7 @@ function drawSettlement(g, stage, t, opts = {}) {
     items.push({ d: 200, f: () => spikes(g, [-R * 0.8, R * 0.62], [R * 0.2, R * 0.62], 7, 16) });
     items.push({ d: 10, f: () => { const [sx, sy] = ISO(58, 40, 0); for (const dx of [-8, 8]) stick(g, [sx + dx, sy], [sx + dx, sy - 44], '#7a5532', 3); g.beginPath(); g.rect(sx - 13, sy - 48, 26, 8); g.fillStyle = '#8a6038'; g.fill(); g.lineWidth = 2; g.strokeStyle = OL; g.stroke(); path(g, [[sx - 14, sy - 48], [sx, sy - 62], [sx + 14, sy - 48]]); g.fillStyle = THATCH; g.fill(); g.stroke(); } });
   }
-  if (stage >= 2) { items.push({ d: -60, f: () => totem(g, -40, -80, 50, t) }); items.push({ d: 60, f: () => totem(g, 60, -80, 46, t + 1) }); for (const [x, y] of [[-84, -6], [84, 26], [-20, 70]]) items.push({ d: x + y, f: () => shroom(g, x, y, 1.6, '#d8443a') }); }
+  if (stage >= 2) { items.push({ d: -60, f: () => totem(g, -40, -80, 78, t) }); items.push({ d: 60, f: () => totem(g, 60, -80, 72, t + 1) }); items.push({ d: -45, f: () => { for (const zz of [0.3, 0.62]) { const [bx, by] = ISO(-6, -40, 58 * zz), rx = 32 * Math.SQRT2; for (let k = 0; k < 9; k++) { const a = k * TAU / 9 + 0.2; if (Math.sin(a) > 0.05) dot(g, bx + Math.cos(a) * rx, by + Math.sin(a) * rx / 2, 2.8, BONE, 1.3); } } } }); for (const [x, y] of [[-84, -6], [84, 26], [-20, 70]]) items.push({ d: x + y, f: () => shroom(g, x, y, 1.6, '#d8443a') }); }
   items.sort((a, b) => a.d - b.d).forEach(i => i.f());
   g.restore();
 }
@@ -6174,10 +6179,13 @@ function newArmy(prov, troops, near) {
 }
 function splitArmy(a) {
   if (troopCount(a) < 2) return toast('An army needs at least two soldiers to split.', true);
-  // deal soldiers out one at a time so each half gets a fair mix
-  const list = []; for (const k of Object.keys(a.troops).sort()) for (let i = 0; i < a.troops[k]; i++) list.push(k);
-  const keep = {}, give = {};
-  list.forEach((k, i) => { const side = i % 2 ? give : keep; side[k] = (side[k] || 0) + 1; });
+  // v99: every kind is halved; the odd ones left over go to this army first, then to the new one
+  // (3 A, 3 B, 3 C -> 2 A, 2 B, 1 C here and 1 A, 1 B, 2 C in the new army)
+  const keep = {}, give = {}, ks = Object.keys(a.troops).filter(k => a.troops[k] > 0), odd = ks.filter(k => a.troops[k] % 2).length;
+  let oddSeen = 0;
+  for (const k of ks) { const n = a.troops[k], h = Math.floor(n / 2); keep[k] = h; give[k] = h; if (n % 2) (oddSeen++ < Math.ceil(odd / 2) ? keep : give)[k]++; }
+  for (const side of [keep, give]) for (const k in side) if (!side[k]) delete side[k];
+  if (!Object.keys(give).length) { const k = Object.keys(keep).find(k => keep[k] > 1) || Object.keys(keep)[0]; keep[k]--; give[k] = 1; if (!keep[k]) delete keep[k]; }
   a.troops = keep;
   const b = newArmy(a.prov, give, a);
   S.selected = [a, b]; computeIncome();
@@ -6197,7 +6205,7 @@ function upgradeWhy(p) {
   const b = S.buildings.get(p); if (!b || b.owner !== ME) return 'Not yours';
   if (b.stage !== 0) return b.stage === 1 ? 'Already a Fort' : 'Capitals can’t be upgraded yet';
   if (S.upgrades.has(p)) return 'Already upgrading';
-  if (fortCount() >= fortLimit()) return `Fort limit reached (${fortCount()}/${fortLimit()})` + (hasTech('forts') ? '' : ' · research Fort Charters for 3');
+  if (fortCount() + S.upgrades.size >= fortLimit()) return `Fort limit reached (${fortCount()}/${fortLimit()}${S.upgrades.size ? ', ' + S.upgrades.size + ' being built' : ''})` + (hasTech('forts') ? '' : ' · research Fort Charters for 3');
   return lackText(FORT_UPGRADE.cost);
 }
 function startUpgrade(p) {
@@ -6257,10 +6265,10 @@ const TERRAIN_MOD = {
 };
 const hostilesIn = (p, owner) => S.units.filter(v => v.kind === 'army' && hostile(v.owner, owner) && v.prov === p && !v.retreating && troopCount(v) > 0);
 function sideStrength(armies, prov, defender, foe) {
-  const T = TERRAIN_MOD[world.provinces[prov].terrain], cavFrac = foe ? foe.cavFrac : 0;
+  const T = TERRAIN_MOD[world.provinces[prov].terrain], cavFrac = foe ? foe.cavFrac : 0, plateFrac = foe ? foe.plateFrac || 0 : 0;
   // Swamplings in a swamp: +20% damage, and their Ogres don't suffer the cavalry penalty; Fiery Weapons can make a round's blows land twice as hard
   const swampy = world.provinces[prov].terrain === 'swamp';
-  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; if (crit > 1) { a.fieryHit = S.t; a.fieryHits = (a.fieryHits || 0) + 1; } for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(rowDeal(a, k), st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (1 + (a.curse || 0)) * (st.two ? twoMul(a) : 1); } }   // (v93 two-handing: wood.js twoMul)
+  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; if (crit > 1) { a.fieryHit = S.t; a.fieryHits = (a.fieryHits || 0) + 1; } for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(rowDeal(a, k), st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (st.fam === 'blunt' ? 1 + 0.5 * plateFrac : 1) * (1 + (a.curse || 0)) * (st.two ? twoMul(a) : 1); } }   // (v93 two-handing: wood.js twoMul)
   return s;
 }
 const rawStrength = armies => armies.reduce((n, a) => n + Object.entries(a.troops).reduce((m, [k, c]) => { const st = statsOf(k, a.owner); return m + c * st.atk * (hpOf(a, k) / 30) / (1 - st.red); }, 0), 0);
@@ -6311,25 +6319,27 @@ function applyDamage(b, armies, dmg, t, pierce = 0) {
   const owner = armies[0].owner;
   S.fx.push({ kind: 'num', prov: b.prov, owner, n: Math.round(dmg), t0: t });
   for (const a of armies) {
-    // v96 rows: an army of 6 or more fights in a Front Row and a Back Row (v96.js). The front takes the blows first;
-    // once it has fallen the back row takes them, at half strength
-    const share = dmg * troopCount(a) / total / (1 + (a.skin || 0)), rowed = rowsOn(a);
-    let halved = rowed && rowFront(a) <= 0;
+    // v97 rows: an army of 6 or more fights in a Front Row and a Back Row (layout in v97.js). Blows land on the front row;
+    // every front-row soldier who falls is replaced by a random back-row soldier (never the Mage), who then takes full
+    // damage. Only when nobody is left in front does the back row take blows, at half strength
+    const share = dmg * troopCount(a) / total / (1 + (a.skin || 0));
+    let lay = rowSync(a), halved = !!lay && rowSum(lay.f) <= 0;
     a.wounds = (a.wounds || 0) + (halved ? share * BACK_TAKE : share);
     // spill damage over: when the front soldier's health runs out he falls and the rest carries on
     for (;;) {
       const kinds = Object.keys(a.troops).filter(k => a.troops[k] > 0); if (!kinds.length) break;
-      const nowRowed = rowed && rowsOn(a), front = nowRowed && rowFront(a) > 0;
-      if (nowRowed && !front && !halved) { a.wounds *= BACK_TAKE; halved = true; }   // what spills past the front row hits the back row at half strength
-      const weight = kk => front ? a.troops[kk] - rowBack(a, kk) : a.troops[kk];
+      lay = rowSync(a);
+      const front = !!lay && rowSum(lay.f) > 0;
+      if (lay && !front && !halved) { a.wounds *= BACK_TAKE; halved = true; }   // what spills past the front row hits the back row at half strength
+      const pool = !lay ? a.troops : front ? lay.f : lay.b, weight = kk => pool[kk] || 0;
       let r = Math.random() * kinds.reduce((n, kk) => n + weight(kk), 0), k = kinds.find(kk => weight(kk) > 0) || kinds[0];
       for (const kk of kinds) { r -= weight(kk); if (r <= 0 && weight(kk) > 0) { k = kk; break; } }
       if (a.wounds < hpOf(a, k)) break;
       a.wounds -= hpOf(a, k);
-      const fromBack = nowRowed && !front;
       // Risen Dead: every Nth soldier who falls gets straight back up
-      if (a.risen && k !== MAGE && isCaster(a) && ++a.risenN >= a.risen) { a.risenN = 0; a.riseFx = t; a.risenTotal = (a.risenTotal || 0) + 1; if (a.owner === ME) sfx('mg_risen', { prov: b.prov }); continue; }
-      if (fromBack && a.back && a.back[k] > 0 && !(k === MAGE && !a.magesFront)) a.back[k]--;   // v96: a back-row soldier fell
+      if (risenRise(a, k, b, t)) continue;   // v98: Risen Dead raises the next few to fall (v98.js)
+      ghoulFall(a, k);
+      if (lay) rowFall(a, lay, k, front);   // v97: keep the rows in step (and step a back-row soldier forward)
       a.troops[k]--; if (!a.troops[k]) delete a.troops[k];
       if (a.monster) monsterLoot(a, k, b);   // SMA03: wood or gold for every monster killed
       if (a.fallen) a.fallen[k] = (a.fallen[k] || 0) + 1;
@@ -6711,7 +6721,7 @@ function update(realT) {
     if (u.build) {
       if (u.moving || u.prov !== u.build.prov) cancelBuild(u);
       else if (t - u.build.t0 >= (u.build.dur || BUILD_TIME)) {
-        if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall') finishLink(u.build);
+        if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall' || u.build.type === 'bridge') finishLink(u.build);
         else if (u.build.type && u.build.type !== 'outpost') {
           if (nationOf(u.prov) === u.owner) {
             const list = S.extras.get(u.prov) || []; list.push({ type: u.build.type, slot: u.build.slot, born: t }); S.extras.set(u.prov, list);
@@ -6788,7 +6798,7 @@ function rollYields() {
     return { ...y, bonus, deposit };
   });
   // how many of a province's borders are made of trees (one Lumber Mill per tree border)
-  treeBorder = world.provinces.map((_, i) => world.edges.filter(e => (e.a === i || e.b === i) && !e.open && e.style === 'trees').length);
+  treeBorder = world.provinces.map((_, i) => world.edges.filter(e => (e.a === i || e.b === i) && !e.open && (e.style === 'trees' || e.style === 'palms')).length);   // v98: the Oasis' palm ring counts as a border of trees for Lumber Mills
 }
 let treeBorder = [];
 // how many of a building type a province can hold: 4 farms, one Lumber Mill per tree border, one of everything else
@@ -7082,7 +7092,7 @@ function drawGame(g, t) {
   for (const [p, list] of S.extras) if (S.visible.has(p) && onScreen(p)) for (const e of list) { const c = G.provs[p].ic, [ox, oy] = bslotOf(p, e.slot); items.push({ y: c[1] + oy, f: () => { drawExtra(g, c[0] + ox, c[1] + oy, e.type, t, 1, t - e.born, e.level, owned(p), raceOf(nationOf(p))); const xu = S.xup.get(p + '@' + e.slot); if (xu) drawXupBar(g, c[0] + ox, c[1] + oy, xu, e); } }); }
   for (const u of S.units) if (u.build && S.visible.has(u.build.prov)) {
     const c = G.provs[u.build.prov].ic;
-    if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall') continue;
+    if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall' || u.build.type === 'bridge') continue;
     if (u.build.type === 'outpost') items.push({ y: c[1], f: () => drawSite(g, u.build, t, raceOf(u.owner)) });
     else items.push({ y: c[1] + u.build.oy, f: () => drawExtraSite(g, u.build, t, raceOf(u.owner)) });
   }
@@ -7976,7 +7986,7 @@ function unitStatus(u) {
   if (u.stealth && u.moving) return 'sneaking';
   if (u.scouting !== null) return 'scouting';
   if (u.survey) return 'surveying';
-  if (u.build) return 'building ' + (u.build.type === 'outpost' ? 'an outpost' : u.build.type === 'rewall' ? 'a wall back up' : u.build.type === 'road' || u.build.type === 'wall' ? 'a ' + u.build.type : BUILD_DEFS[u.build.type].name);
+  if (u.build) return 'building ' + (u.build.type === 'outpost' ? 'an outpost' : u.build.type === 'rewall' ? 'a wall back up' : u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'bridge' ? 'a ' + u.build.type : BUILD_DEFS[u.build.type].name);
   if (u.pending) return 'going to build';
   if (u.surveyQueue && surveysIn(u)) return `to survey (${surveysIn(u)})`;
   if (u.surveyQueue && movesIn(u)) return `walking (${movesIn(u)} queued)`;
@@ -8128,8 +8138,9 @@ const WAR = {
   tickEvery: 10,               // every 10 s the side that is ahead gains +1
   truce: 480,                  // 8 minute truce after any peace deal
   goldTerm: 300,               // gold taken by the "Take gold" term
-  occVal: [5, 10, 25],         // warscore for holding an outpost / fort / capital
-  kill: 1, wipe: 5,
+  occVal: [2, 10, 25],         // warscore for holding an outpost / fort / capital (v99: an outpost is 2)
+  occTick: [0, 1, 5],          // v99: and every 10 s, for each fort / capital held
+  kill: 0, wipe: 5, wipeBig: 1, wipeMin: 10,   // v99: no points per soldier; beating an army of more than 10 is 1, of more than half the loser's whole army 5
   gold: 20, provs: 50, total: 100, maxProvs: 5, splitAt: 10,
   stallWindow: 300, stallScore: 10, heavyLoss: 0.1,   // white peace if neither side passes 10 warscore in 5 minutes; the time tick starts after a fort falls or a battle costs a side 10% of its army
   maxVsPlayer: 2,              // no more than 2 nations may be at war with the player at the same time
@@ -8268,7 +8279,7 @@ function addScore(w, side, n) { w.base = clampWS(w.base + (side === w.a ? n : -n
 const battleWar = b => b && b.order && b.order.length >= 2 ? warBetween(b.order[0], b.order[1]) : null;
 const nationBattle = b => !!battleWar(b);
 function warKill(b, owner, n) { const w = battleWar(b); if (!w || !n || (owner !== w.a && owner !== w.b)) return; const foe = foeOf(w, owner); addScore(w, foe, WAR.kill * n); w.battles += foe === w.a ? n : -n; }
-function warWipe(b, a) { const w = battleWar(b); if (!w || (a.owner !== w.a && a.owner !== w.b)) return; const foe = foeOf(w, a.owner); addScore(w, foe, WAR.wipe); w.battles += foe === w.a ? WAR.wipe : -WAR.wipe; }
+function warWipe(b, a) { const w = battleWar(b); if (!w || (a.owner !== w.a && a.owner !== w.b)) return; const foe = foeOf(w, a.owner), n = a.wsSize || (b.lost[a.owner] || 0), all = Math.max(n, a.wsTotal || 0), pts = n > all / 2 ? WAR.wipe : n > WAR.wipeMin ? WAR.wipeBig : 0; if (!pts) return; addScore(w, foe, pts); w.battles += foe === w.a ? pts : -pts; }
 
 // ---------- occupation, the time tick and AI peace ----------
 let warLastT = null;
@@ -8321,11 +8332,12 @@ function stepWar(t) {
 function stepOneWar(w, t) {
   // Total Victory happens on its own the moment a war reaches 100 warscore
   // v96: there is no Total Victory any more: at 100 warscore a flag tells you to call for peace (v96.js), and every war ends
-  // in white peace after 5 minutes unless a deal is made first (v96.js stepWarTimers)
+  // in white peace after 20 minutes unless a deal is made first (v96.js stepWarTimers)
   // a nation with every province occupied and no army left has lost: the warscore goes straight to 100 (GPC27)
-  for (const L of [w.a, w.b]) if (brokenNation(L) && !w.broken) { w.broken = L; const win = foeOf(w, L); addScore(w, win, 200); if (w.a === ME || w.b === ME) toast(L === ME ? `Every province you hold is occupied and you have no army left: the ${PLAYERS[win].name} is at 100 warscore.` : `The ${PLAYERS[L].name} is fully occupied and has no army left: warscore 100%. Call for peace in Diplomacy.`, L === ME); }
+  for (const L of [w.a, w.b]) if (allOccupied(L, foeOf(w, L)) && !w.broken) { w.broken = L; const win = foeOf(w, L); addScore(w, win, 200); if (w.a === ME || w.b === ME) toast(L === ME ? `Every province you hold is occupied: the ${PLAYERS[win].name} is at 100 warscore.` : `Every province of the ${PLAYERS[L].name} is occupied: warscore 100%. Call for peace in Diplomacy.`, L === ME); }
   // the time tick only runs once the war has turned serious: a fort or capital occupied, or a battle that cost a side 10% of its army
-  while (t >= w.nextTick) { const s = warscore(w, w.a); if (s && w.active) addScore(w, s > 0 ? w.a : w.b, 1); w.nextTick += WAR.tickEvery; }
+  // v99: no more "the side ahead gains 1": every 10 s each side gains 1 for every enemy fort it occupies and 5 for an occupied capital
+  while (t >= w.nextTick) { for (const [p, o] of S.occ) { const b = S.buildings.get(p); if (!b || !WAR.occTick[b.stage]) continue; if (b.owner === w.b && o === w.a) addScore(w, w.a, WAR.occTick[b.stage]); else if (b.owner === w.a && o === w.b) addScore(w, w.b, WAR.occTick[b.stage]); } w.nextTick += WAR.tickEvery; }
   // a war where neither side gets past 10 warscore in 5 minutes ends in white peace
   w.peak = Math.max(w.peak, Math.abs(warscore(w, w.a)));
   if (t - w.winStart >= WAR.stallWindow) {
@@ -8338,6 +8350,8 @@ function stepOneWar(w, t) {
   if (w.a !== ME && w.b !== ME) aiPeace(w, t);
 }
 // between two AI nations, the side that is ahead dictates the peace
+// v99: a nation whose every province is occupied by its foe has lost: the foe goes straight to 100 warscore
+function allOccupied(o, by) { const own = provsOf(o); return own.length > 0 && own.every(p => S.occ.get(p) === by); }
 function brokenNation(o) {
   const own = provsOf(o); if (!own.length || !own.every(p => S.occ.has(p))) return false;
   return !S.units.some(v => v.kind === 'army' && v.owner === o && troopCount(v) > 0);
@@ -8827,7 +8841,7 @@ function dipNationHTML(o, w) {
   return head +
     `<p class="dp-p">${w.by === ME ? 'You declared this war' : 'They declared this war'}${w.parent ? ' (through an alliance)' : ''}, ${fmtTime(S.t - w.since)} ago.</p>` +
     `<div class="dp-ws">${wsBar(s)}<b class="dp-s ${s > 0 ? 'up' : s < 0 ? 'down' : ''}">${sgn(s)}</b></div>` +
-    `<div class="dp-break"><span>Battles &amp; time <b>${sgn(mineBase)}</b></span><span>${w.active ? 'Time tick on' : 'Time tick off until a fort falls or a battle costs 10% of an army'}</span><span>${w.peak <= WAR.stallScore ? `White peace in ${fmtTime(Math.max(0, WAR.stallWindow - (S.t - w.winStart)))} unless someone passes ±${WAR.stallScore}` : ''}</span><span>You occupy <b>+${occMe}</b></span><span>They occupy <b>${occThem ? '−' + occThem : '0'}</b></span></div>` +
+    `<div class="dp-break"><span>Battles &amp; time <b>${sgn(mineBase)}</b></span><span>Every 10 s: +1 per occupied fort, +5 for an occupied capital</span><span>${w.peak <= WAR.stallScore ? `White peace in ${fmtTime(Math.max(0, WAR.stallWindow - (S.t - w.winStart)))} unless someone passes ±${WAR.stallScore}` : ''}</span><span>You occupy <b>+${occMe}</b></span><span>They occupy <b>${occThem ? '−' + occThem : '0'}</b></span></div>` +
     `<div class="dp-sec">Peace terms</div>` +
     (s < 0 ? term('surrender', 'Surrender', 'losing', `The ${R.name} takes ${theirMt} of your provinces (2 per fort they hold, at least 1), and you can’t declare war on anyone for ${WAR.surrenderLock / 60} minutes.`)
       : term('white', 'White peace', 'not losing', `Everyone keeps what they had. Not in the first ${WAR.whiteAfter / 60} minutes of a war.`)) +
@@ -8920,7 +8934,7 @@ const WEAPONS = {
   shortsword:  { name: 'Short Sword',    fam: 'sword', tier: 1, atk: 6,  twoH: false, cost: {},                    tech: null },
   sword:       { name: 'Bastard Sword',  fam: 'sword', tier: 2, atk: 10,  twoH: false, cost: { gold: 25 },           tech: 'w-bastard' },
   longsword:   { name: 'Long Sword',     fam: 'sword', tier: 3, atk: 14, twoH: false, cost: { gold: 50 },          tech: 'w-longsword' },
-  greatsword:  { name: 'Great Sword',    fam: 'sword', tier: 4, atk: 20, twoH: true,  cost: { gold: 120 },          tech: 'w-greatsword' },
+  greatsword:  { name: 'Great Sword',    fam: 'sword', tier: 4, atk: 30, twoH: true,  cost: { gold: 120 },          tech: 'w-greatsword' },
   club:        { name: 'Club',           fam: 'blunt', tier: 1, atk: 5,  twoH: true,  cost: { wood: 10 },           tech: null },
   mace:        { name: 'Mace',           fam: 'blunt', tier: 2, atk: 8,  twoH: true,  cost: { gold: 35 },           tech: 'w-mace' },
   morningstar: { name: 'Morning Star',   fam: 'blunt', tier: 3, atk: 11,  twoH: true,  cost: { gold: 70 },          tech: 'w-morningstar' },
@@ -8958,7 +8972,7 @@ const TWO_BURST = 2.5;
 const FAMILY = {
   pole:  { name: 'Polearms', note: '+50% damage against cavalry', order: ['spear', 'pike', 'polearm', 'halberd'] },
   sword: { name: 'Swords',   note: 'Parry: take 10% less damage', order: ['shortsword', 'sword', 'longsword', 'greatsword'] },
-  blunt: { name: 'Blunt',    note: 'Crushing: ignores half of enemy armor', order: ['club', 'mace', 'morningstar', 'warhammer'] },
+  blunt: { name: 'Blunt',    note: 'Crushing: ignores half of enemy armor, and deals 150% damage to soldiers in plate', order: ['club', 'mace', 'morningstar', 'warhammer'] },
   axe:   { name: 'Axes',     note: 'Critical strike: each blow has a 10% chance to do double damage', order: ['handaxe', 'beardedaxe', 'battleaxe', 'waraxe'], race: 'swamp' }
 };
 FAMILY.sword.race = 'realm';
@@ -8971,8 +8985,7 @@ const famsFor = race => Object.keys(FAMILY).filter(f => raceIs(FAMILY[f].race, r
 const SHIELD_DEFS = {
   round: { name: 'Round Shield', armor: 3,  speed: 1,    cost: { gold: 10, wood: 10 },  tech: 's-round' },
   kite:  { name: 'Kite Shield',  armor: 6,  speed: 1,    cost: { gold: 20, wood: 10 },  tech: 's-kite' },
-  tower: { name: 'Tower Shield', armor: 10, speed: 0.92, cost: { gold: 35, wood: 15 }, tech: 's-tower' },
-  aegis: { name: 'Aegis',        armor: 14, speed: 1,    cost: { gold: 60 },           tech: 's-aegis' }
+  tower: { name: 'Tower Shield', armor: 10, speed: 0.92, cost: { gold: 35, wood: 15 }, tech: 's-tower' }
 };
 const ARMOR_TYPES = {
   leather: { name: 'Leather', speed: 1.1,  note: '+10% speed', armor: [1, 3, 5, 7],   gold: [0, 10, 20, 35], race: 'realm' },
@@ -9013,6 +9026,8 @@ const UNIT_BASE = {
   inf: { name: 'Infantry', hp: 30, speed: 0.75, cost: { gold: 80 },  upkeep: { food: 2 } },
   cav: { name: 'Cavalry',  hp: 40, speed: 1,    cost: { gold: 300 }, upkeep: { food: 4 } }
 };
+const ARMOR_HP = [0, 0, 10, 20, 30];
+const PLATE_TYPES = new Set(['plate', 'dragon', 'ornate']);   // v98: blunt weapons deal 150% damage to soldiers in these   // v98: armor of Tier I / II / III / IV also adds 0 / 10 / 20 / 30 health
 const ARMOR_K = 12;   // damage reduction = armor / (armor + 12)
 const equipOk = (item) => !item.tech || hasTech(item.tech);
 const addCost = (a, b) => { const o = { ...a }; for (const k in b) o[k] = (o[k] || 0) + b[k]; return o; };
@@ -9034,7 +9049,7 @@ function designStats(d) {
   const upkeep = { food: Math.max(0, B.upkeep.food + (H ? H.upFood : 0)) };
   const speed = +((H ? H.speed : B.speed) * A.speed * (Sh ? Sh.speed : 1)).toFixed(2);
   const red = armor / (armor + ARMOR_K) * (W.fam === 'sword' ? 1 : 1) ;
-  const st = { cav: d.type === 'cav', ogre: sw && d.type === 'cav', race: d.race || 'realm', rough: !!(H && H.rough), fam: W.fam, atk: +(W.atk + (Off ? Off.atk * 0.5 : 0) + (H ? H.atk : 0)).toFixed(1), hp: B.hp + (H ? H.hp : 0), armor, shieldArmor: Sh ? Sh.armor : 0, red, parry: W.fam === 'sword' || W.fam === 'thrust' ? 0.1 : 0, crit: W.fam === 'axe' ? 0.1 : 0, speed, cost, upkeep };
+  const st = { cav: d.type === 'cav', ogre: sw && d.type === 'cav', race: d.race || 'realm', rough: !!(H && H.rough), plate: PLATE_TYPES.has(A.type), fam: W.fam, atk: +(W.atk + (Off ? Off.atk * 0.5 : 0) + (H ? H.atk : 0)).toFixed(1), hp: B.hp + (H ? H.hp : 0) + ARMOR_HP[A.level], armor, shieldArmor: Sh ? Sh.armor : 0, red, parry: W.fam === 'sword' || W.fam === 'thrust' ? 0.1 : 0, crit: W.fam === 'axe' ? 0.1 : 0, speed, cost, upkeep };
   st.blurb = `${W.name}${Off ? ' and ' + Off.name + ' (off hand, half damage)' : ''}${Sh ? ' and ' + Sh.name : ''}, ${A.name} armor${H ? ', ' + H.name : ''}. ${FAMILY[W.fam].note}.${H && H.rough ? ' No ' + (sw ? 'Ogre' : 'cavalry') + ' penalty in forest or swamp.' : ''}`;
   if (d.race === 'wood' && d.two) { st.two = true; st.blurb += ' Two-handed grip: heavy blows every other round (125% damage over time).'; }
   return st;
@@ -9046,7 +9061,7 @@ function champStats(d) {
   const armor = A.armor + CHAMP.armor;
   let cost = addCost(CHAMP.cost, W.cost); cost = addCost(cost, A.cost);
   const speed = +(CHAMP.speed * A.speed * W.spd).toFixed(2), red = armor / (armor + ARMOR_K);
-  const st = { cav: true, champ: true, ogre: false, race: 'wood', rough: true, fam: W.fam, atk: W.atk, hp: CHAMP.hp + W.hp, armor, shieldArmor: 0, red, parry: W.fam === 'thrust' || W.fam === 'sword' ? 0.1 : 0, crit: W.fam === 'axe' ? 0.1 : 0, speed, cost, upkeep: { ...CHAMP.upkeep }, two: !!d.two };
+  const st = { cav: true, champ: true, ogre: false, race: 'wood', rough: true, plate: true, fam: W.fam, atk: W.atk, hp: CHAMP.hp + W.hp + ARMOR_HP[A.level], armor, shieldArmor: 0, red, parry: W.fam === 'thrust' || W.fam === 'sword' ? 0.1 : 0, crit: W.fam === 'axe' ? 0.1 : 0, speed, cost, upkeep: { ...CHAMP.upkeep }, two: !!d.two };
   st.blurb = `${W.name}, ${A.name} armor. ${FAMILY[W.fam].note}.${d.two ? ' Two-handed swings: heavy blows every other round (125% damage over time).' : ''}`;
   return st;
 }
@@ -9100,9 +9115,9 @@ const STATS0 = { atk: 5, hp: 30, armor: 0, shieldArmor: 0, red: 0, parry: 0, cri
 // a soldier's stats; your own soldiers also get the repeatable Military and Magic research bonuses (see boostStats)
 const statsOf = (k, o) => { const st = DSTATS[k] || STATS0; return artStats(k, o === ME ? boostStats(k, st) : st, o); };   // v95: artifacts (artStats in v95.js)
 function sideMix(armies) {
-  let n = 0, cav = 0, red = 0, parry = 0, blunt = 0, atk = 0;
-  for (const a of armies) for (const k in a.troops) { const c = a.troops[k], s = statsOf(k, a.owner); n += c; if (s.cav && !s.champ) cav += c; red += c * s.red; parry += c * s.parry; if (s.fam === 'blunt') blunt += c * s.atk; atk += c * s.atk; }
-  return n ? { n, cavFrac: cav / n, red: red / n, parry: parry / n, pierce: atk ? blunt / atk : 0 } : { n: 0, cavFrac: 0, red: 0, parry: 0, pierce: 0 };
+  let n = 0, cav = 0, red = 0, parry = 0, blunt = 0, atk = 0, plate = 0;
+  for (const a of armies) for (const k in a.troops) { const c = a.troops[k], s = statsOf(k, a.owner); n += c; if (s.plate) plate += c; if (s.cav && !s.champ) cav += c; red += c * s.red; parry += c * s.parry; if (s.fam === 'blunt') blunt += c * s.atk; atk += c * s.atk; }
+  return n ? { n, cavFrac: cav / n, plateFrac: plate / n, red: red / n, parry: parry / n, pierce: atk ? blunt / atk : 0 } : { n: 0, cavFrac: 0, plateFrac: 0, red: 0, parry: 0, pierce: 0 };
 }
 
 // ---------- the Armory panel ----------
@@ -9311,7 +9326,7 @@ const TECH_EQUIP = { 'w-gladius': 'gladius', 'w-rapier': 'rapier', 'w-estoc': 'e
 const MIL_TECHS = [
   ['w-pike', 1], ['w-bastard', 1], ['w-mace', 1], ['s-round', 1], ['a-leather2', 1], ['a-chain1', 1], ['horse-breeding', 1, 'stable', 60],
   ['w-polearm', 2, 'w-pike'], ['w-longsword', 2, 'w-bastard'], ['w-morningstar', 2, 'w-mace'], ['s-kite', 2, 's-round'], ['a-leather3', 2, 'a-leather2'], ['a-chain2', 2, 'a-chain1'], ['a-plate1', 2, 'a-chain1'], ['a-plate2', 2, 'a-plate1'], ['horse-training', 2, 'horse-breeding'],
-  ['w-halberd', 3, 'w-polearm'], ['w-greatsword', 3, 'w-longsword'], ['w-warhammer', 3, 'w-morningstar'], ['s-tower', 3, 's-kite'], ['s-aegis', 3, 's-tower'], ['a-leather4', 3, 'a-leather3'], ['a-chain3', 3, 'a-chain2'], ['a-chain4', 3, 'a-chain3'], ['a-plate3', 3, 'a-plate2'], ['a-plate4', 3, 'a-plate3']
+  ['w-halberd', 3, 'w-polearm'], ['w-greatsword', 3, 'w-longsword'], ['w-warhammer', 3, 'w-morningstar'], ['s-tower', 3, 's-kite'], ['a-leather4', 3, 'a-leather3'], ['a-chain3', 3, 'a-chain2'], ['a-chain4', 3, 'a-chain3'], ['a-plate3', 3, 'a-plate2'], ['a-plate4', 3, 'a-plate3']
 ];
 MIL_TECHS.push(['battleforge', 1, null, 60], ['warforge', 2, 'battleforge', 140], ['horde', 2, null, 100]);
 // Swamplings: axes and their own armor lines in place of swords, shields, leather, chain and plate; and dual wielding
@@ -9871,7 +9886,7 @@ function givesOf(type) {
 
 // ---------- fort limit ----------
 const fortLimit = () => FORT_LIMIT[['forts', 'forts2', 'forts3'].filter(hasTech).length] + repLv('rep-forts');
-const fortCount = () => [...S.buildings].filter(([, b]) => b.owner === ME && b.stage === 1).length + S.upgrades.size;
+const fortCount = () => [...S.buildings].filter(([, b]) => b.owner === ME && b.stage === 1).length;   // v98: a fort counts only once its upgrade has finished
 
 // ---------- roads and walls ----------
 // both are built by a Mason standing in one of the two provinces, across an open border
@@ -10129,7 +10144,7 @@ const OUTPOSTS_PER_FORT = 4, OUTPOST_UPKEEP = { wood: 1 };
 const outpostCount = () => [...S.buildings].filter(([p, b]) => b.owner === ME && b.stage === 0 && !S.upgrades.has(p)).length;
 // v96: each fort allows 4 outposts, +2 with Efficient Administration, +1 per Expand Administration (Fort Charters III no longer lifts the limit)
 const perFort = (o = ME) => OUTPOSTS_PER_FORT + (techOf(o, 'effadmin') ? 2 : 0) + repOf(o, 'rep-admin');
-const fortsHeldBy = (o = ME) => [...S.buildings.values()].filter(b => b.owner === o && b.stage >= 1).length + (o === ME ? S.upgrades.size : NATIONS[o] ? NATIONS[o].ups.size : 0);
+const fortsHeldBy = (o = ME) => [...S.buildings.values()].filter(b => b.owner === o && b.stage >= 1).length;   // v98: upgrades still under way don't count yet
 const outpostLimit = () => perFort(ME) * fortsHeldBy(ME);
 // every province you may hold: each fort (the capital counts) and the outposts it allows
 const provLimit = (o = ME) => fortsHeldBy(o) * (1 + perFort(o));
@@ -10449,7 +10464,8 @@ function magicCmdUse(id) {
   if (what === 'mauto') { const c = selCaster(); if (c) { c.auto = { ...(c.auto || {}), [k]: !autoOn(c, k) }; if (autoOn(c, k) && (k === 'curse' || k === 'risen')) { const was = autoOn(c, k === 'curse' ? 'risen' : 'curse'); normAuto(c, k); if (was && !autoOn(c, k === 'curse' ? 'risen' : 'curse')) toast(`One Mage can’t keep both Cursed Weapons and Risen Dead ready; ${AUTO[k === 'curse' ? 'risen' : 'curse'].name()} is off. Add a second Mage to the army to use both.`); } toast(`${AUTO[k].name()} autocast ${autoOn(c, k) ? 'on' : 'off'}.`); } return true; }
   if (what === 'join') {
     const ms = S.selected.filter(v => v.kind === MAGE); let n = 0;
-    for (const m of ms) { const a = S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === m.prov && !v.battle); if (!a) continue; cancelCast(m); a.troops[MAGE] = (a.troops[MAGE] || 0) + 1; if (a.troops[MAGE] > 1) { const merged = {}; for (const kk of Object.keys(AUTO)) merged[kk] = autoOn(m, kk) || autoOn(a, kk); a.auto = merged; } else a.auto = { ...(m.auto || {}) }; a.grew = S.t; S.units = S.units.filter(v => v !== m); n++; S.selected = [a]; }
+    for (const m of ms) { const a = S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === m.prov && !v.battle && !(v.troops[MAGE] > 0)); if (!a) { if (S.units.some(v => v.kind === 'army' && v.owner === ME && v.prov === m.prov && v.troops[MAGE] > 0)) toast(`An army can have only one ${UNIT_DEFS[MAGE].name}.`, true); continue; }   // v97: one Mage per army
+ cancelCast(m); a.troops[MAGE] = (a.troops[MAGE] || 0) + 1; if (a.troops[MAGE] > 1) { const merged = {}; for (const kk of Object.keys(AUTO)) merged[kk] = autoOn(m, kk) || autoOn(a, kk); a.auto = merged; } else a.auto = { ...(m.auto || {}) }; a.grew = S.t; S.units = S.units.filter(v => v !== m); n++; S.selected = [a]; }
     if (n) { computeIncome(); toast(`${n > 1 ? n + ' ' + UNIT_DEFS[MAGE].name + 's' : 'The ' + UNIT_DEFS[MAGE].name} joined the army.`); }
     return true;
   }
@@ -10472,7 +10488,8 @@ function drawMagic(g, t) {
     const e = world.edges[+i]; if (!S.explored.has(e.a) && !S.explored.has(e.b)) continue;
     const a = V[e.v[0]], b = V[e.v[1]], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
     g.save(); g.translate(mx, my); g.rotate(ang);
-    if (kind === 'forest') { g.beginPath(); g.ellipse(0, 0, 30, 24, 0, 0, Math.PI * 2); g.fillStyle = '#9bd95f'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = 'rgba(29,26,34,0.35)'; g.stroke(); g.beginPath(); g.rect(-9, -26, 18, 52); g.fillStyle = '#c9a46b'; g.fill(); for (const s of [-1, 1]) { g.beginPath(); g.arc(s * 22, -14, 4, 0, 7); g.arc(s * 24, 12, 3, 0, 7); g.fillStyle = '#5fae4a'; g.fill(); } }
+    if (kind === 'bridge') bridgeArt(g, 1);   // v99 (v99.js)
+    else if (kind === 'forest') { g.beginPath(); g.ellipse(0, 0, 30, 24, 0, 0, Math.PI * 2); g.fillStyle = '#9bd95f'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = 'rgba(29,26,34,0.35)'; g.stroke(); g.beginPath(); g.rect(-9, -26, 18, 52); g.fillStyle = '#c9a46b'; g.fill(); for (const s of [-1, 1]) { g.beginPath(); g.arc(s * 22, -14, 4, 0, 7); g.arc(s * 24, 12, 3, 0, 7); g.fillStyle = '#5fae4a'; g.fill(); } }
     else { for (const s of [-1, 1]) { g.save(); g.translate(0, s * 14); g.rotate(s < 0 ? Math.PI : 0); g.beginPath(); g.moveTo(-14, 6); g.lineTo(-14, -4); g.quadraticCurveTo(0, -20, 14, -4); g.lineTo(14, 6); g.closePath(); g.fillStyle = '#8a8f9b'; g.fill(); g.lineWidth = 2.6; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.moveTo(-8, 6); g.lineTo(-8, -2); g.quadraticCurveTo(0, -12, 8, -2); g.lineTo(8, 6); g.closePath(); g.fillStyle = '#1d1a22'; g.fill(); g.restore(); } g.fillStyle = 'rgba(160,110,220,0.35)'; g.fillRect(-6, -10, 12, 20); }
     g.restore();
   }
@@ -12037,7 +12054,7 @@ function aiRedesign(N) {
   let armor = N.armorLine + '1';
   for (let lv = 4; lv >= 1; lv--) { const id = N.armorLine + lv, A = ARMORS[id]; if (!A.tech || aiHas(N, A.tech)) { armor = id; break; } }
   if (!ARMORS[armor] || (ARMORS[armor].tech && !aiHas(N, ARMORS[armor].tech))) armor = 'leather1';
-  const shield = !WEAPONS[weapon].twoH ? ['aegis', 'tower', 'kite', 'round'].find(s => aiHas(N, SHIELD_DEFS[s].tech)) || null : null;
+  const shield = !WEAPONS[weapon].twoH ? ['tower', 'kite', 'round'].find(s => aiHas(N, SHIELD_DEFS[s].tech)) || null : null;
   const cavW = FAMILY.pole.order.filter(w => !WEAPONS[w].tech || aiHas(N, WEAPONS[w].tech)).pop();
   const horse = aiHas(N, 'horse-training') ? 'friesian' : aiHas(N, 'horse-breeding') ? 'mongolian' : 'riding';
   const sig = [weapon, armor, shield, cavW, horse].join('|'); if (sig === N.designSig) return; N.designSig = sig; N.dv++;
@@ -12110,11 +12127,11 @@ function stepAI(t) {
 // training: paid up front; 12 s for Wayfinders and Masons, 18 s for soldiers, 30 s for Mages
 function aiQueueStep(N, t) {
   for (const q of N.queue.slice()) {
-    if (t - q.t0 < trainTime(q.kind)) continue;
+    if (t - q.t0 < aiTrainTime(N, q.kind)) continue;   // v100: the war surge (v100.js)
     N.queue = N.queue.filter(x => x !== q);
     if (!S.buildings.has(q.prov) || nationOf(q.prov) !== N.id) continue;
     if (q.kind === WAYFINDER || q.kind === MASON) { const u = mkUnit(S.nextId++, q.kind, '', q.prov, 0); u.owner = N.id; u.slot = freeSlot(q.prov, u); [u.x, u.y] = slotPos(q.prov, u.slot); u.born = t; S.units.push(u); continue; }
-    let a = S.units.find(v => v.kind === 'army' && v.owner === N.id && v.prov === q.prov && !v.moving && !v.battle && !v.exiting);
+    let a = S.units.find(v => v.kind === 'army' && v.owner === N.id && v.prov === q.prov && !v.moving && !v.battle && !v.exiting && !(q.kind === MAGE && v.troops[MAGE] > 0));   // v97: one Mage per army
     if (a) { a.troops[q.kind] = (a.troops[q.kind] || 0) + 1; a.grew = t; } else aiNewArmy(N, q.prov, { [q.kind]: 1 });
   }
 }
@@ -12145,8 +12162,8 @@ function aiTrain(N, P) {
   for (const p of barracks) {
     if (aiBusyAt(N, p)) continue;
     const stable = extrasIn(p).some(e => e.type === 'stable');
-    const kind = P.useCav && stable && Math.random() < 0.3 ? N.design.cav : N.design.inf, cost = UNIT_DEFS[kind].cost;
-    if (!canPay(st, cost) || st.gold - (cost.gold || 0) < (enemiesOf(N.id).length ? 0 : 40)) { if (kind !== 'd-sword' && canPay(st, UNIT_DEFS['d-sword'].cost) && enemiesOf(N.id).length) { pay(st, UNIT_DEFS['d-sword'].cost); N.queue.push({ kind: 'd-sword', prov: p, t0: S.t }); } continue; }
+    const kind = aiPickKind(N, P, stable), cost = aiUnitCost(N, kind);   // v100: unit counters after a lost battle (v100.js)   // v100: half price in the Difficult surge
+    if (!canPay(st, cost) || st.gold - (cost.gold || 0) < (enemiesOf(N.id).length ? 0 : 40)) { if (kind !== 'd-sword' && canPay(st, aiUnitCost(N, 'd-sword')) && enemiesOf(N.id).length) { pay(st, aiUnitCost(N, 'd-sword')); N.queue.push({ kind: 'd-sword', prov: p, t0: S.t }); } continue; }
     pay(st, cost); N.queue.push({ kind, prov: p, t0: S.t });
   }
 }
@@ -12362,7 +12379,8 @@ function aiArmyOrders(N, P, t) {
   const armies = aiArmies(N), enemies = enemiesOf(N.id), cap = capitalOf(N.id) >= 0 ? capitalOf(N.id) : provsOf(N.id)[0];
   // armies standing in the same province join up
   const byProv = new Map();
-  for (const a of armies) if (!a.moving && !a.battle && !a.retreating && !a.exiting) { const o = byProv.get(a.prov); if (o) { for (const k in a.troops) o.troops[k] = (o.troops[k] || 0) + a.troops[k]; o.grew = t; S.units = S.units.filter(v => v !== a); } else byProv.set(a.prov, a); }
+  for (const a of armies) if (!a.moving && !a.battle && !a.retreating && !a.exiting) { const o = byProv.get(a.prov); if (o && (o.troops[MAGE] > 0) && (a.troops[MAGE] > 0)) continue; if (o) {   // v97: two Mages never share an army
+ for (const k in a.troops) o.troops[k] = (o.troops[k] || 0) + a.troops[k]; o.grew = t; S.units = S.units.filter(v => v !== a); } else byProv.set(a.prov, a); }
   const live = aiArmies(N);
   for (const a of live) {
     if (a.battle) {
@@ -12862,14 +12880,13 @@ function drawQuakes(g, t) {
 // AI nations at war cast them too: Shockwave at an enemy wall next to a Mage army standing still; Earthquake in land they occupy
 function aiQuake(N, t) {
   if ((N.quakeAt || 0) > t || !enemiesOf(N.id).length) return;
-  if (S.units.some(v => v.owner === N.id && v.quake)) return;
   for (const a of S.units) {
-    if (a.owner !== N.id || a.kind !== 'army' || !(a.troops[MAGE] > 0) || a.moving || a.battle || a.exiting || a.cast) continue;
-    if (hasQuake(N.id) && !quakeWhy(a) && extrasIn(a.prov).length) { if (startQuake(a)) { N.quakeAt = t + 120; return; } }
+    if (a.owner !== N.id || a.kind !== 'army' || !(a.troops[MAGE] > 0) || a.moving || a.battle || a.exiting || a.cast || a.quake) continue;
+    if (hasQuake(N.id) && !quakeWhy(a) && extrasIn(a.prov).length) { if (startQuake(a)) { N.quakeAt = t + 10; return; } }
     const q = allNbr[a.prov].find(q => !shockWhy(a, q));
-    if (q !== undefined && startShock(a, q)) { N.quakeAt = t + 120; return; }
+    if (q !== undefined && startShock(a, q)) { N.quakeAt = t + 10; return; }   // v100: Shockwaves and Fireballs freely while at war
   }
-  N.quakeAt = t + 20;
+  N.quakeAt = t + 3;
 }
 
 // ---------- GPC07: set pieces are found by surveying, and stand in the province as a building-sized landmark ----------
@@ -13838,8 +13855,7 @@ function openSplitMenu(a) {
   const ks = Object.keys(a.troops).filter(k => a.troops[k] > 0), nm = k => UNIT_DEFS[k] ? UNIT_DEFS[k].name : k, pl = (n, k) => n + ' ' + (n > 1 ? PLURAL_OF(nm(k)) : nm(k));
   const rows = ks.map(k => {
     const n = a.troops[k], half = Math.floor(n / 2);
-    return (ks.length > 1 ? `<button type="button" class="bm-item" data-split="${k}:all" data-army="${a.id}"><img alt="" src="${portrait(k)}"><span class="bm-name">Split off the ${pl(n, k)}<small>They form a new army; the rest stay</small></span></button>` : '') +
-      (half >= 1 && (ks.length > 1 || n >= 2) ? `<button type="button" class="bm-item" data-split="${k}:half" data-army="${a.id}"><img alt="" src="${portrait(k)}"><span class="bm-name">Split off ${pl(half, k)}<small>Half of this kind</small></span></button>` : '');
+    return (ks.length > 1 ? `<button type="button" class="bm-item" data-split="${k}:all" data-army="${a.id}"><img alt="" src="${portrait(k)}"><span class="bm-name">Split off the ${pl(n, k)}<small>They form a new army; the rest stay</small></span></button>` : '') ;   // v99: no 'half of one kind' rows
   }).join('');
   popNearCard(`<div class="bm-head"><b>Split ${escHTML(a.name)}</b><span>${troopText(a)}</span></div><button type="button" class="bm-item" data-split="mix:half" data-army="${a.id}"><img alt="" src="${splitIcon}"><span class="bm-name">Split in half<small>Each half gets a fair mix</small></span></button>${rows}<button type="button" class="bm-item bm-move" data-insp-close="1"><span class="bm-name">Close</span></button>`);
 }
@@ -14510,7 +14526,7 @@ function stepPyromancy(t) {
     const foe = S.units.find(v => v.kind === 'army' && v.prov === T.prov && hostile(v.owner, T.owner) && troopCount(v) > 0 && !v.retreating && !(T.ignore || []).includes(v.id));
     if (!foe) continue;
     S.ftraps = S.ftraps.filter(x => x !== T);
-    const killed = burnArmy(foe, FIRE_TRAP[T.lv] * arrowDmg() * (T.mult || 1));   // arrowDmg: exactly what it takes to bring down one Footman
+    const killed = pureFront(foe, FIRE_DMG[T.lv] * (T.mult || 1));   // v98: damage that ignores armor, to the front line (v98.js)
     S.trapBooms = (S.trapBooms || []).concat([{ x: foe.x, y: foe.y, t0: t, prov: T.prov }]);
     if (T.owner === ME) toast(`Your fire trap in ${provName(T.prov)} engulfs ${foe.name || 'an enemy army'}: ${killed} soldier${killed === 1 ? '' : 's'} burned.`);
     else if (foe.owner === ME) toast(`${foe.name} walks into a fire trap in ${provName(T.prov)}: ${killed} soldier${killed === 1 ? '' : 's'} lost.`, true);
@@ -16180,8 +16196,8 @@ FLAG_IMG.wptimer = bannerSVG('#8a8f99', '#5f636b', '<path d="M22 22 H42 L34 36 L
 FLAG_IMG.bandits = bannerSVG('#8b5a2b', '#6a4220', '<path d="M20 24 L44 48 M44 24 L20 48" stroke-width="5" stroke="#1d1a22"/><path d="M20 24 L44 48 M44 24 L20 48" stroke-width="2.6" stroke="#d8d2c4"/><path d="M16 44 L24 52 M48 44 L40 52" stroke-width="3.4" stroke="#8a6a3a"/>');
 FLAG_IMG.allyfort = bannerSVG('#6b3fa0', '#4f2d78', '<path d="M18 46 V30 H24 V34 H30 V26 H36 V34 H42 V30 H46 V46 Z" fill="#cfc8ba"/><path d="M28 46 V40 H36 V46" fill="#6b4a2a"/><path d="M14 22 L50 54" stroke="#c7362b" stroke-width="3.4"/>');
 
-// ---------- wars: no Total War; a flag at 100 warscore; a hidden 5-minute timer ends every war in white peace ----------
-const WAR_TIMER = 300, WAR_TIMER_SHOW = 30;
+// ---------- wars: no Total War; a flag at 100 warscore; a hidden 20-minute timer (v101; was 5) ends every war in white peace ----------
+const WAR_TIMER = 1200, WAR_TIMER_SHOW = 30;   // v101: 20 minutes (was 5)
 const warTimeLeft = w => WAR_TIMER - (S.t - w.since);
 function stepWarTimers() {
   for (const w of S.wars.slice()) {
@@ -16215,7 +16231,7 @@ function stepAllyForts(t) {
       if (left <= WAR_TIMER_SHOW && left > 0 && !w.parent) extra.push({ id: 'wpt:' + w.id, img: 'wptimer', warn: true, cd: left, tip: `The war with the ${PLAYERS[o].name} ends in white peace in ${Math.ceil(left)} s unless a peace deal is made. Left-click to open Diplomacy`, label: 'White peace' });
     }
     for (const A of S.allies) if (A.fortAt !== undefined && (A.a === ME || A.b === ME)) { const o = A.a === ME ? A.b : A.a; extra.push({ id: 'allyfort:' + o, img: 'allyfort', warn: true, cd: ALLY_FORT_GRACE - (S.t - A.fortAt), tip: `A fort at ${provName(A.fortProv)} sits on your border with the ${PLAYERS[o].name}: the alliance ends when the timer runs out. Left-click to look at it`, label: 'Ally border' }); }
-    if (S.banditWave && S.t - S.banditWave.t < 60) extra.push({ id: 'bandits:' + S.banditWave.n, img: 'bandits', warn: true, tip: `Bandits (power ${fmtPow(S.banditWave.power)}) have appeared at ${provName(S.banditWave.prov)}. Left-click to look`, label: 'Bandits' });
+    // v99: no flag when bandits appear
     return out.concat(extra.filter(f => !flagDismissed.has(f.id)));
   };
   $q('#nflags').addEventListener('click', e => {
@@ -16248,7 +16264,7 @@ let v96BarKey = '';
   setupBar = function () {
     _sb();
     const tick = $q('#res .tick');
-    tick.insertAdjacentHTML('beforebegin', `<span class="r v96c" id="r-forts" title="Forts you hold (and are building) out of your fort limit">${FORT_SVG}<b></b></span><span class="r v96c" id="r-provs" title="Provinces you hold out of the provinces your forts allow (each fort and the capital allow itself plus ${OUTPOSTS_PER_FORT} outposts; Efficient and Expand Administration add more)">${PROV_SVG}<b></b></span>`);
+    tick.insertAdjacentHTML('beforebegin', `<span class="r v96c" id="r-forts" title="Forts you hold out of your fort limit (a fort counts once its upgrade has finished)">${FORT_SVG}<b></b></span><span class="r v96c" id="r-provs" title="Provinces you hold out of the provinces your forts allow (each fort and the capital allow itself plus ${OUTPOSTS_PER_FORT} outposts; Efficient and Expand Administration add more)">${PROV_SVG}<b></b></span>`);
   };
   const _ub = updateBar;
   updateBar = function (t) {
@@ -16424,7 +16440,7 @@ function rallyArrivals() {
     if (a.moving || a.battle) continue;
     if (a.prov !== a.rallyTo) { a.rallyTo = undefined; continue; }
     a.rallyTo = undefined;
-    const host = S.units.find(v => v !== a && v.kind === 'army' && v.owner === ME && v.prov === a.prov && !v.moving && !v.battle && !v.exiting && !v.retro && !v.retroWant);
+    const host = S.units.find(v => v !== a && v.kind === 'army' && v.owner === ME && v.prov === a.prov && !v.moving && !v.battle && !v.exiting && !v.retro && !v.retroWant && !(v.troops[MAGE] > 0 && a.troops[MAGE] > 0));
     if (!host) continue;
     for (const k in a.troops) host.troops[k] = (host.troops[k] || 0) + a.troops[k];
     host.grew = S.t; S.units = S.units.filter(v => v !== a); S.selected = S.selected.filter(v => v !== a);
@@ -16528,8 +16544,7 @@ function stepBanditWaves(t) {
   a.troops = { 'd-sword': Math.max(2, Math.ceil(power / footmanPower())) };
   a.wave = n + 1;
   S.banditWave = { n: n + 1, prov: p, power: powerOf(a), t };
-  flagKey = ''; sfx('wn_enemy');
-  toast(`${a.name}, a bandit gang of power ${fmtPow(powerOf(a))}, has appeared in ${S.explored.has(p) ? provName(p) : 'the wilds'}! Every 3 minutes a stronger one turns up.`, true);
+  // v99: bandits turn up without a notification
 }
 const ROMAN_N = n => ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][n] || String(n);
 
@@ -16626,99 +16641,9 @@ function stepV96(t, dt) {
   if (autoPickFor !== null && !S.selected.some(v => v.id === autoPickFor)) { autoPickFor = null; cmdKey = ''; }
   { const m = S.selected.find(v => v.kind === MASON && v.owner === ME), k = m ? m.id + ':' + !!m.pending + ':' + (m.auto || '') : ''; if (k !== stepV96.mk) { stepV96.mk = k; cmdKey = ''; } }
 }
-window.__v96 = { rowsOn: a => rowsOn(a), rowBack: (a, k) => rowBack(a, k), rowFront: a => rowFront(a), rowDeal: (a, k) => rowDeal(a, k), setBack: (a, k, n) => setBack(a, k, n), openRowsMenu: a => openRowsMenu(a), fmtPow, spellHitWall, dismantleFort, autoResearch, stepWarTimers, stepBanditWaves, stepAllyForts, allyWhy: (a, b) => allyWhy(a, b), borderFort: (a, b) => borderFort(a, b), demandMax: (s, o) => demandMax(s, o), perFort: o => perFort(o), provLimit: o => provLimit(o), rallyOf, stepAutoBuild, siegedProvs, setupV96, spellTime: (k, o) => spellTime(k, o) };
+window.__v96 = { fmtPow, spellHitWall, dismantleFort, autoResearch, stepWarTimers, stepBanditWaves, stepAllyForts, allyWhy: (a, b) => allyWhy(a, b), borderFort: (a, b) => borderFort(a, b), demandMax: (s, o) => demandMax(s, o), perFort: o => perFort(o), provLimit: o => provLimit(o), rallyOf, stepAutoBuild, siegedProvs, setupV96, spellTime: (k, o) => spellTime(k, o) };
 
-// ---------- Front Row and Back Row (armies of 6 or more) ----------
-// a.back: kind -> how many of that kind stand in the back row. Mages (Druids, Warlocks) stand in the back on their own
-// unless a.magesFront is set. Back-row soldiers deal half damage (Mages deal full damage from the back) and take half
-// damage, and only once the front row has fallen. An army of 5 or fewer fights as one line.
-const ROW_MIN = 6, BACK_DEAL = 0.5, BACK_TAKE = 0.5;
-function rowsOn(a) { return !!a && a.kind === 'army' && troopCount(a) >= ROW_MIN; }
-function rowBack(a, k) {
-  if (!rowsOn(a) || !(a.troops[k] > 0)) return 0;
-  if (k === MAGE && !a.magesFront) return a.troops[k];
-  return Math.min(a.troops[k], (a.back && a.back[k]) || 0);
-}
-// the row a kind is set to, whatever the army's size (rowBack only counts it while rows are in effect)
-function rowBackSet(a, k) { const n = a.troops[k] || 0; return k === MAGE && !a.magesFront ? n : Math.min(n, (a.back && a.back[k]) || 0); }
-function rowBackCount(a) { let n = 0; for (const k in a.troops) n += rowBack(a, k); return n; }
-function rowFront(a) { return troopCount(a) - rowBackCount(a); }
-// how many blows a kind lands this round: back-row soldiers count half, Mages always count in full
-function rowDeal(a, k) { const n = a.troops[k] || 0; if (k === MAGE) return n; return n - rowBack(a, k) * (1 - BACK_DEAL); }
-function setBack(a, k, n) {
-  if (k === MAGE) { a.magesFront = n < (a.troops[MAGE] || 0); a.back = a.back || {}; a.back[MAGE] = Math.max(0, Math.min(a.troops[MAGE] || 0, n)); return; }
-  a.back = a.back || {}; a.back[k] = Math.max(0, Math.min(a.troops[k] || 0, n)); if (!a.back[k]) delete a.back[k];
-}
-const rowText = a => rowsOn(a) ? `Front ${rowFront(a)} · Back ${rowBackCount(a)}` : `One line (rows from ${ROW_MIN} soldiers)`;
-// combining armies keeps everyone's row
-{
-  const _ca = combineArmies;
-  combineArmies = function (list) {
-    const backs = list.map(a => Object.keys(a.troops).map(k => [k, rowsOn(a) && !(k === MAGE && !a.magesFront) ? rowBack(a, k) : 0]));
-    _ca(list);
-    const main = list[0]; if (!main || !S.units.includes(main)) return;
-    main.back = {}; for (const bl of backs) for (const [k, n] of bl) if (n && k !== MAGE) main.back[k] = (main.back[k] || 0) + n;
-  };
-}
-// the Rows button: the first free cell among 2, 9, 7, 6, 5, 4 on the army card
-{
-  const armyGet = Object.getOwnPropertyDescriptor(CMD, 'army').get;
-  Object.defineProperty(CMD, 'army', { configurable: true, get() {
-    const list = armyGet.call(CMD), a = S.selected.find(v => v.kind === 'army' && v.owner === ME); if (!a) return list;
-    const used = new Set(list.map(c => c.cell)), cell = [2, 9, 7, 6, 5, 4].find(c => !used.has(c));
-    return cell === undefined ? list : list.concat([{ id: 'rows', cell, key: '' }]);
-  } });
-  const info0 = extraCmdInfo, use0 = extraCmdUse;
-  extraCmdInfo = id => {
-    if (id !== 'rows') return info0(id);
-    const a = S.selected.find(v => v.kind === 'army' && v.owner === ME);
-    return { name: 'Front and back rows', desc: `Armies of ${ROW_MIN} or more fight in two rows. The front row takes the blows first; the back row only takes damage once the front row has fallen, and then only half of it, but back-row soldiers also deal half damage. ${UNIT_DEFS[MAGE].name}s stand in the back on their own and deal full damage from there.${a ? ' Now: ' + rowText(a) + '.' : ''}`, cost: null, why: !a ? 'No army selected' : a.battle ? 'Not during battle' : null, ok: 'Click to arrange the rows', icon: rowsIcon() };
-  };
-  extraCmdUse = id => { if (id !== 'rows') return use0(id); const a = S.selected.find(v => v.kind === 'army' && v.owner === ME); if (a) openRowsMenu(a); return true; };
-}
-let rowsIco = null;
-function rowsIcon() {
-  if (rowsIco) return rowsIco;
-  const c = document.createElement('canvas'); c.width = c.height = 88; const g = c.getContext('2d'); g.lineJoin = 'round'; g.lineCap = 'round';
-  const man = (x, y, col, s) => { g.beginPath(); g.arc(x, y - 14 * s, 6 * s, 0, 7); g.fillStyle = '#f1d3b0'; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.moveTo(x - 8 * s, y + 8 * s); g.lineTo(x - 7 * s, y - 6 * s); g.lineTo(x + 7 * s, y - 6 * s); g.lineTo(x + 8 * s, y + 8 * s); g.closePath(); g.fillStyle = col; g.fill(); g.stroke(); };
-  for (const x of [26, 44, 62]) man(x, 36, '#9aa7c0', 0.85);   // back row
-  for (const x of [18, 36, 54, 72]) man(x, 64, '#c7362b', 1.05);   // front row
-  g.beginPath(); g.moveTo(10, 50); g.lineTo(78, 50); g.setLineDash([5, 5]); g.lineWidth = 2.5; g.strokeStyle = OL; g.stroke(); g.setLineDash([]);
-  return rowsIco = c.toDataURL();
-}
-function openRowsMenu(a) {
-  if (a.battle) return toast('Rows can’t be changed during a battle.', true);
-  const ks = Object.keys(a.troops).filter(k => a.troops[k] > 0), nm = k => k === MAGE ? UNIT_DEFS[MAGE].name : designById(k) ? designById(k).name : UNIT_DEFS[k] ? UNIT_DEFS[k].name : k;
-  const on = rowsOn(a), b = btn => `<button type="button" class="bm-item" data-rows="${btn.k}:${btn.how}" data-army="${a.id}"${btn.off ? ' aria-disabled="true"' : ''}><img alt="" src="${btn.img}"><span class="bm-name">${btn.t}<small>${btn.s}</small></span></button>`;
-  let html = `<div class="bm-head"><b>Rows of ${escHTML(a.name)}</b><span>${rowText(a)}</span></div>`;
-  if (!on) html += `<div class="bm-sec">An army of ${ROW_MIN} or more fights in two rows; this one is one line for now. You can still set the rows: they apply once it is big enough.</div>`;
-  html += b({ k: 'all', how: 'front', img: rowsIcon(), t: 'Everyone to the front', s: `${UNIT_DEFS[MAGE].name}s stay in the back` });
-  for (const k of ks) {
-    const n = a.troops[k], back = rowBackSet(a, k), front = n - back, hf = Math.floor(front / 2), hb = Math.floor(back / 2);
-    html += `<div class="bm-sec">${nm(k)} ×${n}: front ${front}, back ${back}</div>`;
-    if (front) html += b({ k, how: 'back', img: portrait(k), t: `All ${front} to the back`, s: k === MAGE ? 'Full damage from the back' : 'Half the damage taken, half the damage dealt' });
-    if (hf >= 1 && hf < front) html += b({ k, how: 'halfback', img: portrait(k), t: `${hf} to the back`, s: 'Half of those in front' });
-    if (back) html += b({ k, how: 'front', img: portrait(k), t: `All ${back} to the front`, s: 'They take the blows first' });
-    if (hb >= 1 && hb < back) html += b({ k, how: 'halffront', img: portrait(k), t: `${hb} to the front`, s: 'Half of those in back' });
-  }
-  popNearCard(html);
-}
-menuEl.addEventListener('click', e => {
-  const t = e.target.closest('[data-rows]'); if (!t) return; e.stopImmediatePropagation();
-  const a = S.units.find(v => v.id === +t.dataset.army);
-  if (!a || a.battle) { closeBuildMenu(); return toast('Rows can’t be changed during a battle.', true); }
-  const [k, how] = t.dataset.rows.split(':');
-  if (k === 'all') { a.back = {}; a.magesFront = false; }
-  else {
-    const n = a.troops[k] || 0, back = rowBackSet(a, k), front = n - back;
-    if (how === 'back') setBack(a, k, n);
-    else if (how === 'halfback') setBack(a, k, back + Math.floor(front / 2));
-    else if (how === 'front') setBack(a, k, 0);
-    else if (how === 'halffront') setBack(a, k, back - Math.floor(back / 2));
-  }
-  sfx('ui_click'); cmdKey = ''; rosterKey = '';
-  openRowsMenu(a);   // stay open to keep arranging
-}, true);
+// (Front and back rows: replaced in v97.js)
 
 // ---------- Armory: Weapons / Armor / Horses (or Ogres) as tabs instead of one long page ----------
 let armTab = 'Weapons';
@@ -16800,11 +16725,1166 @@ body.in-menu .dip-wars { display: none !important; }`;
   };
 }
 
+// ================= v97: Front and Back Rows, reworked; one Mage per army =================
+// An army of 6 or more fights in two rows of equal size (the front gets the odd one). The Mage (Druid, Warlock) always
+// stands in the back. The player may order the minority unit types to the front or to the back; everyone else fills the
+// remaining places. In battle, blows land on the front row, and every front-row soldier who falls is replaced by a random
+// back-row soldier (never the Mage), who then takes full damage. Back-row soldiers deal half damage (the Mage deals full
+// damage); the back row only takes blows once nobody is left in front, and then only half.
+const ROW_MIN = 6, BACK_DEAL = 0.5, BACK_TAKE = 0.5;
+const rowSum = o => { let n = 0; for (const k in o) n += o[k]; return n; };
+// unit types in the order they joined the army
+function rowJoinSync(a) {
+  const j = (a.rowJoin || []).filter(k => a.troops[k] > 0);
+  for (const k of Object.keys(a.troops)) if (a.troops[k] > 0 && !j.includes(k)) j.push(k);
+  a.rowJoin = j; return j;
+}
+// which unit types get To front / To back: never the Mage; not a type that is more than half of the soldiers; and with
+// exactly two types of equal size, only the one that joined later (one order says it all)
+function rowMovable(a) {
+  const ks = rowJoinSync(a).filter(k => k !== MAGE);
+  if (ks.length < 2) return [];
+  const tot = ks.reduce((n, k) => n + a.troops[k], 0), maj = ks.find(k => a.troops[k] * 2 > tot);
+  if (maj) return ks.filter(k => k !== maj);
+  if (ks.length === 2) return [ks[1]];
+  return ks;
+}
+// the layout by the orders: the front fills first with types ordered to the front (newest order first), then the types
+// with no order (in the order they joined), then the types ordered to the back (oldest order first); the rest stand in back
+function rowLayout(a) {
+  const N = troopCount(a), F = Math.ceil(N / 2), f = {}, b = {};
+  const ks = rowJoinSync(a).filter(k => k !== MAGE), can = new Set(rowMovable(a)), ord = k => can.has(k) && a.rowOrd ? a.rowOrd[k] : null;
+  const fronts = ks.filter(k => ord(k) && ord(k).side === 'front').sort((x, y) => ord(y).t - ord(x).t);
+  const none = ks.filter(k => !ord(k));
+  const backs = ks.filter(k => ord(k) && ord(k).side === 'back').sort((x, y) => ord(x).t - ord(y).t);
+  let room = F;
+  for (const k of [...fronts, ...none, ...backs]) { const n = Math.min(room, a.troops[k]); if (n) f[k] = n; room -= n; if (a.troops[k] - n) b[k] = a.troops[k] - n; }
+  if (a.troops[MAGE]) b[MAGE] = a.troops[MAGE];
+  return { f, b };
+}
+// in battle the formation is kept: counts are only matched to the troops (newcomers fill the front up to half)
+function rowReconcile(a, lay) {
+  const N = troopCount(a), F = Math.ceil(N / 2);
+  for (const k of new Set([...Object.keys(lay.f), ...Object.keys(lay.b), ...Object.keys(a.troops)])) {
+    const t = a.troops[k] || 0; let have = (lay.f[k] || 0) + (lay.b[k] || 0);
+    while (have > t) { if (lay.f[k]) lay.f[k]--; else lay.b[k]--; have--; }
+    while (have < t) { if (k !== MAGE && rowSum(lay.f) < F) lay.f[k] = (lay.f[k] || 0) + 1; else lay.b[k] = (lay.b[k] || 0) + 1; have++; }
+    if (!lay.f[k]) delete lay.f[k]; if (!lay.b[k]) delete lay.b[k];
+  }
+}
+const rowKeyOf = a => Object.keys(a.troops).sort().map(k => k + a.troops[k]).join(',') + '|' + JSON.stringify(a.rowOrd || {});
+// the army's rows now, or null when it fights as one line (5 or fewer)
+function rowSync(a) {
+  if (!a || a.kind !== 'army' || troopCount(a) < ROW_MIN) { if (a) a.rowLay = null; return null; }
+  if (!a.battle) { const key = rowKeyOf(a); if (!a.rowLay || a.rowLayKey !== key) { a.rowLay = rowLayout(a); a.rowLayKey = key; } return a.rowLay; }
+  if (!a.rowLay) a.rowLay = rowLayout(a);
+  rowReconcile(a, a.rowLay); a.rowLayKey = null;   // re-formed by the orders once the battle is over
+  return a.rowLay;
+}
+// a soldier of kind k falls (called before the troop count drops): a front-row death pulls a random back-row soldier forward
+function rowFall(a, lay, k, front) {
+  if (front) {
+    if (lay.f[k]) { lay.f[k]--; if (!lay.f[k]) delete lay.f[k]; }
+    const pool = Object.keys(lay.b).filter(kk => kk !== MAGE && lay.b[kk] > 0), tot = pool.reduce((n, kk) => n + lay.b[kk], 0);
+    if (tot) { let r = Math.random() * tot, pick = pool[0]; for (const kk of pool) { r -= lay.b[kk]; if (r <= 0) { pick = kk; break; } } lay.b[pick]--; if (!lay.b[pick]) delete lay.b[pick]; lay.f[pick] = (lay.f[pick] || 0) + 1; }
+  } else if (lay.b[k]) { lay.b[k]--; if (!lay.b[k]) delete lay.b[k]; }
+}
+// blows a kind lands in a round: back-row soldiers count half, the Mage always in full
+function rowDeal(a, k) {
+  const n = a.troops[k] || 0, lay = rowSync(a);
+  if (!lay || k === MAGE) return n;
+  return (lay.f[k] || 0) + (lay.b[k] || 0) * BACK_DEAL;
+}
+const kindName = k => k === MAGE ? UNIT_DEFS[MAGE].name : designById(k) ? designById(k).name : UNIT_DEFS[k] ? UNIT_DEFS[k].name : k;
+const rowList = o => Object.keys(o).filter(k => o[k] > 0).map(k => `${o[k]} ${o[k] > 1 ? PLURAL_OF(kindName(k)) : kindName(k)}`).join(', ') || 'nobody';
+function rowText(a) { const lay = rowSync(a); return lay ? `Front ${rowSum(lay.f)} · Back ${rowSum(lay.b)}` : `One line (rows from ${ROW_MIN} soldiers)`; }
+
+// ---------- the Rows button and menu ----------
+{
+  const armyGet = Object.getOwnPropertyDescriptor(CMD, 'army').get;
+  Object.defineProperty(CMD, 'army', { configurable: true, get() {
+    const list = armyGet.call(CMD), a = S.selected.find(v => v.kind === 'army' && v.owner === ME); if (!a) return list;
+    const used = new Set(list.map(c => c.cell)), cell = [2, 9, 7, 6, 5, 4].find(c => !used.has(c));
+    return cell === undefined ? list : list.concat([{ id: 'rows', cell, key: '' }]);
+  } });
+  const info0 = extraCmdInfo, use0 = extraCmdUse;
+  extraCmdInfo = id => {
+    if (id !== 'rows') return info0(id);
+    const a = S.selected.find(v => v.kind === 'army' && v.owner === ME);
+    return { name: 'Front and back rows', desc: `An army of ${ROW_MIN} or more fights in two rows of equal size. The front row takes the blows; whenever a front-row soldier falls, a back-row soldier steps forward. Back-row soldiers deal half damage, and take half damage once nobody is left in front. The ${UNIT_DEFS[MAGE].name} always stands in the back and deals full damage. Order the smaller unit types to the front or the back.${a ? ' Now: ' + rowText(a) + '.' : ''}`, cost: null, why: !a ? 'No army selected' : a.battle ? 'Not during battle' : null, ok: 'Click to arrange the rows', icon: rowsIcon() };
+  };
+  extraCmdUse = id => { if (id !== 'rows') return use0(id); const a = S.selected.find(v => v.kind === 'army' && v.owner === ME); if (a) openRowsMenu(a); return true; };
+}
+let rowsIco = null;
+function rowsIcon() {
+  if (rowsIco) return rowsIco;
+  const c = document.createElement('canvas'); c.width = c.height = 88; const g = c.getContext('2d'); g.lineJoin = 'round'; g.lineCap = 'round';
+  const man = (x, y, col, s) => { g.beginPath(); g.arc(x, y - 14 * s, 6 * s, 0, 7); g.fillStyle = '#f1d3b0'; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.moveTo(x - 8 * s, y + 8 * s); g.lineTo(x - 7 * s, y - 6 * s); g.lineTo(x + 7 * s, y - 6 * s); g.lineTo(x + 8 * s, y + 8 * s); g.closePath(); g.fillStyle = col; g.fill(); g.stroke(); };
+  for (const x of [26, 44, 62]) man(x, 36, '#9aa7c0', 0.85);
+  for (const x of [18, 36, 54, 72]) man(x, 64, '#c7362b', 1.05);
+  g.beginPath(); g.moveTo(10, 50); g.lineTo(78, 50); g.setLineDash([5, 5]); g.lineWidth = 2.5; g.strokeStyle = OL; g.stroke(); g.setLineDash([]);
+  return rowsIco = c.toDataURL();
+}
+function openRowsMenu(a) {
+  if (a.battle) return toast('Rows can’t be changed during a battle.', true);
+  const lay = rowSync(a), can = rowMovable(a), ks = rowJoinSync(a).filter(k => k !== MAGE);
+  let html = `<div class="bm-head"><b>Rows of ${escHTML(a.name)}</b><span>${rowText(a)}</span></div>`;
+  html += lay ? `<div class="rw-lay"><div><b>Front</b> ${rowList(lay.f)}</div><div><b>Back</b> ${rowList(lay.b)}</div></div>`
+    : `<div class="bm-sec">An army of ${ROW_MIN} or more fights in two rows; this one fights as one line for now. Orders take effect once it is big enough.</div>`;
+  for (const k of ks) {
+    const o = a.rowOrd && a.rowOrd[k];
+    if (!can.includes(k)) { html += `<div class="rw-k"><img alt="" src="${portrait(k)}"><span>${kindName(k)} ×${a.troops[k]}<small>Fills the places left over</small></span></div>`; continue; }
+    html += `<div class="rw-k"><img alt="" src="${portrait(k)}"><span>${kindName(k)} ×${a.troops[k]}<small>${o ? 'Ordered to the ' + o.side : 'No order'}</small></span>` +
+      ['front', 'back'].map(side => `<button type="button" class="rw-b${o && o.side === side ? ' on' : ''}" data-rows="${k}:${side}" data-army="${a.id}" aria-pressed="${!!(o && o.side === side)}">To ${side}</button>`).join('') + `</div>`;
+  }
+  if (a.troops[MAGE]) html += `<div class="rw-k"><img alt="" src="${portrait(MAGE)}"><span>${UNIT_DEFS[MAGE].name}<small>Always in the back</small></span></div>`;
+  popNearCard(html);
+}
+menuEl.addEventListener('click', e => {
+  const t = e.target.closest('[data-rows]'); if (!t) return; e.stopImmediatePropagation();
+  const a = S.units.find(v => v.id === +t.dataset.army);
+  if (!a || a.battle) { closeBuildMenu(); return toast('Rows can’t be changed during a battle.', true); }
+  const [k, side] = t.dataset.rows.split(':');
+  a.rowOrd = a.rowOrd || {};
+  if (a.rowOrd[k] && a.rowOrd[k].side === side) delete a.rowOrd[k];   // clicking the active order again clears it
+  else a.rowOrd[k] = { side, t: S.rowSeq = (S.rowSeq || 0) + 1 };
+  sfx('ui_click'); cmdKey = ''; rosterKey = '';
+  openRowsMenu(a);
+}, true);
+{
+  const st = document.createElement('style');
+  st.textContent = `
+.rw-lay { font: 600 12px var(--font-ui); padding: 4px 10px 6px; display: grid; gap: 2px; }
+.rw-lay b { display: inline-block; width: 42px; }
+.rw-k { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-top: 1px solid #e3e7ee; }
+.rw-k img { width: 32px; height: 32px; }
+.rw-k span { flex: 1; font: 700 13px var(--font-ui); display: flex; flex-direction: column; }
+.rw-k small { font-weight: 500; color: var(--muted); }
+.rw-b { font: 800 11px var(--font-ui); padding: 4px 8px; border: 1px solid var(--ink); background: #eef2f7; cursor: pointer; }
+.rw-b.on { background: var(--sun); }`;
+  document.head.appendChild(st);
+}
+
+// ---------- one Mage per army ----------
+const oneMageMsg = () => `An army can have only one ${UNIT_DEFS[MAGE].name}.`;
+{
+  const _ca = combineArmies;
+  combineArmies = function (list) {
+    if (list.reduce((n, a) => n + (a.troops[MAGE] || 0), 0) > 1) return toast(oneMageMsg(), true);
+    const main = list[0], join = [...rowJoinSync(main)];
+    for (const a of list.slice(1)) for (const k of rowJoinSync(a)) if (!join.includes(k)) join.push(k);
+    _ca(list);
+    if (S.units.includes(main)) main.rowJoin = join;
+  };
+}
+// old saves: any extra Mages step out of their army (the player's as Mages of their own, a computer nation's as an army)
+function oneMagePerArmy() {
+  for (const a of S.units.slice()) {
+    if (a.kind !== 'army' || !(a.troops[MAGE] > 1)) continue;
+    const extra = a.troops[MAGE] - 1; a.troops[MAGE] = 1;
+    for (let i = 0; i < extra; i++) {
+      if (a.owner === ME) { const m = mkUnit(S.nextId++, MAGE, UNIT_DEFS[MAGE].name, a.prov, 0); m.slot = freeSlot(a.prov, m); [m.x, m.y] = slotPos(a.prov, m.slot); m.born = S.t; S.units.push(m); }
+      else if (NATIONS[a.owner]) aiNewArmy(NATIONS[a.owner], a.prov, { [MAGE]: 1 });
+    }
+  }
+}
+{
+  const _s96 = setupV96;
+  setupV96 = function (loaded) { _s96(loaded); if (loaded) oneMagePerArmy(); if (S.rowSeq === undefined) S.rowSeq = 0; rowsIco = null; };
+}
+window.__v97 = { rowSync, rowLayout, rowMovable, rowDeal, rowFall, openRowsMenu, setOrder: (a, k, side) => { a.rowOrd = a.rowOrd || {}; a.rowOrd[k] = { side, t: S.rowSeq = (S.rowSeq || 0) + 1 }; } };
+
+// ================= v98: mana for Magic Users, and the spells reworked around it =================
+// Mages, Warlocks and Druids ("Magic Users") carry mana: they start with 25 and hold up to 100 (Magic Well 150,
+// Magic Abundance 200). Every 10 s payout each Magic User regains 1 / 2 / 3 mana (v99) for every Tier I / II / III Magic
+// Barracks (Mage Tower, Warlock Tower, Grove and their upgrades) of the nation; each gets the full amount.
+// A lone Magic User keeps his mana in u.mana; once he joins an army it lives on the army (a.mana; one per army since v97).
+
+const MANA_START = 25, MANA_CAPS = [100, 150, 200], MANA_REGEN = [0, 1, 2, 3];   // v99: was 2 / 5 / 10
+const MANA_BLUE = '#3f7fe8', MANA_BLUE_D = '#2556b0';
+S.manaPool = []; S.eyes = []; S.haunts = []; S.sacreds = []; S.reveals = [];
+const manaCap = o => techOf(o, 'magicabund') ? MANA_CAPS[2] : techOf(o, 'magicwell') ? MANA_CAPS[1] : MANA_CAPS[0];
+const manaOf = c => !c ? 0 : c.mana === undefined ? MANA_START : c.mana;
+function manaRegen(o) {
+  let n = 0;
+  for (const [p, list] of S.extras) { if (nationOf(p) !== o || (S.occ.has(p) && S.occ.get(p) !== o)) continue; for (const e of list) if (e.type === 'magetower') n += MANA_REGEN[Math.min(3, e.level || 1)]; }
+  return n;
+}
+const isCasterAny = u => !!u && magesIn(u) > 0;
+const channeling = c => !!c.cast && (c.cast.spell === 'harvest' || c.cast.spell === 'q:fspirit');
+const castingNow = c => !!c.cast || !!c.quake;   // v99: no regeneration while any spell is being cast
+function spendMana(c, n) { c.mana = Math.max(0, manaOf(c) - n); cmdKey = ''; }
+
+// mana follows a Magic User from one unit to the next: when he joins an army, leaves one, or two armies combine,
+// whoever carries him next picks up what he had (anything that loses its Magic User leaves its mana in a short-lived pool
+// in that province, and the next unit there that gains one takes it)
+let manaPrev = new Map(), manaPrevT = -1;
+function syncMana(t) {
+  if (t < manaPrevT) manaPrev = new Map();
+  manaPrevT = t;
+  const now = new Map();
+  for (const u of S.units) {
+    const n = magesIn(u);
+    if (n > 0) now.set(u.id, u);
+    else if (u.mana !== undefined) { S.manaPool.push({ owner: u.owner, prov: u.prov, mana: u.mana, t }); delete u.mana; }
+  }
+  for (const [id, u] of manaPrev) if (!now.has(id) && !S.units.includes(u) && u.mana !== undefined) S.manaPool.push({ owner: u.owner, prov: u.prov, mana: u.mana, t });
+  for (const u of now.values()) if (u.mana === undefined) {
+    const i = S.manaPool.findIndex(r => r.owner === u.owner && r.prov === u.prov);
+    if (i >= 0) { u.mana = S.manaPool[i].mana; S.manaPool.splice(i, 1); } else u.mana = MANA_START;
+  }
+  manaPrev = now;
+  if (S.manaPool.length) S.manaPool = S.manaPool.filter(r => t - r.t < 2);
+}
+function regenMana() {
+  const per = new Map();
+  for (const c of S.units) {
+    if (!isCasterAny(c) || castingNow(c)) continue;   // v99: casting anything halts the caster's regeneration
+    if (!per.has(c.owner)) per.set(c.owner, [manaRegen(c.owner), manaCap(c.owner)]);
+    const [r, cap] = per.get(c.owner);
+    c.mana = Math.min(cap, manaOf(c) + r);
+  }
+  cmdKey = '';
+}
+{ const _pay = payday; payday = function (t) { _pay(t); try { regenMana(); paySacredPyres(); } catch (e) { reportError(e, 'mana'); } }; }
+
+// ---------- what each spell costs ----------
+// a number is paid when the spell is cast; 'all' takes every point the caster has; 'drain' costs 1 mana a second while channeling
+const SPELL_MANA = { harvest: 'drain', mending: 25, eyes: 25, graverob: 'all', haunt: 25, trading: 'all', mind: 50, stasis: 50, rift: 100,
+  spyre: 25, ftrap: 50, pfire: 50, sacred: 100, wrocks: 25, tportal: 100, fspirit: 'drain', gelem: 100 };
+const AUTO_MANA = 50;          // Hardened Skin, Cursed Weapons, Risen Dead, Fiery Weapons, Rock Armor
+const PATH_MANA = 100;         // Speak with the Forest, Underworld Passage, Terrascaping (opening or closing)
+const SPELL2_MANA = { shock: 50, quake: 200 };
+const CAST_TIME = 3;           // most spells are now a 3-second cast
+const manaNeed = k => { const m = SPELL_MANA[k]; return m === 'all' || m === 'drain' ? 1 : m || 0; };
+const manaText = k => { const m = SPELL_MANA[k]; return m === 'all' ? 'all of the caster’s mana' : m === 'drain' ? '1 mana a second while channeling (no regeneration meanwhile)' : m ? m + ' mana' : 'no mana'; };
+const notEnough = (c, n) => `Not enough mana (${Math.floor(manaOf(c))}/${n})`;
+
+// ---------- techs: Magic Well, Magic Abundance, Eyes of the Forest, Haunt ----------
+for (const [id, tier, req, school, cost, name, blurb, race] of [
+  ['magicwell', 2, null, '*', 100, 'Magic Well', 'Your Magic Users can hold up to 150 mana (100 before).', null],
+  ['magicabund', 3, 'magicwell', '*', 200, 'Magic Abundance', 'Your Magic Users can hold up to 200 mana.', null],
+  ['eyesforest', 1, 'school-life', 'life', 40, 'Eyes of the Forest', 'A Mage looks through a border of trees beside him (3 seconds of casting, 25 mana): both provinces on either side of it are in sight for 1 minute.', ['realm', 'wood']],
+  ['haunt', 1, 'school-death', 'death', 40, 'Haunt', 'A Mage haunts the province he stands in (25 mana, no cooldown): you keep seeing it for 1 minute, even after he leaves.', ['realm', 'swamp']]
+]) {
+  if (TECH_BY_ID[id]) continue;
+  const x = { id, tree: 'mag', tier, cost, req, school, name, blurb, gold: 0 }; if (race) x.race = race;
+  TECHS.push(x); TECH_BY_ID[id] = x;
+}
+LINES.eyes = ['eyesforest']; LINES.haunt = ['haunt'];
+Object.assign(MAGIC_ICONS, {
+  magicwell(g) { ICO.disc(g, '#e3ecff'); ICO.poly(g, [[14, 40], [50, 40], [46, 58], [18, 58]], '#9a958c', 2.4); g.beginPath(); g.ellipse(32, 40, 18, 6, 0, 0, 7); g.fillStyle = MANA_BLUE; g.fill(); g.lineWidth = 2.4; g.strokeStyle = OL; g.stroke(); manaStarIco(g, 32, 22, 11); },
+  magicabund(g) { ICO.disc(g, '#e3ecff'); manaStarIco(g, 22, 40, 10); manaStarIco(g, 42, 40, 10); manaStarIco(g, 32, 22, 12); },
+  eyesforest(g) { ICO.disc(g, '#e3f6e0'); for (const x of [14, 50]) ICO.poly(g, [[x - 9, 52], [x, 18], [x + 9, 52]], '#3f8a3a', 2.2); g.beginPath(); g.ellipse(32, 36, 13, 8, 0, 0, 7); g.fillStyle = '#ffffff'; g.fill(); g.lineWidth = 2.4; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.arc(32, 36, 4.5, 0, 7); g.fillStyle = '#3f9b4b'; g.fill(); g.stroke(); },
+  haunt(g) { ICO.disc(g, '#efe6fb'); g.beginPath(); g.moveTo(18, 54); g.lineTo(18, 30); g.quadraticCurveTo(18, 12, 32, 12); g.quadraticCurveTo(46, 12, 46, 30); g.lineTo(46, 54); g.lineTo(40, 48); g.lineTo(35, 54); g.lineTo(29, 48); g.lineTo(24, 54); g.closePath(); g.fillStyle = '#f2eefa'; g.fill(); g.lineWidth = 2.6; g.strokeStyle = OL; g.stroke(); g.fillStyle = OL; g.beginPath(); g.arc(27, 30, 3, 0, 7); g.arc(37, 30, 3, 0, 7); g.fill(); }
+});
+function manaStarIco(g, cx, cy, r) {
+  g.beginPath(); for (let k = 0; k < 14; k++) { const a = -Math.PI / 2 + k * Math.PI / 7, rr = k % 2 ? r * 0.45 : r; g[k ? 'lineTo' : 'moveTo'](cx + Math.cos(a) * rr, cy + Math.sin(a) * rr); } g.closePath();
+  g.fillStyle = MANA_BLUE; g.fill(); g.lineWidth = 2.2; g.strokeStyle = OL; g.lineJoin = 'round'; g.stroke();
+}
+// the techs' texts, now in mana
+const V98_BLURBS = {
+  harvest: 'A Mage channels it for as long as he stands still: every Farm you own gives 10% more food. It drains 1 mana a second, and he regains none while channeling. One Mage casts it at a time.',
+  skin: 'Autocast (50 mana, no cooldown): when an army with a Mage starts a battle, its soldiers get +5% health.',
+  stoneskin: 'Hardened Skin gives +10% health.', diamondskin: 'Hardened Skin gives +15% health.',
+  mending: 'A Mage heals an army’s wounds back to full over 1 minute. 25 mana, no cooldown.',
+  rejuvenation: 'Healing takes 30 seconds.', restoration: 'Healing is instant.',
+  forest: 'A Mage can open a path through a border of trees after 2 minutes of casting (100 mana). Lumber Mills are unaffected.',
+  commune: 'Opening a forest path takes 1 minute.', arboreal: 'A Mage can close a forest path again with 1 minute of casting (100 mana).',
+  terrascape: 'A Mage grows a line of trees along an open border, with a forest path left open in the middle: only a path through the trees remains. 5 minutes of casting, 100 mana.',
+  curse1: 'Autocast (50 mana): when an army with a Mage starts a battle, its weapons deal +5% damage. 5-minute cooldown per army.',
+  curse2: 'Cursed Weapons deal +10% damage; cooldown 3 minutes.', curse3: 'Cursed Weapons deal +15% damage; cooldown 90 seconds.',
+  underworld: 'A Mage can open a tunnel through a mountain border after 2 minutes of casting (100 mana).',
+  hallways: 'Opening a mountain tunnel takes 1 minute.', sealed: 'A Mage can seal a mountain tunnel again with 1 minute of casting (100 mana).',
+  risen: 'Autocast: the first time a soldier of the army falls in a battle, the Mage spends 50 mana and the dead rise: that soldier and the next 4 to fall get straight back up, looking rather worse for it (same strength). Then it stops; when the battle ends it has a 2-minute cooldown. One Mage keeps this or Cursed Weapons ready, not both.',
+  necro: 'Risen Dead raises 7 soldiers in a battle.', armyofdeath: 'Risen Dead raises 10 soldiers in a battle.',
+  graverob: 'A 3-second cast that spends all of the Mage’s mana: 1 gold for every point. Then the nation waits 3 minutes.',
+  deathtax: 'Grave Robbing gives 2 gold for every point of mana.', charon: 'Grave Robbing gives 3 gold for every point of mana.',
+  clearthoughts: 'A 3-second cast (50 mana): every army within 3 provinces of the Mage is revealed for 20 seconds. 40-second cooldown.',
+  mindread: 'Clear Thoughts reveals every army on the map.',
+  trading: 'A 3-second cast that spends all of the Mage’s mana: 1 food, 1 gold and 1 wood for every 3 points. Then the nation waits 3 minutes.',
+  stockmarket: 'Trading gives 2 of each resource for every 3 points of mana.', planar: 'Trading gives 1 of each resource for every point of mana.',
+  stasis: 'A Mage sets a trap in his province (3 seconds of casting, 50 mana); the next enemy army there can’t leave for 10 seconds (it can still fight). One trap at a time; no cooldown.',
+  prison: 'The trap holds for 20 seconds.',
+  rift: 'Pick any explored province you may enter (your land, unclaimed land, or a nation you are at war or in a truce with): after 3 seconds of casting (100 mana) the Mage and his army are carried there. 2-minute cooldown for the nation.',
+  portal: 'Teleportation Rift’s cooldown is 15 seconds.',
+  fiery1: 'Autocast (50 mana, no cooldown): when an army with a Warlock starts a battle, every blow has a 5% chance to strike twice as hard.',
+  fiery2: 'Fiery Weapons: a 10% chance of a double blow.', fiery3: 'Fiery Weapons: a 15% chance of a double blow.',
+  scoutpyre: 'A Warlock lights a pyre where he stands (3 seconds of casting, 25 mana). For 1 minute it sees every neighboring province in its line of sight. 1-minute cooldown per Warlock.',
+  firetrap: 'A Warlock buries a fire trap in his province (3 seconds of casting, 50 mana). The next enemy army to enter any part of that province is engulfed: 150 damage that ignores armor, to its front line. One trap per Warlock.',
+  blazetrap: 'Fire traps deal 300 damage.', molttrap: 'Fire traps deal 450 damage.',
+  sacredpyre: 'A Warlock standing in one of your provinces raises a Sacred Pyre there (3 seconds of casting, 100 mana and 200 wood). For 1 minute that province makes 110 more gold every 10 s. Then the nation waits 3 minutes.',
+  pathfire: 'A Warlock fires up his army (50 mana): 100% faster for 10 seconds. 1-minute cooldown per Warlock.',
+  rockarmor: 'Autocast (50 mana, no cooldown): when an army with a Druid starts a battle, plates of stone gather round it: a shield worth 10% of the army’s total health soaks up the damage before any soldier is hurt.',
+  wrocks: 'A Druid raises whispering stones on a mountain border of the province he stands in (3 seconds of casting, 25 mana): both provinces on either side are in sight for 1 minute.',
+  townportal: 'After 3 seconds of casting (100 mana), a Druid and the army he is in are carried to your capital. 5-minute cooldown per Druid.',
+  forestspirit: 'A Druid channels a Forest Spirit into the province he stands in: while he keeps it up, the province makes twice the gold, wood, food and research. It drains 1 mana a second, and he regains none meanwhile.',
+  gelemental: 'A Druid summons a towering man of living water for 2 minutes (3 seconds of casting, 100 mana): 500 health, no armor, 50 damage a swing. He joins the Druid’s army (or forms one), fights, and can capture provinces. 5-minute cooldown per Druid.',
+  earthquake: 'A Mage standing in an enemy province your army occupies can cast an Earthquake (200 mana: it needs Magic Abundance): after 30 seconds every building in that province is destroyed, and every wall on its borders.'
+};
+for (const [id, b] of Object.entries(V98_BLURBS)) if (TECH_BY_ID[id]) TECH_BY_ID[id].blurb = b;
+if (SW_TEXT.techs.earthquake) SW_TEXT.techs.earthquake[1] = V98_BLURBS.earthquake.replace('A Mage', 'A Warlock');
+
+// ---------- the reworked numbers ----------
+SPELL2.shock.time = 15; SPELL2.quake.time = 30;
+const RISEN_N = [0, 5, 7, 10];
+const GRAVE_RATE = [0, 1, 2, 3], TRADE_RATE = [0, 1 / 3, 2 / 3, 1];
+const MIND = { show: 20, cd: 40 }, RIFT_CD = [0, 120, 15];
+const SEE_TIME = 60;           // Eyes of the Forest, Whispering Rocks, Haunt, Scouting Pyre
+const FIRE_DMG = [0, 150, 300, 450];
+const SACRED = { dur: 60, gold: 110, wood: 200, cd: 180 };   // v101: 100 mana + 200 wood, placed in one of your provinces, +110 gold there every payout
+SPYRE.dur = SEE_TIME; SPYRE.wood = 0;
+{ const D = DSTATS[GELEM_ID]; D.hp = 500; D.atk = 50; D.armor = 0; D.red = 0; UNIT_DEFS[GELEM_ID].blurb = 'A towering man of living water, summoned by a Druid for 2 minutes: 500 health, no armor, 50 damage a swing.'; }
+
+// ---------- casting: 3-second casts ('q:' + spell) finish here ----------
+function beginCast(c, k, data = {}, dur = CAST_TIME) {
+  const m = SPELL_MANA[k]; if (typeof m === 'number' && m) spendMana(c, m);
+  startCast(c, 'q:' + k, dur, data);
+}
+const FINISH = {};
+const lv = line => lvl(line);
+// Mending: 25 mana, no cooldown
+{ const go = CAST.mending.go; CAST.mending.go = function (c) { spendMana(c, SPELL_MANA.mending); go(c); delete S.cd.mending; }; }
+// Harvest: needs some mana to start (the drain is in stepMagic below)
+// Clear Thoughts / Mind Reading: 3 s, then armies are revealed for 20 s; 40 s cooldown
+CAST.mind.instant = false; CAST.mind.go = c => { beginCast(c, 'mind'); toast(`${c.name} gathers his thoughts: 3 s of casting.`); };
+FINISH.mind = (c, cs, t) => { const all = lv('mind') >= 2; S.reveals.push({ prov: c.prov, all, until: t + MIND.show }); S.cd.mind = t + MIND.cd; toast(all ? 'Mind Reading: every army on the map is revealed for 20 s.' : 'Clear Thoughts: every army within 3 provinces is revealed for 20 s.'); };
+// Grave Robbing / Interdimensional Trading: 3 s, all of the caster's mana into resources, then 3 minutes' wait
+const resRep = sp => 1 + 0.02 * repLv(sp === 'graverob' ? 'rep-graverob' : 'rep-trading');
+const resOthers = (c, k) => S.units.some(v => v !== c && v.cast && v.cast.spell === 'q:' + k) ? 'Another Mage is already casting this' : null;
+CAST.graverob.why = c => resOthers(c, 'graverob');
+CAST.graverob.go = c => { beginCast(c, 'graverob'); toast(`${TECH_BY_ID[lineTech('graverob')].name}: 3 s of casting.`); };
+FINISH.graverob = (c, cs, t) => {
+  const n = Math.floor(manaOf(c)), g = Math.round(n * GRAVE_RATE[lv('graverob')] * resRep('graverob'));
+  spendMana(c, n); S.stock.gold += g; S.cd.graverob = t + RES_CD;
+  toast(`${TECH_BY_ID[lineTech('graverob')].name}: ${n} mana became ${g} gold. Next cast in ${RES_CD / 60} minutes.`); sfx('mg_death', { prov: c.prov });
+};
+CAST.trading.why = c => resOthers(c, 'trading');
+CAST.trading.go = c => { beginCast(c, 'trading'); toast(`${TECH_BY_ID[lineTech('trading')].name}: 3 s of casting.`); };
+FINISH.trading = (c, cs, t) => {
+  const n = Math.floor(manaOf(c)), each = Math.floor(n * TRADE_RATE[lv('trading')] * resRep('trading'));
+  spendMana(c, n); for (const k of RES) S.stock[k] += each; S.cd.trading = t + RES_CD;
+  toast(`Trading across worlds: ${n} mana became ${each} of each resource. Next cast in ${RES_CD / 60} minutes.`); sfx('mg_arcane', { prov: c.prov });
+};
+// Stasis Trap: 3 s, 50 mana, no cooldown (one trap at a time)
+CAST.stasis.instant = false; CAST.stasis.go = c => { beginCast(c, 'stasis'); toast(`${c.name} weaves a stasis trap: 3 s of casting.`); };
+FINISH.stasis = (c, cs, t) => { if (S.trap) return; S.trap = { prov: c.prov, t0: t }; toast(`Stasis trap set in ${provName(c.prov)}. The next enemy army there is held for ${STASIS[lv('stasis')]} s.`); };
+// Teleportation Rift: pick a destination; 3 s, 100 mana; the Mage and his army go there. 2-minute nationwide cooldown (15 s with Teleportation Portal)
+S.rift = null;
+function riftWhy(c, p) {
+  if (p === c.prov) return 'Already here';
+  if (!S.explored.has(p)) return 'Explore that province first';
+  if (isDeathMtn(p)) return 'No magic reaches Death Mountain';
+  if (!nationOk(c, p)) return 'Another nation’s land (no war and no truce): you can’t go there';
+  return null;
+}
+CAST.rift.name = () => TECH_BY_ID.rift.name; CAST.rift.target = c => c; CAST.rift.why = () => null; CAST.rift.instant = false;
+CAST.rift.go = c => aimSpell(c, 'rift', 'Click the province to teleport to. Right-click or Esc cancels.');
+const AIMED = {};
+AIMED.rift = (c, p) => { const why = castWhy(c, 'rift') || riftWhy(c, p); if (why) return toast('Teleportation Rift: ' + why.toLowerCase() + '.', true); beginCast(c, 'rift', { to: p }); toast(`${c.name} opens a rift to ${provName(p)}: 3 s of casting.`); };
+FINISH.rift = (c, cs, t) => {
+  const why = riftWhy(c, cs.to); if (why) return toast('The rift collapses: ' + why.toLowerCase() + '.', true);
+  teleport(c, cs.to); S.cd.rift = t + RIFT_CD[Math.max(1, lv('rift'))];
+  toast(`${c.name} steps through the rift to ${provName(cs.to)}.`);
+};
+function teleport(c, to) {
+  S.portalFx.push({ x: c.x, y: c.y, prov: c.prov, t0: S.t });
+  c.path = []; c.moving = false; c.surveyQueue = []; c.lastProv = c.prov; c.prov = to; c.slot = freeSlot(to, c); [c.x, c.y] = slotPos(to, c.slot); c.riftFx = S.t; c.final = undefined;
+  S.portalFx.push({ x: c.x, y: c.y, prov: to, t0: S.t });
+  computeFog(); fogDirty = true; sfx('mg_rift', { prov: to });
+}
+// Haunt: click any explored settlement; 25 mana; that province is in sight for 1 minute
+CAST.haunt = { name: () => TECH_BY_ID.haunt.name, line: 'haunt', instant: true, why: c => hauntWhy(c.prov), go: c => AIMED.haunt(c, c.prov) };   // v99: it haunts the province the Mage stands in
+const hauntWhy = p => !S.explored.has(p) ? 'Explore that province first' : S.haunts.some(h => h.prov === p && h.owner === ME && h.until > S.t) ? 'Already haunted' : null;
+AIMED.haunt = (c, p) => {
+  const why = castWhy(c, 'haunt') || hauntWhy(p); if (why) return toast('Haunt: ' + why.toLowerCase() + '.', true);
+  spendMana(c, SPELL_MANA.haunt); S.haunts.push({ prov: p, owner: ME, t0: S.t, until: S.t + SEE_TIME }); computeFog(); fogDirty = true;
+  sfx('mg_death', { prov: p }); toast(`A restless spirit haunts ${provName(p)}: you see it for 1 minute.`);
+};
+// Eyes of the Forest (Herbomancy) and Whispering Rocks (Elemental): a border of trees / mountains beside the caster; 3 s; both sides in sight for 1 minute
+const seeNbrs = (c, kind) => allNbr[c.prov].filter(q => (kind === 'eyes' ? treeEdge(c.prov, q) : mtnEdge(c.prov, q)) >= 0);
+function seeWhy(c, kind, q) {
+  const list = seeNbrs(c, kind);
+  if (q === undefined) return list.length ? null : kind === 'eyes' ? 'No border of trees here' : 'No mountain border here';
+  if (!allNbr[c.prov].includes(q)) return `The ${UNIT_DEFS[MAGE].name} must stand next door`;
+  if (!list.includes(q)) return kind === 'eyes' ? 'No border of trees there' : 'No mountain border there';
+  return null;
+}
+for (const kind of ['eyes', 'wrocks']) {
+  const nm = () => TECH_BY_ID[kind === 'eyes' ? 'eyesforest' : 'wrocks'].name;
+  CAST[kind] = { name: nm, line: kind, instant: false, why: c => seeWhy(c, kind),
+    go(c) { const list = seeNbrs(c, kind); if (list.length === 1) return AIMED[kind](c, list[0]); aimSpell(c, kind, `Click the neighboring province across the ${kind === 'eyes' ? 'trees' : 'mountains'}. Right-click or Esc cancels.`); } };
+  AIMED[kind] = (c, q) => { const why = castWhy(c, kind) || seeWhy(c, kind, q); if (why) return toast(nm() + ': ' + why.toLowerCase() + '.', true); beginCast(c, kind, { to: q }); sfx('mg_life', { prov: c.prov }); toast(`${nm()} toward ${provName(q)}: 3 s of casting.`); };
+  FINISH[kind] = (c, cs, t) => {
+    const why = seeWhy(c, kind, cs.to); if (why) return toast(nm() + ': ' + why.toLowerCase() + '.', true);
+    const i = kind === 'eyes' ? treeEdge(c.prov, cs.to) : mtnEdge(c.prov, cs.to), rec = { owner: ME, a: c.prov, b: cs.to, link: linkOf(c.prov, cs.to), edge: i, t0: t, until: t + SEE_TIME };
+    if (kind === 'eyes') S.eyes.push(rec); else S.wrocks.push(rec);
+    computeFog(); fogDirty = true; miniDirty = true;
+    toast(`${nm()}: ${provName(c.prov)} and ${provName(cs.to)} are in sight for 1 minute.`);
+  };
+}
+// Scouting Pyre: 3 s, 25 mana (no wood), lasts 1 minute
+{ const why0 = CAST.spyre.why; CAST.spyre.why = c => { const w = why0(c); return w && /wood/.test(w) ? null : w; }; }
+CAST.spyre.instant = false; CAST.spyre.go = c => { beginCast(c, 'spyre'); toast(`${c.name} builds up a Scouting Pyre: 3 s of casting.`); };
+FINISH.spyre = (c, cs, t) => { S.spyres.push({ prov: c.prov, owner: ME, t0: t, until: t + SPYRE.dur }); S.cd['spyre' + c.id] = t + perWarlockCd(c, SPYRE.cd); computeFog(); toast(`A Scouting Pyre blazes up in ${provName(c.prov)}: for 1 minute it sees every neighboring province in its line of sight.`); };
+// Fire Trap: 3 s, 50 mana; 150 / 300 / 450 damage that ignores armor, to the front line
+CAST.ftrap.instant = false; CAST.ftrap.go = c => { beginCast(c, 'ftrap'); toast(`${c.name} buries a fire trap: 3 s of casting.`); };
+FINISH.ftrap = (c, cs, t) => {
+  if (CAST.ftrap.why(c)) return toast('Fire Trap: ' + CAST.ftrap.why(c).toLowerCase() + '.', true);
+  const L = lv('ftrap'); S.ftraps.push({ prov: c.prov, owner: ME, lv: L, mult: Math.pow(1.1, repLv('rep-ftrap')), t0: t, ignore: S.units.filter(v => v.kind === 'army' && v.prov === c.prov && hostile(v.owner, ME)).map(v => v.id) });
+  toast(`${TECH_BY_ID[lineTech('ftrap')].name} set in ${provName(c.prov)}. The next enemy army to enter is engulfed: ${FIRE_DMG[L]} damage to its front line, armor or not.`);
+};
+// damage that ignores armor, dealt to the soldiers in the front line only (the whole army when it fights as one line)
+function pureFront(a, dmg) {
+  let killed = 0; const lay = rowSync(a), front = lay ? { ...lay.f } : Object.fromEntries(Object.entries(a.troops).filter(([k, n]) => k !== MAGE && n > 0));
+  for (;;) {
+    const ks = Object.keys(front).filter(k => front[k] > 0 && a.troops[k] > 0); if (!ks.length) break;
+    const tot = ks.reduce((n, k) => n + front[k], 0); let r = Math.random() * tot, k = ks[0];
+    for (const kk of ks) { r -= front[kk]; if (r <= 0) { k = kk; break; } }
+    const hp = hpOf(a, k); if (dmg < hp * 0.99) break;
+    dmg -= hp; front[k]--;
+    if (lay && a.battle) rowFall(a, lay, k, true);
+    ghoulFall(a, k); a.troops[k]--; if (!a.troops[k]) delete a.troops[k]; killed++;
+  }
+  if (troopCount(a) <= 0) removeArmy(a);
+  if (a.owner === ME) computeIncome();
+  return killed;
+}
+// Path of Fire: 50 mana
+{ const go = CAST.pfire.go; CAST.pfire.go = function (c) { spendMana(c, SPELL_MANA.pfire); go(c); }; }
+// Sacred Pyre: no longer a building. 3 s; a pyre burns where the Warlock stands for 1 minute: 10 wood -> 110 gold every 10 s. 3-minute nationwide cooldown
+CAST.sacred = { name: () => TECH_BY_ID.sacredpyre.name, line: 'sacred', instant: false,
+  why: c => sacredWhy(c.prov) || resOthers(c, 'sacred') || (S.stock.wood < SACRED.wood ? `Needs ${SACRED.wood} wood` : null),
+  go: c => { S.stock.wood -= SACRED.wood; beginCast(c, 'sacred', { to: c.prov }); toast(`${c.name} raises a Sacred Pyre in ${provName(c.prov)}: 3 s of casting.`); } };
+// v101: the Warlock places it in the province he stands in, which must be yours (no button anywhere else)
+const sacredWhy = p => !owned(p) || S.occ.has(p) ? 'Only in one of your provinces' : S.sacreds.some(P => P.prov === p && P.until > S.t) ? 'A Sacred Pyre already burns here' : null;
+FINISH.sacred = (c, cs, t) => { const p = cs.to !== undefined ? cs.to : c.prov, P = G.provs[p].ic; if (sacredWhy(p)) { S.stock.wood += SACRED.wood; return toast('Sacred Pyre: ' + sacredWhy(p).toLowerCase() + ' (wood refunded).', true); } S.sacreds.push({ prov: p, owner: ME, x: P[0] + 34 * UKK, y: P[1] + 20 * UKK, t0: t, until: t + SACRED.dur }); S.cd.sacred = t + SACRED.cd; computeIncome(); sfx('mg_arcane', { prov: p }); toast(`A Sacred Pyre burns in ${provName(p)}: +${SACRED.gold} gold every 10 s there for 1 minute.`); };
+function paySacredPyres() {}   // v101: the pyre's gold is part of the province's income now (provinceIncome below)
+// a lone Warlock no longer raises Sacred Pyre buildings (old ones keep burning)
+{ const g0 = Object.getOwnPropertyDescriptor(CMD, MAGE).get; Object.defineProperty(CMD, MAGE, { configurable: true, get() { return g0.call(CMD).filter(c => c.id !== 'pyrebuild'); } }); }
+// Rock Armor, Hardened Skin, Fiery Weapons: no cooldown (see the battle join below). Town Portal: 3 s, 100 mana
+CAST.tportal.go = c => { spendMana(c, SPELL_MANA.tportal); startCast(c, 'tportal', CAST_TIME); toast(`${c.name} opens a Town Portal to ${provName(capitalOf(ME))}: 3 s of casting.`); };
+// Grand Elemental: 3 s, 100 mana
+CAST.gelem.go = c => { spendMana(c, SPELL_MANA.gelem); startCast(c, 'gelem', CAST_TIME); toast(`${c.name} begins to call up a Grand Elemental: 3 s of casting.`); };
+// Forest Spirit: channeled in the Druid's own province; doubles what it makes and its research
+CAST.fspirit = { name: () => TECH_BY_ID.forestspirit.name, line: 'fspirit', instant: false,
+  why: c => !owned(c.prov) || S.occ.has(c.prov) ? 'Channel it in a province of yours' : S.units.some(v => v !== c && v.cast && v.cast.spell === 'q:fspirit' && v.prov === c.prov) ? 'A Forest Spirit is already channeled here' : null,
+  go(c) { startCast(c, 'q:fspirit', Infinity); computeIncome(); provKey = ''; toast(`${c.name} channels a Forest Spirit: ${provName(c.prov)} makes twice the resources and research while he keeps it up (1 mana a second).`); } };
+S.fspirits = [];
+const spiritProv = (p, o) => S.units.some(c => c.owner === o && c.prov === p && c.cast && c.cast.spell === 'q:fspirit' && isCasterAny(c));
+{ const pi = provinceIncome; provinceIncome = function (p, b) { const y = pi(p, b); if (b && S.sacreds && S.sacreds.some(P => P.prov === p && P.owner === b.owner && P.until > S.t)) y.gold = (y.gold || 0) + SACRED.gold; if (b && spiritProv(p, b.owner)) for (const k of Object.keys(y)) if (typeof y[k] === 'number' && y[k] > 0) y[k] *= 2; return y; }; }
+{ const pr = provResearch; provResearch = function (p) { const r = pr(p); if (owned(p) && spiritProv(p, ME)) for (const k of Object.keys(r)) if (typeof r[k] === 'number') r[k] *= 2; return r; }; }
+{ const cc = cancelCast; cancelCast = function (c, why) { const sp = c && c.cast && c.cast.spell; cc(c, why); if (sp === 'q:fspirit') { computeIncome(); provKey = ''; } }; }
+// the buttons: Eyes of the Forest after Mending, Haunt after Grave Robbing, Sacred Pyre with the Pyromancy spells
+SPELL_CELLS.splice(SPELL_CELLS.indexOf('mending') + 1, 0, 'eyes');
+SPELL_CELLS.splice(SPELL_CELLS.indexOf('graverob') + 1, 0, 'haunt');
+SPELL_CELLS.splice(SPELL_CELLS.indexOf('pfire') + 1, 0, 'sacred');
+// a fifth spell button pushes the Rows button out of the army's spell cells: it goes to cell 11 (unless Earthquake sits there)
+{ const g0 = Object.getOwnPropertyDescriptor(CMD, 'army').get; Object.defineProperty(CMD, 'army', { configurable: true, get() { const list = g0.call(CMD), a = S.selected.find(v => v.kind === 'army' && v.owner === ME); if (!a || list.some(c => c.id === 'rows')) return list; const used = new Set(list.map(c => c.cell)), cell = [11, 13].find(c => !used.has(c)); return cell === undefined ? list : list.concat([{ id: 'rows', cell, key: '' }]); } }); }
+
+// ---------- aiming at a province (Rift, Haunt, Eyes of the Forest, Whispering Rocks) ----------
+let v98Aim = null;
+function aimSpell(c, k, msg) { pathAim = c; quakeAim = false; elemAim = null; v98Aim = { c, k }; cv.style.cursor = 'crosshair'; cmdKey = ''; toast(msg); }
+{ const pac = pathAimClick; pathAimClick = function (p, right) {
+  if (!v98Aim || pathAim !== v98Aim.c) { v98Aim = null; return pac(p, right); }
+  const { c, k } = v98Aim; v98Aim = null; pathAim = null; cv.style.cursor = ''; cmdKey = '';
+  if (right || p < 0) return toast(CAST[k].name() + ' cancelled.');
+  AIMED[k](c, p);
+}; }
+// the old Whispering Rocks / Forest Spirit rows in the Ctrl+right-click menu give way to the new ones
+{ const mr = magicRows; magicRows = function (c, q) {
+  let s = mr(c, q).replace(/<button[^>]*data-type="(wrocks|fspirit)"[\s\S]*?<\/button>/g, '');
+  if (!c || c.prov === q || !allNbr[c.prov].includes(q)) return s === '<div class="bm-sec">Magic</div>' ? '' : s;
+  const rows = [];
+  for (const kind of ['eyes', 'wrocks']) {
+    if (!currentSchool() || !lvl(kind) || !seeNbrs(c, kind).includes(q)) continue;
+    const why = castWhy(c, kind) || seeWhy(c, kind, q);
+    rows.push(`<button type="button" class="bm-item" data-type="v98:${kind}" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${techIcon(kind === 'eyes' ? 'eyesforest' : 'wrocks')}"><span class="bm-name">${CAST[kind].name()} toward ${escHTML(provName(q))}<small>${why || '3 s of casting · 25 mana · 1 minute of sight'}</small></span></button>`);
+  }
+  if (s === '<div class="bm-sec">Magic</div>') s = '';
+  if (!rows.length) return s;
+  return s ? s + rows.join('') : '<div class="bm-sec">Magic</div>' + rows.join('');
+}; }
+menuEl.addEventListener('click', e => {
+  const b = e.target.closest('[data-type^="v98:"]'); if (!b) return;
+  e.stopImmediatePropagation(); if (b.getAttribute('aria-disabled') === 'true') return;
+  const c = S.selected.find(isCaster), q = menuProv; closeBuildMenu(); if (c) AIMED[b.dataset.type.slice(4)](c, q);
+}, true);
+
+// ---------- mana in the checks ----------
+{ const cw = castWhy; castWhy = function (c, k) {
+  if (c.cast && c.cast.spell === 'q:' + k) return null;
+  const w = cw(c, k); if (w) return w;
+  const need = manaNeed(k); if (need && manaOf(c) < need) return SPELL_MANA[k] === 'all' || SPELL_MANA[k] === 'drain' ? 'No mana left' : notEnough(c, need);
+  return null;
+}; }
+{ const cs0 = castSpell; castSpell = function (c, k) { if (c.cast && c.cast.spell === 'q:' + k) { cancelCast(c, 'Casting stopped.'); return; } return cs0(c, k); }; }
+{ const pw = pathWhy; pathWhy = function (c, q, kind, close) { const w = pw(c, q, kind, close); return w || (manaOf(c) < PATH_MANA ? notEnough(c, PATH_MANA) : null); }; }
+{ const tw = terraWhy; terraWhy = function (c, q) { const w = tw(c, q); return w || (manaOf(c) < PATH_MANA ? notEnough(c, PATH_MANA) : null); }; }
+{ const sc = startCast; startCast = function (c, spell, dur, data) { if (spell === 'pathopen' || spell === 'pathclose' || spell === 'terrascape') spendMana(c, PATH_MANA); return sc(c, spell, dur, data); }; }
+{ const qw = quakeWhy; quakeWhy = function (c) { const w = qw(c); return w || (manaOf(c) < SPELL2_MANA.quake ? notEnough(c, SPELL2_MANA.quake) + (techOf(c.owner, 'magicabund') ? '' : ' · it needs Magic Abundance') : null); }; }
+{ const sw = shockWhy; shockWhy = function (c, q) { const w = sw(c, q); return w || (manaOf(c) < SPELL2_MANA.shock ? notEnough(c, SPELL2_MANA.shock) : null); }; }
+{ const s2 = startSpell2; startSpell2 = function (c, kind, q) { const ok = s2(c, kind, q); if (ok) spendMana(c, SPELL2_MANA[kind]); return ok; }; }
+
+// ---------- every frame: mana moves with its Magic User, channels drain it, 3-second casts finish, sights fade ----------
+{ const sm = stepMagic; stepMagic = function (t, dt) {
+  syncMana(t);
+  for (const c of S.units) {
+    const cs = c.cast; if (!cs || !isCaster(c)) continue;
+    if (channeling(c) && !c.moving && !c.battle) { c.mana = Math.max(0, manaOf(c) - (dt || 0)); if (c.mana <= 0) { cancelCast(c, `${c.name} has run out of mana.`); continue; } }
+    if (typeof cs.spell !== 'string' || !cs.spell.startsWith('q:') || !isFinite(cs.dur) || c.moving || c.battle || t - cs.t0 < cs.dur) continue;
+    c.cast = null; cmdKey = '';
+    const k = cs.spell.slice(2); try { if (FINISH[k]) FINISH[k](c, cs, t); } catch (e) { reportError(e, 'spell ' + k); }
+  }
+  sm(t, dt);
+  // Clear Thoughts / Mind Reading: armies revealed for a while after the cast
+  S.reveals = S.reveals.filter(r => r.until > t);
+  if (S.reveals.length) {
+    if (S.reveals.some(r => r.all)) S.detect = 'all';
+    else { const set = new Set(); for (const r of S.reveals) hopsFrom(r.prov, allNbr).forEach((h, p) => { if (h <= 3) set.add(p); }); S.detect = set; }
+  }
+  delete S.cd.stasis;   // the trap has no cooldown any more
+  // sights that last a minute
+  let fog = false;
+  for (const key of ['eyes', 'haunts', 'wrocks']) { const L = S[key] || []; const keep = L.filter(r => r.until === undefined || r.until > t); if (keep.length !== L.length) { S[key] = keep; fog = true; } }
+  if (S.sacreds.length) { const n = S.sacreds.length; S.sacreds = S.sacreds.filter(P => P.until > t); if (S.sacreds.length !== n) computeIncome(); }
+  if (fog) { computeFog(); fogDirty = true; miniDirty = true; }
+  // risen soldiers: never more than the army has
+  for (const a of S.units) if (a.ghouls) { const n = troopCount(a) - (a.troops[MAGE] || 0); if (a.ghouls > n) a.ghouls = Math.max(0, n); }
+}; }
+{ const ps = pyreSight; pyreSight = function (vis) { ps(vis); for (const r of S.eyes || []) if (r.owner === ME && r.until > S.t) { vis.add(r.a); vis.add(r.b); } for (const h of S.haunts || []) if (h.owner === ME && h.until > S.t) vis.add(h.prov); }; }
+
+// ---------- battle spells cost mana; Hardened Skin, Fiery Weapons and Rock Armor have no cooldown ----------
+const AUTO_CDS = ['skinCd', 'curseCd', 'fieryCd', 'rockCd'];
+{ const obj = onBattleJoin; onBattleJoin = function (a, t) {
+  if (a.kind !== 'army' || !(magesIn(a) > 0)) { a.risenArm = 0; return obj(a, t); }
+  const poor = manaOf(a) < AUTO_MANA, saved = {};
+  if (poor) for (const k of AUTO_CDS) { saved[k] = a[k]; a[k] = Infinity; }   // too little mana: nothing fires (only one of them can, by school)
+  obj(a, t);
+  if (poor) for (const k of AUTO_CDS) a[k] = saved[k];
+  const fired = (a.skin > 0) + (a.curse > 0) + (a.fiery > 0) + !!(a.rock && a.rock.t0 === t);
+  if (fired) spendMana(a, AUTO_MANA * fired);
+  if (a.skin > 0) a.skinCd = 0; if (a.fiery > 0) a.fieryCd = 0; if (a.rock && a.rock.t0 === t) a.rockCd = 0;
+  // Risen Dead is only armed here: it costs its mana, and starts, when the first soldier falls
+  a.risenArm = a.risen ? RISEN_N[Math.max(1, lvl('risen'))] : 0; a.risen = 0; a.risenUsed = false; a.risenLeft = 0;
+}; }
+{ const obe = onBattleEnd; onBattleEnd = function (a, t) { if (a.risenUsed) a.risenCd = t + RISEN_CD; a.risenArm = 0; a.risenUsed = false; a.risenLeft = 0; obe(a, t); }; }
+// called from applyDamage when a soldier of kind k falls: true if he gets back up
+function risenRise(a, k, b, t) {
+  if (!a.risenArm || k === MAGE || !(magesIn(a) > 0)) return false;
+  if (!a.risenUsed) { if (manaOf(a) < AUTO_MANA) return false; spendMana(a, AUTO_MANA); a.risenUsed = true; a.risenLeft = a.risenArm; if (a.owner === ME) toast(`${a.name}: ${TECH_BY_ID[lineTech('risen')].name}! The fallen rise again (${a.risenArm}).`); }
+  if (a.risenLeft <= 0) return false;
+  a.risenLeft--; a.ghouls = (a.ghouls || 0) + 1; a.riseFx = t; a.risenTotal = (a.risenTotal || 0) + 1;
+  if (a.owner === ME) sfx('mg_risen', { prov: b.prov });
+  if (a.risenLeft <= 0) a.risenArm = 0;
+  return true;
+}
+// a soldier who really falls may be one of the risen ones
+function ghoulFall(a, k) { if (!a.ghouls || k === MAGE) return; const n = troopCount(a) - (a.troops[MAGE] || 0); if (n > 0 && Math.random() < a.ghouls / n) a.ghouls--; }
+
+// ---------- the computer: its Magic Users have mana too ----------
+aiSpells = function (N) {
+  if (!N.school || !aiMages(N)) return;
+  const sp = N.school === 'death' ? 'graverob' : N.school === 'arcane' ? 'trading' : null; if (!sp || !aiHas(N, sp)) return;
+  N.spellT += TICK; if (N.spellT < RES_CD) return;
+  const c = S.units.filter(v => v.owner === N.id && magesIn(v) > 0 && !v.battle && !v.quake).sort((x, y) => manaOf(y) - manaOf(x))[0];
+  if (!c || manaOf(c) < 60) return;
+  N.spellT = 0;
+  const L = (sp === 'graverob' ? ['graverob', 'deathtax', 'charon'] : ['trading', 'stockmarket', 'planar']).filter(id => aiHas(N, id)).length;
+  const rep = 1 + 0.02 * aiRep(N, sp === 'graverob' ? 'rep-graverob' : 'rep-trading'), n = Math.floor(manaOf(c)); c.mana = 0;
+  if (sp === 'graverob') N.stock.gold += Math.round(n * GRAVE_RATE[L] * rep); else for (const k of RES) N.stock[k] += Math.floor(n * TRADE_RATE[L] * rep);
+};
+for (const P of Object.values(AI_MAGIC_PREFS)) Object.assign(P, { magicwell: 14, magicabund: 12 });
+
+// ---------- the command card: mana costs, and the 3-second casts ----------
+{ const mi = magicCmdInfo; magicCmdInfo = function (id) {
+  const r = mi(id); if (!r) return r;
+  const [what, k] = id.split(':'), c = selCaster();
+  if (what === 'spell' && CAST[k]) {
+    const on = c && c.cast && c.cast.spell === 'q:' + k;
+    if (on) { r.name = CAST[k].name() + ' (casting)'; r.why = null; r.ok = 'Click to stop casting'; r.desc += ` ${Math.max(0, Math.ceil(c.cast.dur - (S.t - c.cast.t0)))} s left.`; }
+    else if (AIMED[k] && k !== 'haunt' && !r.why) r.ok = 'Click, then pick a province';
+    if (k === 'fspirit' && c && c.cast && c.cast.spell === 'q:fspirit') { r.name = CAST[k].name() + ' (channeling)'; r.why = null; r.ok = 'Click to stop channeling'; }
+    r.desc += ` Cost: ${manaText(k)}.` + (c ? ` Mana ${Math.floor(manaOf(c))}/${manaCap(ME)}.` : '');
+  }
+  if (what === 'mauto') r.desc += ` Costs ${AUTO_MANA} mana when it fires.` + (c ? ` Mana ${Math.floor(manaOf(c))}/${manaCap(ME)}.` : '');
+  return r;
+}; }
+{ const mk = magicCmdKey; magicCmdKey = function () { const c = selCaster(); return mk() + (c ? '|m' + Math.floor(manaOf(c)) + (c.cast && c.cast.spell && c.cast.spell.startsWith('q:') ? Math.floor((S.t - c.cast.t0) * 2) : '') + '|' + Object.keys(S.cd).map(k => k + Math.ceil(cdLeft(k))).join(',') : ''); }; }
+{ const ei = extraCmdInfo; extraCmdInfo = function (id) {
+  const r = ei(id);
+  if (r && (id === 'shock' || id === 'quake')) {
+    const c = selCaster(), need = SPELL2_MANA[id];
+    if (c && !(c.quake && c.quake.kind === id) && !r.why && manaOf(c) < need) r.why = notEnough(c, need) + (id === 'quake' && !hasTech('magicabund') ? ' · research Magic Abundance to hold that much' : '');
+    r.desc += ` Cost: ${need} mana.` + (c ? ` Mana ${Math.floor(manaOf(c))}/${manaCap(ME)}.` : '');
+  }
+  return r;
+}; }
+
+// ---------- notifications: Grave Robbing, Trading and the Sacred Pyre are ready ----------
+FLAG_IMG.sp_graverob = bannerSVG('#6b3fa0', '#4f2d78', '<path d="M20 50 V34 Q20 22 32 22 Q44 22 44 34 V50 Z" fill="#cfc8ba"/><path d="M26 36 H38 M32 30 V44" stroke-width="2.6"/><circle cx="44" cy="48" r="6" fill="#f4c44f"/>');
+FLAG_IMG.sp_trading = bannerSVG('#2f6fe0', '#2252a8', '<circle cx="32" cy="36" r="13" fill="#e3ecff"/><path d="M20 36 H44 M32 23 Q24 36 32 49 Q40 36 32 23" fill="none" stroke-width="2"/><circle cx="46" cy="48" r="5.5" fill="#f4c44f"/>');
+FLAG_IMG.sp_sacred = bannerSVG('#d9542c', '#a63c1c', '<path d="M18 50 H46 M21 45 H43" stroke="#8a5a34" stroke-width="4"/><path d="M24 44 L28 30 L32 38 L36 22 L40 44 Z" fill="#ffb347"/><path d="M29 44 L32 36 L35 44 Z" fill="#ffe27a"/>');
+const SPELL_FLAGS = [
+  { k: 'graverob', img: 'sp_graverob', school: 'death', mana: true },
+  { k: 'trading', img: 'sp_trading', school: 'arcane', mana: true },
+  { k: 'sacred', img: 'sp_sacred', school: 'pyro', mana: false }
+];
+const readyCaster = (k, mana) => S.units.find(c => isCaster(c) && !c.cast && !c.battle && !c.quake && !c.exiting && (!mana || manaOf(c) >= 25) && !castWhy(c, k));   // (the Sacred Pyre's flag also needs its 100 mana and 200 wood: castWhy checks both)
+{ const fl = flagList; flagList = function () {
+  const out = fl();
+  if (!S.started || !currentSchool()) return out;
+  for (const F of SPELL_FLAGS) {
+    if (currentSchool() !== F.school || !lvl(CAST[F.k].line) || cdLeft(F.k) > 0 || S.units.some(v => v.cast && v.cast.spell === 'q:' + F.k)) continue;
+    const c = readyCaster(F.k, F.mana); if (!c) continue;
+    const id = 'spell:' + F.k; if (flagDismissed.has(id)) continue;
+    out.push({ id, img: F.img, tip: `${CAST[F.k].name()} is ready and ${c.name} can cast it. Left-click to select him, right-click to dismiss`, label: CAST[F.k].name() });
+  }
+  return out;
+}; }
+$q('#nflags').addEventListener('click', e => {
+  const b = e.target.closest('[data-flag^="spell:"]'); if (!b) return;
+  const F = SPELL_FLAGS.find(f => 'spell:' + f.k === b.dataset.flag); if (!F) return;
+  const c = readyCaster(F.k, F.mana); if (!c) return;
+  S.selected = [c]; cmdTab = c.kind; cmdKey = ''; selKey = ''; lookAtProv(c.prov);
+});
+
+// ---------- the resource bar: mana regeneration, a blue seven-pointed star ----------
+const MANA_STAR_SVG = (() => { const pts = []; for (let k = 0; k < 14; k++) { const a = -Math.PI / 2 + k * Math.PI / 7, r = k % 2 ? 4.6 : 10.4; pts.push((12 + Math.cos(a) * r).toFixed(2) + ',' + (12.6 + Math.sin(a) * r).toFixed(2)); } return `<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="${pts.join(' ')}" fill="${MANA_BLUE}" stroke="#1d1a22" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="12.6" r="2.2" fill="#cfe0ff"/></svg>`; })();
+let v98BarKey = '';
+{ const sb = setupBar; setupBar = function () {
+  sb();
+  const at = $q('#r-forts') || $q('#res .tick');
+  if (at && !$q('#r-mana')) at.insertAdjacentHTML('beforebegin', `<span class="r v96c" id="r-mana" title="Mana">${MANA_STAR_SVG}<b></b></span>`);
+}; }
+{ const ub = updateBar; updateBar = function (t) {
+  ub(t);
+  if (!S.started) return;
+  const el = $q('#r-mana'); if (!el) return;
+  const r = manaRegen(ME), cap = manaCap(ME), k = r + '|' + cap; if (k === v98BarKey) return; v98BarKey = k;
+  el.querySelector('b').textContent = '+' + r;
+  el.title = `Mana: every Magic User regains ${r} mana every 10 s (1 for each Tier I Magic Barracks, 2 for each Tier II, 3 for each Tier III), up to ${cap}. A Magic User regains nothing while he is casting.`;
+}; }
+
+// ---------- drawing: mana bars, the Path of Fire mark, risen soldiers, sights, Sacred Pyres ----------
+// the height of a unit's art above its feet, in rig units (measured once per look, in every facing, with room for its sway)
+const artTops = new Map();
+function artTop(id) {
+  if (artTops.has(id)) return artTops.get(id);
+  let top = 150;
+  try {
+    const cv = document.createElement('canvas'); cv.width = 260; cv.height = 360; const g = cv.getContext('2d', { willReadFrequently: true });
+    let minY = 360;
+    for (const th of [0, 1.2, 2.4, -1.2, -2.4, 3.1]) for (const t of [0, 0.8, 1.6]) {
+      g.clearRect(0, 0, 260, 360); RealmIso.drawUnitAt(g, id, th, t, 130, 330, 1);
+      const d = g.getImageData(0, 0, 260, 360).data;
+      for (let y = 0; y < minY; y++) { let hit = false; for (let x = 0; x < 260; x++) if (d[(y * 260 + x) * 4 + 3] > 40) { hit = true; break; } if (hit) { minY = y; break; } }
+    }
+    top = 330 - minY;
+  } catch (e) {}
+  artTops.set(id, top); return top;
+}
+function manaBar(g, c, x, y, w, K) {
+  const h = 3.2 * Math.sqrt(K), f = Math.max(0, Math.min(1, manaOf(c) / manaCap(c.owner)));
+  g.save(); g.beginPath(); g.roundRect(x - w / 2 - 1.5, y - 1.5, w + 3, h + 3, (h + 3) / 2); g.fillStyle = OL; g.fill();
+  g.beginPath(); g.roundRect(x - w / 2, y, w, h, h / 2); g.fillStyle = '#26324a'; g.fill();
+  if (f > 0) { g.beginPath(); g.roundRect(x - w / 2, y, Math.max(h, w * f), h, h / 2); g.fillStyle = MANA_BLUE; g.fill(); g.fillStyle = 'rgba(255,255,255,0.35)'; g.fillRect(x - w / 2 + h / 2, y + 0.5, Math.max(0, w * f - h), h * 0.3); }
+  g.restore();
+}
+function pathFireMark(g, u, x, y, t) {
+  if (!u.pathFire || u.pathFire.until <= S.t) return;
+  const k = Math.max(1, 0.62 / cam.z), s = 18 * k, cy = y + Math.sin(t * 4) * 1.2 * k, left = (u.pathFire.until - S.t) / Math.max(1, u.pathFire.until - u.pathFire.t0);
+  g.save(); g.beginPath(); g.arc(x, cy, s / 2 + 2 * k, 0, 7); g.fillStyle = '#ffe6da'; g.fill(); g.lineWidth = 2 * k; g.strokeStyle = OL; g.stroke();
+  g.beginPath(); g.arc(x, cy, s / 2 + 2 * k, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2); g.lineWidth = 2.4 * k; g.strokeStyle = '#ff7a2c'; g.stroke();
+  const im = iconImg(techIcon(lineTech('pfire') || 'pathfire')); if (im.complete && im.naturalWidth) g.drawImage(im, x - s / 2, cy - s / 2, s, s);
+  g.restore();
+}
+{ const dah = drawArmyHealth; drawArmyHealth = function (g, u, x, y, w, K) {
+  dah(g, u, x, y, w, K);
+  // v99: the mana bar sits above the health bar (and above the retrofit bar), clear of the soldiers' heads
+  if (magesIn(u) > 0) manaBar(g, u, x, (u.retro ? y - 9 * K : y) - 3.2 * Math.sqrt(K) - 4.5, w, K);
+  pathFireMark(g, u, x - w / 2 - 14 * Math.max(1, 0.62 / cam.z), y + 2, S.t);
+}; }
+{ const dub = drawUnitBody; drawUnitBody = function (g, u, t) {
+  dub(g, u, t);
+  if (u.kind !== MAGE) return;
+  // v99: the bar floats a little above the very top of the figure (hat, horns, a raised staff), never over it
+  const K = UKK, id = u.cast ? castUnitId(u) : u.kind, top = artTop(swArtId(id, u.owner)) * UK * K;
+  manaBar(g, u, u.x, u.y - top - 3.2 * Math.sqrt(K) - 7, 18 * K, K);
+  pathFireMark(g, u, u.x - 15 * K, u.y - top * 0.6, t);
+}; }
+// risen soldiers: a sickly green look, hollow glowing eyes and grave-wisps (they keep it when retrofitted)
+let ghoulLeft = 0;
+{ const da = drawArmy; drawArmy = function (g, u, t) {
+  ghoulLeft = 0;
+  if (u.ghouls > 0) { const n = troopCount(u) - (u.troops[MAGE] || 0), figs = armyFigures(u).filter(k => k !== MAGE).length; if (n > 0) ghoulLeft = Math.max(1, Math.round(figs * Math.min(1, u.ghouls / n))); }
+  try { return da(g, u, t); } finally { ghoulLeft = 0; }
+}; }
+{ const duf = drawUnitFor; drawUnitFor = function (g, id, o, moving, th, t, x, y, k) {
+  if (ghoulLeft <= 0 || typeof id !== 'string' || id.startsWith(MAGE) || id === GELEM_ID) return duf(g, id, o, moving, th, t, x, y, k);
+  ghoulLeft--;
+  g.save();
+  try { g.filter = 'grayscale(0.85) sepia(0.3) hue-rotate(75deg) saturate(1.4) brightness(1.08) contrast(1.05)'; } catch (e) {}
+  duf(g, id, o, moving, th, t, x, y, k);
+  g.restore();
+  const s = k / UK, gl = 0.55 + Math.sin(t * 5) * 0.2;
+  g.save();
+  const gr = g.createRadialGradient(x, y - 10 * s, 1, x, y - 10 * s, 11 * s); gr.addColorStop(0, `rgba(140,255,150,${(0.32 * gl).toFixed(3)})`); gr.addColorStop(1, 'rgba(140,255,150,0)');
+  g.fillStyle = gr; g.beginPath(); g.arc(x, y - 10 * s, 11 * s, 0, 7); g.fill();
+  for (let i = 0; i < 2; i++) { const f = (t * 0.7 + i * 0.5) % 1; g.globalAlpha = 0.65 * (1 - f); g.fillStyle = '#b6ffb0'; g.beginPath(); g.ellipse(x + (i ? 3.5 : -3.5) * s, y - (15 + f * 9) * s, 0.9 * s, 1.5 * s, 0, 0, 7); g.fill(); }
+  g.restore();
+}; }
+{ const dm = drawMagic; drawMagic = function (g, t) {
+  dm(g, t);
+  for (const r of S.eyes || []) {
+    if (r.owner !== ME || !(S.explored.has(r.a) || S.explored.has(r.b)) || r.edge < 0) continue;
+    const [mx, my] = edgeMid(r.edge), left = Math.max(0, (r.until - S.t) / SEE_TIME), op = 0.75 + Math.sin(t * 3) * 0.2;
+    g.save(); g.translate(mx, my - 26);
+    g.beginPath(); g.ellipse(0, 0, 16, 10, 0, 0, 7); g.fillStyle = `rgba(255,255,255,${op.toFixed(2)})`; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke();
+    g.beginPath(); g.arc(0, 0, 5.5, 0, 7); g.fillStyle = '#3f9b4b'; g.fill(); g.lineWidth = 2; g.stroke();
+    g.beginPath(); g.arc(0, 0, 21, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2); g.lineWidth = 3; g.strokeStyle = '#3f9b4b'; g.stroke();
+    g.restore();
+  }
+  for (const h of S.haunts || []) {
+    if (h.owner !== ME || !S.visible.has(h.prov)) continue;
+    const c = G.provs[h.prov].ic, x = c[0] + 40, y = c[1] - 70 + Math.sin(t * 2) * 6;
+    g.save(); g.globalAlpha = 0.78 + Math.sin(t * 3) * 0.12;
+    g.beginPath(); g.moveTo(x - 14, y + 20); g.lineTo(x - 14, y); g.quadraticCurveTo(x - 14, y - 16, x, y - 16); g.quadraticCurveTo(x + 14, y - 16, x + 14, y); g.lineTo(x + 14, y + 20); g.lineTo(x + 9, y + 15); g.lineTo(x + 4, y + 20); g.lineTo(x - 1, y + 15); g.lineTo(x - 6, y + 20); g.lineTo(x - 10, y + 15); g.closePath();
+    g.fillStyle = '#f2eefa'; g.fill(); g.lineWidth = 2.6; g.strokeStyle = OL; g.stroke();
+    g.fillStyle = OL; g.beginPath(); g.arc(x - 5, y - 2, 2.6, 0, 7); g.arc(x + 5, y - 2, 2.6, 0, 7); g.fill();
+    g.restore();
+  }
+  for (const P of S.sacreds || []) {
+    if (!S.visible.has(P.prov)) continue;
+    g.save(); g.translate(P.x, P.y); g.scale(0.42 * UKK, 0.42 * UKK);
+    try { SwampBuild.drawOnMap(g, 'pyre', 0, t, 1); } catch (e) {}
+    g.restore();
+    if (P.owner === ME) { const left = Math.max(0, (P.until - S.t) / SACRED.dur), y = P.y - 40 * UKK; g.save(); g.beginPath(); g.arc(P.x, y, 8, 0, 7); g.fillStyle = 'rgba(250,241,220,0.95)'; g.fill(); g.beginPath(); g.arc(P.x, y, 8, -Math.PI / 2, -Math.PI / 2 + left * Math.PI * 2); g.lineWidth = 3.5; g.strokeStyle = '#ff7a2c'; g.stroke(); g.restore(); }
+  }
+}; }
+
+// ---------- new games and loaded saves ----------
+{ const s96 = setupV96; setupV96 = function (loaded) {
+  s96(loaded);
+  for (const k of ['manaPool', 'eyes', 'haunts', 'sacreds', 'reveals']) if (!Array.isArray(S[k])) S[k] = [];
+  if (!S.cd) S.cd = {};
+  S.rift = null; S.fspirits = [];
+  manaPrev = new Map(); manaPrevT = -1; v98Aim = null; v98BarKey = '';
+  if (loaded) {
+    // v98: the Aegis is gone (designs that used it carry a Tower Shield), and techs that no longer exist are dropped
+    for (const d of S.designs || []) if (d.shield === 'aegis') { d.shield = 'tower'; registerDesign(d); }
+    const known = id => !!TECH_BY_ID[id];
+    const clean = st => { if (!st) return; st.done = (st.done || []).filter(known); st.opts = (st.opts || []).filter(known); if (st.sticky) st.sticky = st.sticky.filter(known); if (st.cur && !known(st.cur)) { st.cur = null; st.prog = 0; } };
+    for (const tr of TREE_KEYS) clean(S.tech[tr]);
+    for (const N of Object.values(NATIONS)) if (N.tech) for (const tr of TREE_KEYS) clean(N.tech[tr]);
+    for (const c of S.units) if (c.cast && ['mind', 'graverob', 'trading', 'fspirit', 'wrocks'].includes(c.cast.spell)) c.cast = null;
+    for (const r of S.wrocks || []) if (r.until === undefined) r.until = S.t + SEE_TIME;
+  }
+  computeIncome();
+}; }
+
+window.__v98 = { manaOf, manaCap, manaRegen, regenMana, syncMana, risenRise, pureFront, FINISH, AIMED, SPELL_MANA, riftWhy, hauntWhy, seeNbrs, teleport, paySacredPyres };
+
+// ================= v99: meeting before allying, the new warscore sizes, Bridge Building =================
+
+// ---------- who has met whom ----------
+// The player's contacts are S.met. Two computer nations have met once their lands touch, or they have been at war or allied.
+S.aiMet = new Set();
+const hasMet = (a, b) => a === b || (a === ME ? S.met.has(b) : b === ME ? S.met.has(a) : S.aiMet.has(pairKey(a, b)));
+let aiMetAt = -9;
+function stepAiMet() {
+  if (S.t - aiMetAt < 2) return; aiMetAt = S.t;
+  for (const [p, b] of S.buildings) {
+    const a = b.owner; if (!NATIONS[a]) continue;
+    for (const q of allNbr[p]) { const o = nationOf(q); if (o && o !== a && o !== ME && NATIONS[o]) S.aiMet.add(pairKey(a, o)); }
+  }
+  for (const w of S.wars) if (w.a !== ME && w.b !== ME) S.aiMet.add(pairKey(w.a, w.b));
+  for (const A of S.allies) if (A.a !== ME && A.b !== ME) S.aiMet.add(pairKey(A.a, A.b));
+}
+{ const sa = stepAlliances; stepAlliances = function () { stepAiMet(); return sa(); }; }
+// no alliance between nations that haven't met
+{ const aw = allyWhy; allyWhy = function (a, b) {
+  if (a !== b && !hasMet(a, b)) return a === ME || b === ME ? 'You haven’t met them yet' : 'They haven’t met each other';
+  return aw(a, b);
+}; }
+// allying the player: he meets everyone his new ally has met, and his ally meets everyone he has
+{ const fa = formAlliance; formAlliance = function (a, b, vs) {
+  fa(a, b, vs);
+  if (a !== ME && b !== ME) return;
+  const o = a === ME ? b : a;
+  for (const x of [...S.met]) if (x !== o && NATIONS[x] && aliveNation(x)) S.aiMet.add(pairKey(o, x));
+  for (const x of aiIds()) if (x !== o && aliveNation(x) && !S.met.has(x) && S.aiMet.has(pairKey(o, x))) meetNation(x);
+}; }
+
+// ---------- warscore: how big the beaten army was ----------
+// warWipe (war.js) reads these: +1 for an army of more than 10 soldiers, +5 for one of more than half its nation's whole army
+{ const obj = onBattleJoin; onBattleJoin = function (a, t) {
+  if (a.kind === 'army') { a.wsSize = troopCount(a) - (a.troops[MAGE] || 0); a.wsTotal = soldierCount(a.owner); }
+  return obj(a, t);
+}; }
+
+// ---------- Bridge Building (Government Tier III) ----------
+const BRIDGE_COST = { gold: 150, wood: 200 }, BRIDGE_TIME = 90;
+if (!TECH_BY_ID.bridges) {
+  const x = { id: 'bridges', tree: 'gov', tier: 3, cost: 200, req: ['walls2', 'moat', 'forge', 'refmills'], name: 'Bridge Building',
+    blurb: `Masons can build a bridge across a river border (${BRIDGE_COST.wood} wood, ${BRIDGE_COST.gold} gold, ${BRIDGE_TIME} s). It takes no building plot, and only one of the two provinces has to be yours. Needs Stone Walls, Moat, the Forge and Refined Lumber Mills.` };
+  TECHS.push(x); TECH_BY_ID.bridges = x;
+}
+GOV_ICONS.bridges = g => {
+  ICO.disc(g, '#bfe6ff');
+  g.fillStyle = '#4fa3e0'; g.fillRect(6, 40, 52, 14);
+  g.beginPath(); g.moveTo(8, 40); g.quadraticCurveTo(32, 14, 56, 40); g.lineTo(56, 46); g.quadraticCurveTo(32, 24, 8, 46); g.closePath(); g.fillStyle = '#b07a45'; g.fill(); g.lineWidth = 2.4; g.strokeStyle = OL; g.stroke();
+  g.strokeStyle = OL; g.lineWidth = 2; for (const x of [16, 24, 32, 40, 48]) { const y = 40 - Math.sin((x - 8) / 48 * Math.PI) * 13; g.beginPath(); g.moveTo(x, y - 8); g.lineTo(x, y + 1); g.stroke(); }
+  g.beginPath(); g.moveTo(8, 32); g.quadraticCurveTo(32, 6, 56, 32); g.lineWidth = 2.6; g.stroke();
+};
+const riverEdge = (p, q) => edgeBetween(p, q, 'river', false);
+const bridgeUnderWay = (p, q) => S.units.some(u => u.build && u.build.type === 'bridge' && linkKey(u.build.prov, u.build.to) === linkKey(p, q));
+function bridgeWhy(m, q) {
+  const p = m.prov;
+  if (!hasTech('bridges')) return 'Research Bridge Building first';
+  if (p === q || !allNbr[p].includes(q)) return 'The Mason must stand next door';
+  if (riverEdge(p, q) < 0) return 'There is no river between them';
+  if (!S.explored.has(q)) return 'Explore it first';
+  if (!owned(p) && !owned(q)) return 'One side must be your land';
+  if (m.moving) return 'He is walking';
+  if (m.build) return 'He is already building';
+  if (bridgeUnderWay(p, q)) return 'Already under way';
+  return lackText(BRIDGE_COST);
+}
+function startBridge(m, q) {
+  const why = bridgeWhy(m, q); if (why) return toast(`Can’t build a bridge there: ${why.toLowerCase()}.`, true);
+  for (const k in BRIDGE_COST) S.stock[k] -= BRIDGE_COST[k];
+  m.surveyQueue = []; m.pending = null;
+  m.build = { prov: m.prov, to: q, type: 'bridge', t0: S.t, paid: { ...BRIDGE_COST }, dur: BRIDGE_TIME, owner: m.owner };
+  toast(`Building a bridge to ${provName(q)}… (−${costText(BRIDGE_COST)}, ${BRIDGE_TIME} s)`); sfx('bld_work', { prov: m.prov });
+}
+{ const fl = finishLink; finishLink = function (b) {
+  if (b.type !== 'bridge') return fl(b);
+  const i = riverEdge(b.prov, b.to); if (i < 0) return;
+  openEdge(i, 'bridge'); wallsVer++;
+  if (b.owner === ME) { toast(`Bridge finished between ${provName(b.prov)} and ${provName(b.to)}: anyone may cross the river there now.`); sfx('bld_done', { prov: b.prov }); }
+}; }
+// no wall on a bridge
+{ const lw = linkWhy; linkWhy = function (type, m, q) { if (type === 'wall') { const i = edgeBetween(m.prov, q, null, true); if (i >= 0 && S.paths[i] === 'bridge') return 'There is a bridge here'; } return lw(type, m, q); }; }
+// the Mason's Ctrl+right-click menu: a bridge row on a river border
+{ const lr = linkRows; linkRows = function (m, q) {
+  let s = lr(m, q);
+  if (!m || m.prov === q || !hasTech('bridges') || !allNbr[m.prov].includes(q) || riverEdge(m.prov, q) < 0) return s;
+  const why = bridgeWhy(m, q);
+  const row = `<button type="button" class="bm-item" data-type="bridge" ${why ? 'aria-disabled="true"' : ''}><img alt="" src="${techIcon('bridges')}"><span class="bm-name">Bridge to ${escHTML(provName(q))}<small>${why || `Across the river from ${escHTML(provName(m.prov))} · ${BRIDGE_TIME} s · no building plot`}</small></span><span class="bm-cost">${costHTML(BRIDGE_COST)}</span></button>`;
+  if (s.includes('bm-sec')) return s + row;
+  return `<div class="bm-sec">Border with ${escHTML(provName(m.prov))}</div>` + row;
+}; }
+menuEl.addEventListener('click', e => {
+  const b = e.target.closest('[data-type="bridge"]'); if (!b) return;
+  e.stopImmediatePropagation(); if (b.getAttribute('aria-disabled') === 'true') return;
+  const m = S.selected.find(v => v.kind === MASON), q = menuProv; closeBuildMenu(); if (m) startBridge(m, q);
+}, true);
+// a wooden bridge drawn over the river (drawMagic draws S.paths; see bridgeArt), and a half-built one while the Mason works
+function bridgeArt(g, f) {
+  const L = 34, W = 13, n = Math.max(1, Math.round(9 * f));
+  g.fillStyle = 'rgba(0,0,0,0.22)'; g.fillRect(-W - 2, -L + 4, W * 2 + 4, L * 2);
+  for (let k = 0; k < 9; k++) { if (k >= n) break; const y = -L + k * (2 * L / 9); g.beginPath(); g.rect(-W, y, W * 2, 2 * L / 9 - 1); g.fillStyle = k % 2 ? '#b98552' : '#a8743f'; g.fill(); g.lineWidth = 1.6; g.strokeStyle = OL; g.stroke(); }
+  if (f >= 1) for (const s of [-1, 1]) {
+    g.beginPath(); g.moveTo(s * (W + 2), -L - 2); g.lineTo(s * (W + 2), L + 2); g.lineWidth = 5; g.strokeStyle = OL; g.stroke(); g.lineWidth = 2.6; g.strokeStyle = '#8a5a30'; g.stroke();
+    for (const y of [-L - 2, 0, L + 2]) { g.beginPath(); g.arc(s * (W + 2), y, 3.4, 0, 7); g.fillStyle = '#8a5a30'; g.fill(); g.lineWidth = 2; g.strokeStyle = OL; g.stroke(); }
+  }
+}
+{ const dm = drawMagic; drawMagic = function (g, t) {
+  dm(g, t);
+  for (const u of S.units) {
+    if (!u.build || u.build.type !== 'bridge' || !(S.explored.has(u.build.prov) || S.explored.has(u.build.to))) continue;
+    const i = riverEdge(u.build.prov, u.build.to); if (i < 0) continue;
+    const e = world.edges[i], V = world.vertices, a = V[e.v[0]], b = V[e.v[1]];
+    g.save(); g.translate((a[0] + b[0]) / 2, (a[1] + b[1]) / 2); g.rotate(Math.atan2(b[1] - a[1], b[0] - a[0])); bridgeArt(g, Math.min(1, (S.t - u.build.t0) / u.build.dur)); g.restore();
+  }
+}; }
+
+// ---------- new games and loaded saves ----------
+{ const s96 = setupV96; setupV96 = function (loaded) {
+  s96(loaded);
+  if (!(S.aiMet instanceof Set)) S.aiMet = new Set(S.aiMet || []);
+  if (!loaded) S.aiMet = new Set();
+  aiMetAt = -9;
+}; }
+
+window.__v99 = { hasMet, stepAiMet, bridgeWhy, startBridge, riverEdge, artTop: id => artTop(id) };
+
+// ================= v100: AI armies regroup after a defeat, raid instead of trickling in; hidden war surge =================
+
+// ---------- the hidden surge: once a nation has lost half its army or more in a war ----------
+// Moderate: soldiers train in 12 s; Difficult: in 6 s and at half price. Until that nation is at peace again.
+// Never for a nation allied with the player.
+const AI_SURGE = { moderate: { time: 12, cost: 1 }, difficult: { time: 6, cost: 0.5 } };
+function stepAISurge() {
+  for (const N of Object.values(NATIONS)) {
+    if (!N.alive) continue;
+    if (!enemiesOf(N.id).length) { N.warPeak = 0; N.surge = false; continue; }
+    const n = soldierCount(N.id);
+    N.warPeak = Math.max(N.warPeak || 0, n);
+    if (!N.surge && N.warPeak >= 4 && n <= N.warPeak * 0.5) N.surge = true;
+  }
+}
+const aiSurge = N => !!(N.surge && AI_SURGE[N.diff] && !allied(N.id, ME));
+function aiTrainTime(N, kind) { return aiSurge(N) && MILITARY.has(kind) && kind !== MAGE ? AI_SURGE[N.diff].time : trainTime(kind); }
+function aiUnitCost(N, kind) {
+  const c = UNIT_DEFS[kind].cost, m = aiSurge(N) && MILITARY.has(kind) && kind !== MAGE ? AI_SURGE[N.diff].cost : 1;
+  if (m === 1) return c;
+  const out = {}; for (const k in c) out[k] = Math.ceil(c[k] * m); return out;
+}
+
+// ---------- war orders: gather first, fight what can be beaten, otherwise raid ----------
+// A small army never walks into the enemy alone: it joins the main body. The main body fights the enemy's armies only
+// when it can win; until then it rebuilds at the rally point (the capital) and, once it is a real force, counterattacks
+// lightly held provinces (enemy land, or its own occupied land) away from the enemy's main army, to force it back.
+const aiWarGoal0 = aiWarGoal;
+const aiWarPlans = new Map();   // per nation, recomputed twice a second (kept off the save)
+const AI_RAID_MIN_PUSH = 5;   // soldiers in the main body before it counterattacks an advancing enemy
+const AI_ENGAGE = 1.2;   // an army engages an enemy force up to 19.9% stronger than itself, never one 20% or more stronger
+function aiWarPlan(N, enemies) {
+  const key = Math.floor(S.t * 2), old = aiWarPlans.get(N.id);
+  if (old && old.key === key) return old;
+  const mine = aiArmies(N).filter(v => !v.retreating && !v.exiting);
+  let main = null, ms = -1; for (const a of mine) { const s = rawStrength([a]); if (s > ms) { ms = s; main = a; } }
+  const myTotal = rawStrength(mine);
+  // the enemy's armies, stacked by province
+  const stacks = new Map();
+  for (const v of S.units) if (v.kind === 'army' && enemies.includes(v.owner) && troopCount(v) > 0 && !v.retreating) stacks.set(v.prov, (stacks.get(v.prov) || 0) + rawStrength([v]));
+  let foeMain = 0, foeProv = -1; for (const [p, s] of stacks) if (s > foeMain) { foeMain = s; foeProv = p; }
+  const cap = capitalOf(N.id) >= 0 ? capitalOf(N.id) : provsOf(N.id)[0];
+  const strong = foeMain < myTotal * AI_ENGAGE;   // the enemy's biggest stack is less than 20% stronger than everything we have
+  // is the enemy pushing? one of its armies with at least half the power of its biggest stack is marching into our land
+  // or toward our capital
+  const capNow = capitalOf(N.id) >= 0 ? capitalOf(N.id) : provsOf(N.id)[0], home = capNow >= 0 ? hopsFrom(capNow, allNbr) : null;
+  let pushing = false;
+  for (const v of S.units) {
+    if (v.kind !== 'army' || !enemies.includes(v.owner) || troopCount(v) <= 0 || v.retreating || rawStrength([v]) < foeMain * 0.5) continue;
+    // v101: an enemy army that just stands in our land is holding position, not pushing
+    if (v.moving && v.final !== undefined && (nationOf(v.final) === N.id || (home && home[v.final] !== undefined && home[v.prov] !== undefined && home[v.final] < home[v.prov]))) { pushing = true; break; }
+  }
+  const plan = { key, main, mainStr: ms, myTotal, stacks, foeMain, foeProv, cap, strong, pushing }; aiWarPlans.set(N.id, plan); return plan;
+}
+aiWarGoal = function (N, a, enemies) {
+  const W = aiWarPlan(N, enemies), str = rawStrength([a]), soldiers = troopCount(a) - (a.troops[MAGE] || 0);
+  const isMain = a === W.main;
+  // the enemy is in the capital and this army (with whatever is there) can beat it: defend
+  const capFoe = W.stacks.get(W.cap) || 0;
+  // strong enough overall: the main body fights as before; the rest join it
+  if (W.strong) {
+    // v100: never march on an enemy force 20% or more stronger than this army
+    if (isMain || W.foeMain < str * AI_ENGAGE) { const g = aiWarGoal0(N, a, enemies); return g >= 0 && (W.stacks.get(g) || 0) >= str * AI_ENGAGE ? W.cap : g; }
+    // the rest wait at the capital, joining the main body only while it stands still in its own land (no walking alone into the enemy)
+    const m = W.main; if (!m || m.battle || m.moving || nationOf(m.prov) !== N.id || (W.stacks.get(m.prov) || 0) > 0) return W.cap;
+    return m.prov;
+  }
+  // not strong enough: everything but the main body gathers at the capital
+  if (!isMain) return W.cap;
+  if (capFoe && capFoe < str * AI_ENGAGE) return W.cap;
+  // v100: rebuild or counterattack? If the enemy's strong armies are marching on our land, strike back into theirs to
+  // force them home; if they hold their ground, stay home and rebuild until we can meet them
+  if (!W.pushing) return W.cap;
+  if (soldiers < AI_RAID_MIN_PUSH) return W.cap;
+  // raid: the weakest-held province (own and occupied, or the enemy's) that this army can take, away from any enemy stack that could beat it
+  const d = aiReach(a, 16), danger = new Set();
+  for (const [p, s] of W.stacks) if (s >= str * AI_ENGAGE) { danger.add(p); for (const q of allNbr[p]) danger.add(q); }
+  let best = -1, bd = Infinity;
+  for (const [p, b] of S.buildings) {
+    if (!d.has(p) || danger.has(p)) continue;
+    const held = W.stacks.get(p) || 0; if (held > str * 0.5) continue;
+    let w;
+    if (b.owner === N.id) { if (!S.occ.has(p)) continue; w = 0; }
+    else if (enemies.includes(b.owner) && S.occ.get(p) !== N.id) w = b.stage === 2 ? 0.5 : b.stage === 1 ? 1 : 2;
+    else continue;
+    const v = d.get(p) + w * 3; if (v < bd) { bd = v; best = p; }
+  }
+  return best >= 0 ? best : W.cap;
+};
+
+// ---------- unit counters, learned from a lost battle ----------
+// Only once an army of this nation has been beaten by a hostile nation's army (wiped out, or forced to retreat) does it think
+// about counters: against cavalry it trains polearms (Pikemen), against plate-armored infantry with shields it trains blunt
+// weapons (Macemen), and against a mix it trains a matching mix. Each new defeat updates the plan.
+function aiNoteDefeat(a, b) {
+  const N = NATIONS[a.owner]; if (!N || !b) return;
+  const foes = S.units.filter(v => v.kind === 'army' && v.battle === b && v.owner !== a.owner && isNation(v.owner) && hostile(v.owner, a.owner));
+  let cav = 0, plate = 0, other = 0;
+  for (const v of foes) for (const k in v.troops) {
+    if (k === MAGE) continue; const n = v.troops[k], st = statsOf(k, v.owner);
+    if (st.cav && !st.champ) cav += n; else if (st.plate && st.shieldArmor > 0) plate += n; else other += n;
+  }
+  const tot = cav + plate + other; if (!tot) return;
+  N.counter = { pole: cav / tot, blunt: plate / tot, base: other / tot, t: S.t };
+}
+{ const ww = warWipe; warWipe = function (b, a) { try { aiNoteDefeat(a, b); } catch (e) {} return ww(b, a); }; }
+{ const rt = retreat; retreat = function (a) { const b = a.battle; if (b && NATIONS[a.owner] && retreatLockLeft(a) <= 0) try { aiNoteDefeat(a, b); } catch (e) {} return rt(a); }; }
+// the counter designs: the nation's best polearm (no shield: they are two-handed) and its best blunt weapon (with a shield)
+function aiCounterDesigns(N) {
+  const best = fam => (FAMILY[fam] ? FAMILY[fam].order : []).filter(w => WEAPONS[w] && (!WEAPONS[w].tech || aiHas(N, WEAPONS[w].tech))).pop();
+  const main = DSTATS[N.design.inf] ? designById2(N.design.inf) : null;
+  const armor = main ? main.armor : 'leather1', pole = best('pole'), blunt = best('blunt');
+  const shield = blunt && !WEAPONS[blunt].twoH ? ['tower', 'kite', 'round'].find(x => SHIELD_DEFS[x] && aiHas(N, SHIELD_DEFS[x].tech)) || null : null;
+  const sig = [armor, pole, blunt, shield].join('|');
+  if (N.cdSig === sig && N.cdes && DSTATS[N.cdes.pole] && DSTATS[N.cdes.blunt]) return N.cdes;
+  N.cdSig = sig; N.cdv = (N.cdv || 0) + 1;
+  const pd = { id: `ai${N.id}p${N.cdv}`, name: 'Pikeman', type: 'inf', weapon: pole || 'spear', shield: null, armor, horse: null };
+  const bd = { id: `ai${N.id}b${N.cdv}`, name: 'Maceman', type: 'inf', weapon: blunt || 'club', shield, armor, horse: null };
+  registerDesign(pd); registerDesign(bd);
+  return (N.cdes = { pole: pd.id, blunt: bd.id });
+}
+const designById2 = id => (typeof ALL_DESIGNS !== 'undefined' && ALL_DESIGNS.get(id)) || designById(id) || null;
+function aiPickKind(N, P, stable) {
+  const normal = () => P.useCav && stable && Math.random() < 0.3 ? N.design.cav : N.design.inf;
+  const C = N.counter; if (!C || C.base >= 0.999) return normal();
+  const cd = aiCounterDesigns(N);
+  // what the army is made of now (soldiers and those in training), by weapon family
+  const have = { pole: 0, blunt: 0, base: 0 }; let tot = 0;
+  const add = (k, n) => { if (k === MAGE || !MILITARY.has(k)) return; const st = DSTATS[k]; if (!st) return; const f = !st.cav && st.fam === 'pole' ? 'pole' : !st.cav && st.fam === 'blunt' ? 'blunt' : 'base'; have[f] += n; tot += n; };
+  for (const v of S.units) if (v.owner === N.id && v.kind === 'army') for (const k in v.troops) add(k, v.troops[k]);
+  for (const q of N.queue) add(q.kind, 1);
+  // train whichever kind is furthest below its share of the plan
+  let pick = 'base', gap = -Infinity;
+  for (const f of ['pole', 'blunt', 'base']) { const g = C[f] - (tot ? have[f] / tot : 0); if (C[f] > 0 && g > gap) { gap = g; pick = f; } }
+  return pick === 'pole' ? cd.pole : pick === 'blunt' ? cd.blunt : normal();
+}
+
+// ---------- hooks ----------
+{ const sa = stepAI; stepAI = function (t) { if (S.started) stepAISurge(); return sa(t); }; }
+{ const ss = setupV96; setupV96 = function (loaded) { ss(loaded); for (const N of Object.values(NATIONS)) { if (N.warPeak === undefined) N.warPeak = 0; if (N.surge === undefined) N.surge = false; } aiWarPlans.clear(); }; }
+
+window.__v100 = { aiSurge, aiTrainTime, aiUnitCost, aiWarPlan, stepAISurge, aiNoteDefeat, aiPickKind, aiCounterDesigns };
+
+// ================= v101: Thug Den flag and Highwaymen mark, research panel closing, AI armies that stop feeding the enemy =================
+
+// ---------- Thug Dens: a flag while one has room, and a gold "$" over a den that Highwaymen is doubling ----------
+FLAG_IMG.denroom = bannerSVG('#5a7a3a', '#3f5a28', '<path d="M18 46 L32 26 L46 46 Z" fill="#8a6a44"/><rect x="28" y="36" width="8" height="10" fill="#3b3330"/><circle cx="44" cy="22" r="7" fill="#faf1dc"/><path d="M44 18 V26 M40 22 H48" stroke-width="2.4"/>');
+const denRooms = () => isSw(ME) ? myDens().filter(d => !S.occ.has(d.p) && (d.e.thugs || 0) < denCap(ME)) : [];
+{ const fl = flagList; flagList = function () {
+  const out = fl();
+  if (!S.started) return out;
+  const rooms = denRooms(); if (!rooms.length || flagDismissed.has('denroom')) return out;
+  const free = rooms.reduce((n, d) => n + denCap(ME) - (d.e.thugs || 0), 0);
+  out.push({ id: 'denroom', img: 'denroom', tip: `${rooms.length > 1 ? rooms.length + ' Thug Dens have' : 'A Thug Den has'} room for ${free} more Thug${free > 1 ? 's' : ''}. Left-click to select it, right-click to dismiss`, label: 'Thug Den has room' });
+  return out;
+}; }
+$q('#nflags').addEventListener('click', e => {
+  const b = e.target.closest('[data-flag="denroom"]'); if (!b) return;
+  const d = denRooms()[0]; if (!d) return;
+  lookAtProv(d.p); selectPart(d.p, 'market@' + d.e.slot); cmdKey = ''; selKey = '';
+});
+const denHighway = p => techOf(ME, 'traderoutes') && denBorders(p, ME);
+{ const dm = drawMagic; drawMagic = function (g, t) {
+  dm(g, t);
+  if (!isSw(ME) || !techOf(ME, 'traderoutes')) return;
+  for (const d of myDens()) {
+    if (!S.visible.has(d.p) || !denHighway(d.p)) continue;
+    const c = G.provs[d.p].ic, [ox, oy] = bslotOf(d.p, d.e.slot), x = c[0] + ox, y = c[1] + oy - 74 + Math.sin(t * 2.2 + d.p) * 3;
+    g.save();
+    g.beginPath(); g.arc(x, y, 13, 0, 7); g.fillStyle = '#f4c44f'; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke();
+    g.font = 'bold 19px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#5a3d10'; g.fillText('$', x, y + 1);
+    g.restore();
+  }
+}; }
+
+// ---------- the research panel closes once every tree with something on offer has an active research ----------
+const researchSettled = () => TREE_KEYS.every(t => { const st = S.tech[t]; return !st.tier || st.cur || !st.opts.length; });
+{ const pt = pickTech; pickTech = function (id) {
+  const before = TREE_KEYS.map(t => S.tech[t].cur).join('|');
+  const r = pt(id);
+  if (techOpen && before !== TREE_KEYS.map(t => S.tech[t].cur).join('|') && researchSettled()) toggleTech(false);
+  return r;
+}; }
+
+// ---------- AI armies at war: rally somewhere safe, never spawn into a fight, and steer clear of armies that would crush them ----------
+// stacks of enemy armies by province (strength), for one nation, refreshed with its war plan
+function aiDangerFor(N, str) {
+  const W = aiWarPlans.get(N.id), stacks = W ? W.stacks : new Map(), out = new Set();
+  for (const [p, s] of stacks) if (s >= str * AI_ENGAGE) out.add(p);
+  // bandit gangs that would beat it, too
+  const gangs = new Map(); for (const v of S.units) if (v.kind === 'army' && v.bandit && troopCount(v) > 0) gangs.set(v.prov, (gangs.get(v.prov) || 0) + rawStrength([v]));
+  for (const [p, s] of gangs) if (s >= str * AI_ENGAGE) out.add(p);
+  // and where those armies are marching to
+  for (const v of S.units) if (v.kind === 'army' && v.moving && v.final !== undefined && hostile(v.owner, N.id) && isNation(v.owner) && rawStrength([v]) >= str * AI_ENGAGE) out.add(v.final);
+  return out;
+}
+// a safe place to gather: the capital if no enemy force that outmatches the whole army stands in it or next to it,
+// otherwise the own province furthest from the enemy's main force that is safe
+function aiRally(N, W) {
+  const total = Math.max(1, W.myTotal), bad = new Set();
+  for (const [p, s] of W.stacks) if (s >= total * AI_ENGAGE) { bad.add(p); for (const q of allNbr[p]) bad.add(q); }
+  if (W.cap >= 0 && !bad.has(W.cap)) return W.cap;
+  const from = W.foeProv >= 0 ? hopsFrom(W.foeProv, allNbr) : null;
+  let best = -1, bd = -1;
+  for (const p of provsOf(N.id)) {
+    if (bad.has(p) || S.occ.has(p)) continue;
+    const d = from && from[p] !== undefined ? from[p] : 0, v = d * 10 + (extrasIn(p).some(e => e.type === 'barracks') ? 5 : 0);
+    if (v > bd) { bd = v; best = p; }
+  }
+  return best >= 0 ? best : W.cap;
+}
+// v100's war plan, now with a safe rally point; armies that would gather where the enemy stands go there instead
+{ const wp = aiWarPlan; aiWarPlan = function (N, enemies) { const W = wp(N, enemies); if (W.rally === undefined) W.rally = aiRally(N, W); return W; }; }
+{ const wg = aiWarGoal; aiWarGoal = function (N, a, enemies) {
+  const W = aiWarPlan(N, enemies), str = rawStrength([a]);
+  // under threat: an enemy force that outmatches this army stands next door (or is marching here): get out of the way
+  const danger = aiDangerFor(N, str);
+  const threatened = danger.has(a.prov) || allNbr[a.prov].some(q => (W.stacks.get(q) || 0) >= str * AI_ENGAGE);
+  if (threatened && a.prov !== W.rally) return W.rally;
+  const g = wg(N, a, enemies);
+  // v100 sends gathering armies to the capital: use the safe rally point when the capital isn't safe
+  if (g === W.cap && W.rally !== W.cap && !((W.stacks.get(W.cap) || 0) && (W.stacks.get(W.cap) || 0) < str * AI_ENGAGE)) return W.rally;
+  return g;
+}; }
+// paths that avoid the provinces where an outmatching enemy force stands or is heading (the destination itself excepted)
+let pathAvoid = null;
+{ const fp = findPathVia; findPathVia = function (u, target, siege) {
+  if (!pathAvoid) return fp(u, target, siege);
+  if (target === u.prov) return [];
+  if (!canEnter(u, target, target)) return null;
+  const prev = new Map([[u.prov, null]]), q = [u.prov];
+  while (q.length) {
+    const a = q.shift(); if (a === target) break;
+    for (const n of pathNbr(u, a, siege)) if (!prev.has(n.q) && (n.q === target || !pathAvoid.has(n.q)) && canEnter(u, n.q, target)) { prev.set(n.q, { a, m: n.m, siege: n.siege }); q.push(n.q); }
+  }
+  if (!prev.has(target)) return null;
+  const hops = []; let c = target;
+  while (c !== u.prov) { const pr = prev.get(c); hops.unshift({ to: c, m: pr.m, siege: pr.siege }); c = pr.a; }
+  return hops;
+}; }
+{ const od = order; order = function (u, target, quiet, pt) {
+  const N = u && u.kind === 'army' ? NATIONS[u.owner] : null;
+  if (!N || !enemiesOf(N.id).length) return od(u, target, quiet, pt);
+  pathAvoid = aiDangerFor(N, rawStrength([u]));
+  try { return od(u, target, quiet, pt); } finally { pathAvoid = null; }
+}; }
+// a soldier who finishes training in a province where the enemy stands waits in the barracks until it is clear
+{ const qs = aiQueueStep; aiQueueStep = function (N, t) {
+  const held = N.queue.filter(q => MILITARY.has(q.kind) && hostilesIn(q.prov, N.id).some(v => v.kind === 'army'));
+  if (!held.length) return qs(N, t);
+  N.queue = N.queue.filter(q => !held.includes(q));
+  try { qs(N, t); } finally { for (const q of held) N.queue.push(q); }
+}; }
+// re-plan threatened armies quickly instead of every 5 seconds
+{ const ao = aiArmyOrders; aiArmyOrders = function (N, P, t) {
+  if (enemiesOf(N.id).length) for (const a of aiArmies(N)) if (a.moving && !a.battle && !a.retreating) { const d = aiDangerFor(N, rawStrength([a])); if (d.has(a.final) || (a.path && a.path.length && d.has(a.prov))) a.aiPlanT = -99; }
+  return ao(N, P, t);
+}; }
+
+window.__v101 = { denRooms, researchSettled, aiRally, aiDangerFor };
+
+// ---------- Sacred Pyre: no button unless the Warlock stands in one of your provinces ----------
+{ const sb = spellButtons; spellButtons = function (c, from) {
+  const out = sb(c, from), i = out.findIndex(b => b.id === 'spell:sacred');
+  if (i < 0 || !(c && (!owned(c.prov) || S.occ.has(c.prov)))) return out;
+  const cells = out.map(b => b.cell); out.splice(i, 1); out.forEach((b, j) => { b.cell = cells[j]; });   // the rest move up into the same cells
+  return out;
+}; }
+{ const mk = magicCmdKey; magicCmdKey = function () { const c = selCaster(); return mk() + (c ? '|p' + c.prov + (owned(c.prov) && !S.occ.has(c.prov) ? 'o' : '') : ''); }; }
+
 // ================= Save / Continue (v89) =================
 // One save slot in this browser (localStorage), written by Save in Settings and by an autosave every 5 minutes of play.
 // Continue on the main menu loads it. Export / Import move a save as a file (to another computer, or to send with a bug report).
 // The map itself isn't stored: it is rebuilt from its seed, then everything that happened since is laid back on top.
-const GAME_VERSION = 'v96', SAVE_FORMAT = 1, SAVE_KEY = 'realm-save', AUTOSAVE_EVERY = 300;
+const GAME_VERSION = 'v101', SAVE_FORMAT = 1, SAVE_KEY = 'realm-save', AUTOSAVE_EVERY = 300;
 // every soldier design ever made (yours and the computer nations'), so troops of older designs still work after loading
 const ALL_DESIGNS = new Map();
 const _registerDesign = registerDesign;
