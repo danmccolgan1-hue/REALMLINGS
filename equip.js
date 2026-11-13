@@ -11,7 +11,7 @@ const WEAPONS = {
   shortsword:  { name: 'Short Sword',    fam: 'sword', tier: 1, atk: 6,  twoH: false, cost: {},                    tech: null },
   sword:       { name: 'Bastard Sword',  fam: 'sword', tier: 2, atk: 10,  twoH: false, cost: { gold: 25 },           tech: 'w-bastard' },
   longsword:   { name: 'Long Sword',     fam: 'sword', tier: 3, atk: 14, twoH: false, cost: { gold: 50 },          tech: 'w-longsword' },
-  greatsword:  { name: 'Great Sword',    fam: 'sword', tier: 4, atk: 20, twoH: true,  cost: { gold: 120 },          tech: 'w-greatsword' },
+  greatsword:  { name: 'Great Sword',    fam: 'sword', tier: 4, atk: 30, twoH: true,  cost: { gold: 120 },          tech: 'w-greatsword' },
   club:        { name: 'Club',           fam: 'blunt', tier: 1, atk: 5,  twoH: true,  cost: { wood: 10 },           tech: null },
   mace:        { name: 'Mace',           fam: 'blunt', tier: 2, atk: 8,  twoH: true,  cost: { gold: 35 },           tech: 'w-mace' },
   morningstar: { name: 'Morning Star',   fam: 'blunt', tier: 3, atk: 11,  twoH: true,  cost: { gold: 70 },          tech: 'w-morningstar' },
@@ -49,7 +49,7 @@ const TWO_BURST = 2.5;
 const FAMILY = {
   pole:  { name: 'Polearms', note: '+50% damage against cavalry', order: ['spear', 'pike', 'polearm', 'halberd'] },
   sword: { name: 'Swords',   note: 'Parry: take 10% less damage', order: ['shortsword', 'sword', 'longsword', 'greatsword'] },
-  blunt: { name: 'Blunt',    note: 'Crushing: ignores half of enemy armor', order: ['club', 'mace', 'morningstar', 'warhammer'] },
+  blunt: { name: 'Blunt',    note: 'Crushing: ignores half of enemy armor, and deals 150% damage to soldiers in plate', order: ['club', 'mace', 'morningstar', 'warhammer'] },
   axe:   { name: 'Axes',     note: 'Critical strike: each blow has a 10% chance to do double damage', order: ['handaxe', 'beardedaxe', 'battleaxe', 'waraxe'], race: 'swamp' }
 };
 FAMILY.sword.race = 'realm';
@@ -62,8 +62,7 @@ const famsFor = race => Object.keys(FAMILY).filter(f => raceIs(FAMILY[f].race, r
 const SHIELD_DEFS = {
   round: { name: 'Round Shield', armor: 3,  speed: 1,    cost: { gold: 10, wood: 10 },  tech: 's-round' },
   kite:  { name: 'Kite Shield',  armor: 6,  speed: 1,    cost: { gold: 20, wood: 10 },  tech: 's-kite' },
-  tower: { name: 'Tower Shield', armor: 10, speed: 0.92, cost: { gold: 35, wood: 15 }, tech: 's-tower' },
-  aegis: { name: 'Aegis',        armor: 14, speed: 1,    cost: { gold: 60 },           tech: 's-aegis' }
+  tower: { name: 'Tower Shield', armor: 10, speed: 0.92, cost: { gold: 35, wood: 15 }, tech: 's-tower' }
 };
 const ARMOR_TYPES = {
   leather: { name: 'Leather', speed: 1.1,  note: '+10% speed', armor: [1, 3, 5, 7],   gold: [0, 10, 20, 35], race: 'realm' },
@@ -104,6 +103,8 @@ const UNIT_BASE = {
   inf: { name: 'Infantry', hp: 30, speed: 0.75, cost: { gold: 80 },  upkeep: { food: 2 } },
   cav: { name: 'Cavalry',  hp: 40, speed: 1,    cost: { gold: 300 }, upkeep: { food: 4 } }
 };
+const ARMOR_HP = [0, 0, 10, 20, 30];
+const PLATE_TYPES = new Set(['plate', 'dragon', 'ornate']);   // v98: blunt weapons deal 150% damage to soldiers in these   // v98: armor of Tier I / II / III / IV also adds 0 / 10 / 20 / 30 health
 const ARMOR_K = 12;   // damage reduction = armor / (armor + 12)
 const equipOk = (item) => !item.tech || hasTech(item.tech);
 const addCost = (a, b) => { const o = { ...a }; for (const k in b) o[k] = (o[k] || 0) + b[k]; return o; };
@@ -125,7 +126,7 @@ function designStats(d) {
   const upkeep = { food: Math.max(0, B.upkeep.food + (H ? H.upFood : 0)) };
   const speed = +((H ? H.speed : B.speed) * A.speed * (Sh ? Sh.speed : 1)).toFixed(2);
   const red = armor / (armor + ARMOR_K) * (W.fam === 'sword' ? 1 : 1) ;
-  const st = { cav: d.type === 'cav', ogre: sw && d.type === 'cav', race: d.race || 'realm', rough: !!(H && H.rough), fam: W.fam, atk: +(W.atk + (Off ? Off.atk * 0.5 : 0) + (H ? H.atk : 0)).toFixed(1), hp: B.hp + (H ? H.hp : 0), armor, shieldArmor: Sh ? Sh.armor : 0, red, parry: W.fam === 'sword' || W.fam === 'thrust' ? 0.1 : 0, crit: W.fam === 'axe' ? 0.1 : 0, speed, cost, upkeep };
+  const st = { cav: d.type === 'cav', ogre: sw && d.type === 'cav', race: d.race || 'realm', rough: !!(H && H.rough), plate: PLATE_TYPES.has(A.type), fam: W.fam, atk: +(W.atk + (Off ? Off.atk * 0.5 : 0) + (H ? H.atk : 0)).toFixed(1), hp: B.hp + (H ? H.hp : 0) + ARMOR_HP[A.level], armor, shieldArmor: Sh ? Sh.armor : 0, red, parry: W.fam === 'sword' || W.fam === 'thrust' ? 0.1 : 0, crit: W.fam === 'axe' ? 0.1 : 0, speed, cost, upkeep };
   st.blurb = `${W.name}${Off ? ' and ' + Off.name + ' (off hand, half damage)' : ''}${Sh ? ' and ' + Sh.name : ''}, ${A.name} armor${H ? ', ' + H.name : ''}. ${FAMILY[W.fam].note}.${H && H.rough ? ' No ' + (sw ? 'Ogre' : 'cavalry') + ' penalty in forest or swamp.' : ''}`;
   if (d.race === 'wood' && d.two) { st.two = true; st.blurb += ' Two-handed grip: heavy blows every other round (125% damage over time).'; }
   return st;
@@ -137,7 +138,7 @@ function champStats(d) {
   const armor = A.armor + CHAMP.armor;
   let cost = addCost(CHAMP.cost, W.cost); cost = addCost(cost, A.cost);
   const speed = +(CHAMP.speed * A.speed * W.spd).toFixed(2), red = armor / (armor + ARMOR_K);
-  const st = { cav: true, champ: true, ogre: false, race: 'wood', rough: true, fam: W.fam, atk: W.atk, hp: CHAMP.hp + W.hp, armor, shieldArmor: 0, red, parry: W.fam === 'thrust' || W.fam === 'sword' ? 0.1 : 0, crit: W.fam === 'axe' ? 0.1 : 0, speed, cost, upkeep: { ...CHAMP.upkeep }, two: !!d.two };
+  const st = { cav: true, champ: true, ogre: false, race: 'wood', rough: true, plate: true, fam: W.fam, atk: W.atk, hp: CHAMP.hp + W.hp + ARMOR_HP[A.level], armor, shieldArmor: 0, red, parry: W.fam === 'thrust' || W.fam === 'sword' ? 0.1 : 0, crit: W.fam === 'axe' ? 0.1 : 0, speed, cost, upkeep: { ...CHAMP.upkeep }, two: !!d.two };
   st.blurb = `${W.name}, ${A.name} armor. ${FAMILY[W.fam].note}.${d.two ? ' Two-handed swings: heavy blows every other round (125% damage over time).' : ''}`;
   return st;
 }
@@ -191,9 +192,9 @@ const STATS0 = { atk: 5, hp: 30, armor: 0, shieldArmor: 0, red: 0, parry: 0, cri
 // a soldier's stats; your own soldiers also get the repeatable Military and Magic research bonuses (see boostStats)
 const statsOf = (k, o) => { const st = DSTATS[k] || STATS0; return artStats(k, o === ME ? boostStats(k, st) : st, o); };   // v95: artifacts (artStats in v95.js)
 function sideMix(armies) {
-  let n = 0, cav = 0, red = 0, parry = 0, blunt = 0, atk = 0;
-  for (const a of armies) for (const k in a.troops) { const c = a.troops[k], s = statsOf(k, a.owner); n += c; if (s.cav && !s.champ) cav += c; red += c * s.red; parry += c * s.parry; if (s.fam === 'blunt') blunt += c * s.atk; atk += c * s.atk; }
-  return n ? { n, cavFrac: cav / n, red: red / n, parry: parry / n, pierce: atk ? blunt / atk : 0 } : { n: 0, cavFrac: 0, red: 0, parry: 0, pierce: 0 };
+  let n = 0, cav = 0, red = 0, parry = 0, blunt = 0, atk = 0, plate = 0;
+  for (const a of armies) for (const k in a.troops) { const c = a.troops[k], s = statsOf(k, a.owner); n += c; if (s.plate) plate += c; if (s.cav && !s.champ) cav += c; red += c * s.red; parry += c * s.parry; if (s.fam === 'blunt') blunt += c * s.atk; atk += c * s.atk; }
+  return n ? { n, cavFrac: cav / n, plateFrac: plate / n, red: red / n, parry: parry / n, pierce: atk ? blunt / atk : 0 } : { n: 0, cavFrac: 0, plateFrac: 0, red: 0, parry: 0, pierce: 0 };
 }
 
 // ---------- the Armory panel ----------

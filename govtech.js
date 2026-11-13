@@ -43,7 +43,7 @@ function givesOf(type) {
 
 // ---------- fort limit ----------
 const fortLimit = () => FORT_LIMIT[['forts', 'forts2', 'forts3'].filter(hasTech).length] + repLv('rep-forts');
-const fortCount = () => [...S.buildings].filter(([, b]) => b.owner === ME && b.stage === 1).length + S.upgrades.size;
+const fortCount = () => [...S.buildings].filter(([, b]) => b.owner === ME && b.stage === 1).length;   // v98: a fort counts only once its upgrade has finished
 
 // ---------- roads and walls ----------
 // both are built by a Mason standing in one of the two provinces, across an open border
@@ -301,7 +301,7 @@ const OUTPOSTS_PER_FORT = 4, OUTPOST_UPKEEP = { wood: 1 };
 const outpostCount = () => [...S.buildings].filter(([p, b]) => b.owner === ME && b.stage === 0 && !S.upgrades.has(p)).length;
 // v96: each fort allows 4 outposts, +2 with Efficient Administration, +1 per Expand Administration (Fort Charters III no longer lifts the limit)
 const perFort = (o = ME) => OUTPOSTS_PER_FORT + (techOf(o, 'effadmin') ? 2 : 0) + repOf(o, 'rep-admin');
-const fortsHeldBy = (o = ME) => [...S.buildings.values()].filter(b => b.owner === o && b.stage >= 1).length + (o === ME ? S.upgrades.size : NATIONS[o] ? NATIONS[o].ups.size : 0);
+const fortsHeldBy = (o = ME) => [...S.buildings.values()].filter(b => b.owner === o && b.stage >= 1).length;   // v98: upgrades still under way don't count yet
 const outpostLimit = () => perFort(ME) * fortsHeldBy(ME);
 // every province you may hold: each fort (the capital counts) and the outposts it allows
 const provLimit = (o = ME) => fortsHeldBy(o) * (1 + perFort(o));

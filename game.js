@@ -408,10 +408,13 @@ function newArmy(prov, troops, near) {
 }
 function splitArmy(a) {
   if (troopCount(a) < 2) return toast('An army needs at least two soldiers to split.', true);
-  // deal soldiers out one at a time so each half gets a fair mix
-  const list = []; for (const k of Object.keys(a.troops).sort()) for (let i = 0; i < a.troops[k]; i++) list.push(k);
-  const keep = {}, give = {};
-  list.forEach((k, i) => { const side = i % 2 ? give : keep; side[k] = (side[k] || 0) + 1; });
+  // v99: every kind is halved; the odd ones left over go to this army first, then to the new one
+  // (3 A, 3 B, 3 C -> 2 A, 2 B, 1 C here and 1 A, 1 B, 2 C in the new army)
+  const keep = {}, give = {}, ks = Object.keys(a.troops).filter(k => a.troops[k] > 0), odd = ks.filter(k => a.troops[k] % 2).length;
+  let oddSeen = 0;
+  for (const k of ks) { const n = a.troops[k], h = Math.floor(n / 2); keep[k] = h; give[k] = h; if (n % 2) (oddSeen++ < Math.ceil(odd / 2) ? keep : give)[k]++; }
+  for (const side of [keep, give]) for (const k in side) if (!side[k]) delete side[k];
+  if (!Object.keys(give).length) { const k = Object.keys(keep).find(k => keep[k] > 1) || Object.keys(keep)[0]; keep[k]--; give[k] = 1; if (!keep[k]) delete keep[k]; }
   a.troops = keep;
   const b = newArmy(a.prov, give, a);
   S.selected = [a, b]; computeIncome();
@@ -431,7 +434,7 @@ function upgradeWhy(p) {
   const b = S.buildings.get(p); if (!b || b.owner !== ME) return 'Not yours';
   if (b.stage !== 0) return b.stage === 1 ? 'Already a Fort' : 'Capitals can’t be upgraded yet';
   if (S.upgrades.has(p)) return 'Already upgrading';
-  if (fortCount() >= fortLimit()) return `Fort limit reached (${fortCount()}/${fortLimit()})` + (hasTech('forts') ? '' : ' · research Fort Charters for 3');
+  if (fortCount() + S.upgrades.size >= fortLimit()) return `Fort limit reached (${fortCount()}/${fortLimit()}${S.upgrades.size ? ', ' + S.upgrades.size + ' being built' : ''})` + (hasTech('forts') ? '' : ' · research Fort Charters for 3');
   return lackText(FORT_UPGRADE.cost);
 }
 function startUpgrade(p) {
@@ -491,10 +494,10 @@ const TERRAIN_MOD = {
 };
 const hostilesIn = (p, owner) => S.units.filter(v => v.kind === 'army' && hostile(v.owner, owner) && v.prov === p && !v.retreating && troopCount(v) > 0);
 function sideStrength(armies, prov, defender, foe) {
-  const T = TERRAIN_MOD[world.provinces[prov].terrain], cavFrac = foe ? foe.cavFrac : 0;
+  const T = TERRAIN_MOD[world.provinces[prov].terrain], cavFrac = foe ? foe.cavFrac : 0, plateFrac = foe ? foe.plateFrac || 0 : 0;
   // Swamplings in a swamp: +20% damage, and their Ogres don't suffer the cavalry penalty; Fiery Weapons can make a round's blows land twice as hard
   const swampy = world.provinces[prov].terrain === 'swamp';
-  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; if (crit > 1) { a.fieryHit = S.t; a.fieryHits = (a.fieryHits || 0) + 1; } for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(rowDeal(a, k), st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (1 + (a.curse || 0)) * (st.two ? twoMul(a) : 1); } }   // (v93 two-handing: wood.js twoMul)
+  let s = 0; for (const a of armies) { const home = swampy && isSw(a.owner), crit = a.fiery && Math.random() < a.fiery ? 2 : 1; if (crit > 1) { a.fieryHit = S.t; a.fieryHits = (a.fieryHits || 0) + 1; } for (const k in a.troops) { const st = statsOf(k, a.owner); s += critBlows(rowDeal(a, k), st.crit) * st.atk * T.mod(st.cav && !st.rough && !home, defender) * (home ? 1.2 : 1) * crit * (st.fam === 'pole' ? 1 + 0.5 * cavFrac : 1) * (st.fam === 'blunt' ? 1 + 0.5 * plateFrac : 1) * (1 + (a.curse || 0)) * (st.two ? twoMul(a) : 1); } }   // (v93 two-handing: wood.js twoMul)
   return s;
 }
 const rawStrength = armies => armies.reduce((n, a) => n + Object.entries(a.troops).reduce((m, [k, c]) => { const st = statsOf(k, a.owner); return m + c * st.atk * (hpOf(a, k) / 30) / (1 - st.red); }, 0), 0);
@@ -545,25 +548,27 @@ function applyDamage(b, armies, dmg, t, pierce = 0) {
   const owner = armies[0].owner;
   S.fx.push({ kind: 'num', prov: b.prov, owner, n: Math.round(dmg), t0: t });
   for (const a of armies) {
-    // v96 rows: an army of 6 or more fights in a Front Row and a Back Row (v96.js). The front takes the blows first;
-    // once it has fallen the back row takes them, at half strength
-    const share = dmg * troopCount(a) / total / (1 + (a.skin || 0)), rowed = rowsOn(a);
-    let halved = rowed && rowFront(a) <= 0;
+    // v97 rows: an army of 6 or more fights in a Front Row and a Back Row (layout in v97.js). Blows land on the front row;
+    // every front-row soldier who falls is replaced by a random back-row soldier (never the Mage), who then takes full
+    // damage. Only when nobody is left in front does the back row take blows, at half strength
+    const share = dmg * troopCount(a) / total / (1 + (a.skin || 0));
+    let lay = rowSync(a), halved = !!lay && rowSum(lay.f) <= 0;
     a.wounds = (a.wounds || 0) + (halved ? share * BACK_TAKE : share);
     // spill damage over: when the front soldier's health runs out he falls and the rest carries on
     for (;;) {
       const kinds = Object.keys(a.troops).filter(k => a.troops[k] > 0); if (!kinds.length) break;
-      const nowRowed = rowed && rowsOn(a), front = nowRowed && rowFront(a) > 0;
-      if (nowRowed && !front && !halved) { a.wounds *= BACK_TAKE; halved = true; }   // what spills past the front row hits the back row at half strength
-      const weight = kk => front ? a.troops[kk] - rowBack(a, kk) : a.troops[kk];
+      lay = rowSync(a);
+      const front = !!lay && rowSum(lay.f) > 0;
+      if (lay && !front && !halved) { a.wounds *= BACK_TAKE; halved = true; }   // what spills past the front row hits the back row at half strength
+      const pool = !lay ? a.troops : front ? lay.f : lay.b, weight = kk => pool[kk] || 0;
       let r = Math.random() * kinds.reduce((n, kk) => n + weight(kk), 0), k = kinds.find(kk => weight(kk) > 0) || kinds[0];
       for (const kk of kinds) { r -= weight(kk); if (r <= 0 && weight(kk) > 0) { k = kk; break; } }
       if (a.wounds < hpOf(a, k)) break;
       a.wounds -= hpOf(a, k);
-      const fromBack = nowRowed && !front;
       // Risen Dead: every Nth soldier who falls gets straight back up
-      if (a.risen && k !== MAGE && isCaster(a) && ++a.risenN >= a.risen) { a.risenN = 0; a.riseFx = t; a.risenTotal = (a.risenTotal || 0) + 1; if (a.owner === ME) sfx('mg_risen', { prov: b.prov }); continue; }
-      if (fromBack && a.back && a.back[k] > 0 && !(k === MAGE && !a.magesFront)) a.back[k]--;   // v96: a back-row soldier fell
+      if (risenRise(a, k, b, t)) continue;   // v98: Risen Dead raises the next few to fall (v98.js)
+      ghoulFall(a, k);
+      if (lay) rowFall(a, lay, k, front);   // v97: keep the rows in step (and step a back-row soldier forward)
       a.troops[k]--; if (!a.troops[k]) delete a.troops[k];
       if (a.monster) monsterLoot(a, k, b);   // SMA03: wood or gold for every monster killed
       if (a.fallen) a.fallen[k] = (a.fallen[k] || 0) + 1;
@@ -945,7 +950,7 @@ function update(realT) {
     if (u.build) {
       if (u.moving || u.prov !== u.build.prov) cancelBuild(u);
       else if (t - u.build.t0 >= (u.build.dur || BUILD_TIME)) {
-        if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall') finishLink(u.build);
+        if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall' || u.build.type === 'bridge') finishLink(u.build);
         else if (u.build.type && u.build.type !== 'outpost') {
           if (nationOf(u.prov) === u.owner) {
             const list = S.extras.get(u.prov) || []; list.push({ type: u.build.type, slot: u.build.slot, born: t }); S.extras.set(u.prov, list);
@@ -1022,7 +1027,7 @@ function rollYields() {
     return { ...y, bonus, deposit };
   });
   // how many of a province's borders are made of trees (one Lumber Mill per tree border)
-  treeBorder = world.provinces.map((_, i) => world.edges.filter(e => (e.a === i || e.b === i) && !e.open && e.style === 'trees').length);
+  treeBorder = world.provinces.map((_, i) => world.edges.filter(e => (e.a === i || e.b === i) && !e.open && (e.style === 'trees' || e.style === 'palms')).length);   // v98: the Oasis' palm ring counts as a border of trees for Lumber Mills
 }
 let treeBorder = [];
 // how many of a building type a province can hold: 4 farms, one Lumber Mill per tree border, one of everything else
@@ -1316,7 +1321,7 @@ function drawGame(g, t) {
   for (const [p, list] of S.extras) if (S.visible.has(p) && onScreen(p)) for (const e of list) { const c = G.provs[p].ic, [ox, oy] = bslotOf(p, e.slot); items.push({ y: c[1] + oy, f: () => { drawExtra(g, c[0] + ox, c[1] + oy, e.type, t, 1, t - e.born, e.level, owned(p), raceOf(nationOf(p))); const xu = S.xup.get(p + '@' + e.slot); if (xu) drawXupBar(g, c[0] + ox, c[1] + oy, xu, e); } }); }
   for (const u of S.units) if (u.build && S.visible.has(u.build.prov)) {
     const c = G.provs[u.build.prov].ic;
-    if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall') continue;
+    if (u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'rewall' || u.build.type === 'bridge') continue;
     if (u.build.type === 'outpost') items.push({ y: c[1], f: () => drawSite(g, u.build, t, raceOf(u.owner)) });
     else items.push({ y: c[1] + u.build.oy, f: () => drawExtraSite(g, u.build, t, raceOf(u.owner)) });
   }
@@ -2210,7 +2215,7 @@ function unitStatus(u) {
   if (u.stealth && u.moving) return 'sneaking';
   if (u.scouting !== null) return 'scouting';
   if (u.survey) return 'surveying';
-  if (u.build) return 'building ' + (u.build.type === 'outpost' ? 'an outpost' : u.build.type === 'rewall' ? 'a wall back up' : u.build.type === 'road' || u.build.type === 'wall' ? 'a ' + u.build.type : BUILD_DEFS[u.build.type].name);
+  if (u.build) return 'building ' + (u.build.type === 'outpost' ? 'an outpost' : u.build.type === 'rewall' ? 'a wall back up' : u.build.type === 'road' || u.build.type === 'wall' || u.build.type === 'bridge' ? 'a ' + u.build.type : BUILD_DEFS[u.build.type].name);
   if (u.pending) return 'going to build';
   if (u.surveyQueue && surveysIn(u)) return `to survey (${surveysIn(u)})`;
   if (u.surveyQueue && movesIn(u)) return `walking (${movesIn(u)} queued)`;

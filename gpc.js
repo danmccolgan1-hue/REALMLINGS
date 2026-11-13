@@ -426,14 +426,13 @@ function drawQuakes(g, t) {
 // AI nations at war cast them too: Shockwave at an enemy wall next to a Mage army standing still; Earthquake in land they occupy
 function aiQuake(N, t) {
   if ((N.quakeAt || 0) > t || !enemiesOf(N.id).length) return;
-  if (S.units.some(v => v.owner === N.id && v.quake)) return;
   for (const a of S.units) {
-    if (a.owner !== N.id || a.kind !== 'army' || !(a.troops[MAGE] > 0) || a.moving || a.battle || a.exiting || a.cast) continue;
-    if (hasQuake(N.id) && !quakeWhy(a) && extrasIn(a.prov).length) { if (startQuake(a)) { N.quakeAt = t + 120; return; } }
+    if (a.owner !== N.id || a.kind !== 'army' || !(a.troops[MAGE] > 0) || a.moving || a.battle || a.exiting || a.cast || a.quake) continue;
+    if (hasQuake(N.id) && !quakeWhy(a) && extrasIn(a.prov).length) { if (startQuake(a)) { N.quakeAt = t + 10; return; } }
     const q = allNbr[a.prov].find(q => !shockWhy(a, q));
-    if (q !== undefined && startShock(a, q)) { N.quakeAt = t + 120; return; }
+    if (q !== undefined && startShock(a, q)) { N.quakeAt = t + 10; return; }   // v100: Shockwaves and Fireballs freely while at war
   }
-  N.quakeAt = t + 20;
+  N.quakeAt = t + 3;
 }
 
 // ---------- GPC07: set pieces are found by surveying, and stand in the province as a building-sized landmark ----------

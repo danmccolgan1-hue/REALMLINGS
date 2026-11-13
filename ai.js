@@ -282,7 +282,7 @@ function aiRedesign(N) {
   let armor = N.armorLine + '1';
   for (let lv = 4; lv >= 1; lv--) { const id = N.armorLine + lv, A = ARMORS[id]; if (!A.tech || aiHas(N, A.tech)) { armor = id; break; } }
   if (!ARMORS[armor] || (ARMORS[armor].tech && !aiHas(N, ARMORS[armor].tech))) armor = 'leather1';
-  const shield = !WEAPONS[weapon].twoH ? ['aegis', 'tower', 'kite', 'round'].find(s => aiHas(N, SHIELD_DEFS[s].tech)) || null : null;
+  const shield = !WEAPONS[weapon].twoH ? ['tower', 'kite', 'round'].find(s => aiHas(N, SHIELD_DEFS[s].tech)) || null : null;
   const cavW = FAMILY.pole.order.filter(w => !WEAPONS[w].tech || aiHas(N, WEAPONS[w].tech)).pop();
   const horse = aiHas(N, 'horse-training') ? 'friesian' : aiHas(N, 'horse-breeding') ? 'mongolian' : 'riding';
   const sig = [weapon, armor, shield, cavW, horse].join('|'); if (sig === N.designSig) return; N.designSig = sig; N.dv++;
@@ -355,11 +355,11 @@ function stepAI(t) {
 // training: paid up front; 12 s for Wayfinders and Masons, 18 s for soldiers, 30 s for Mages
 function aiQueueStep(N, t) {
   for (const q of N.queue.slice()) {
-    if (t - q.t0 < trainTime(q.kind)) continue;
+    if (t - q.t0 < aiTrainTime(N, q.kind)) continue;   // v100: the war surge (v100.js)
     N.queue = N.queue.filter(x => x !== q);
     if (!S.buildings.has(q.prov) || nationOf(q.prov) !== N.id) continue;
     if (q.kind === WAYFINDER || q.kind === MASON) { const u = mkUnit(S.nextId++, q.kind, '', q.prov, 0); u.owner = N.id; u.slot = freeSlot(q.prov, u); [u.x, u.y] = slotPos(q.prov, u.slot); u.born = t; S.units.push(u); continue; }
-    let a = S.units.find(v => v.kind === 'army' && v.owner === N.id && v.prov === q.prov && !v.moving && !v.battle && !v.exiting);
+    let a = S.units.find(v => v.kind === 'army' && v.owner === N.id && v.prov === q.prov && !v.moving && !v.battle && !v.exiting && !(q.kind === MAGE && v.troops[MAGE] > 0));   // v97: one Mage per army
     if (a) { a.troops[q.kind] = (a.troops[q.kind] || 0) + 1; a.grew = t; } else aiNewArmy(N, q.prov, { [q.kind]: 1 });
   }
 }
@@ -390,8 +390,8 @@ function aiTrain(N, P) {
   for (const p of barracks) {
     if (aiBusyAt(N, p)) continue;
     const stable = extrasIn(p).some(e => e.type === 'stable');
-    const kind = P.useCav && stable && Math.random() < 0.3 ? N.design.cav : N.design.inf, cost = UNIT_DEFS[kind].cost;
-    if (!canPay(st, cost) || st.gold - (cost.gold || 0) < (enemiesOf(N.id).length ? 0 : 40)) { if (kind !== 'd-sword' && canPay(st, UNIT_DEFS['d-sword'].cost) && enemiesOf(N.id).length) { pay(st, UNIT_DEFS['d-sword'].cost); N.queue.push({ kind: 'd-sword', prov: p, t0: S.t }); } continue; }
+    const kind = aiPickKind(N, P, stable), cost = aiUnitCost(N, kind);   // v100: unit counters after a lost battle (v100.js)   // v100: half price in the Difficult surge
+    if (!canPay(st, cost) || st.gold - (cost.gold || 0) < (enemiesOf(N.id).length ? 0 : 40)) { if (kind !== 'd-sword' && canPay(st, aiUnitCost(N, 'd-sword')) && enemiesOf(N.id).length) { pay(st, aiUnitCost(N, 'd-sword')); N.queue.push({ kind: 'd-sword', prov: p, t0: S.t }); } continue; }
     pay(st, cost); N.queue.push({ kind, prov: p, t0: S.t });
   }
 }
@@ -607,7 +607,8 @@ function aiArmyOrders(N, P, t) {
   const armies = aiArmies(N), enemies = enemiesOf(N.id), cap = capitalOf(N.id) >= 0 ? capitalOf(N.id) : provsOf(N.id)[0];
   // armies standing in the same province join up
   const byProv = new Map();
-  for (const a of armies) if (!a.moving && !a.battle && !a.retreating && !a.exiting) { const o = byProv.get(a.prov); if (o) { for (const k in a.troops) o.troops[k] = (o.troops[k] || 0) + a.troops[k]; o.grew = t; S.units = S.units.filter(v => v !== a); } else byProv.set(a.prov, a); }
+  for (const a of armies) if (!a.moving && !a.battle && !a.retreating && !a.exiting) { const o = byProv.get(a.prov); if (o && (o.troops[MAGE] > 0) && (a.troops[MAGE] > 0)) continue; if (o) {   // v97: two Mages never share an army
+ for (const k in a.troops) o.troops[k] = (o.troops[k] || 0) + a.troops[k]; o.grew = t; S.units = S.units.filter(v => v !== a); } else byProv.set(a.prov, a); }
   const live = aiArmies(N);
   for (const a of live) {
     if (a.battle) {
