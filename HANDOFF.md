@@ -528,3 +528,8 @@ New code in `v101.js` (after `v100.js`); the Sacred Pyre is edited in place in `
   - Freshly trained soldiers wait in the barracks while an enemy army stands in that province (`aiQueueStep` wrapper) instead of spawning into the fight.
 - Diplomacy panel war breakdown: the old "time tick" line now reads "Every 10 s: +1 per occupied fort, +5 for an occupied capital".
 - Later v101 tweaks: the white-peace war timer is 20 minutes (`WAR_TIMER = 1200`, v96.js; the separate stall rule, white peace when neither side passes 10 warscore in 5 minutes, is unchanged). The Sacred Pyre is no longer aimed: the Warlock casts it in the province he stands in, and its button only appears while that province is yours and not occupied (`spellButtons` wrapper in v101.js).
+
+## v101: the Basic Tutorial (merged)
+
+`tutorial.js` (written in a separate conversation) is loaded last, after `save.js` (it wraps `saveGame`, `menuScreen` and `update`). Main menu → Tutorial → Basic Tutorial (Combat Tutorial is a disabled "Coming later" button). It builds a hand-made five-province island (`tutorialWorld`, from the user's diagram), plays narrated triggers 1–20 with objectives on the left, an Explain Interface overlay, and ends when the Swamp Bandits are beaten. Saving is off in the tutorial.
+Merge note: the tutorial's original menu markup and styles were overwritten when this v101 folder was replaced; `game_shell.html` now carries a rebuilt `#mTut` button, `#mTutScreen` (`#mTutBasic`, `#mTutBack`, `#mTutCombat`) and the `.tut-*` styles (glow, objectives panel, narration box, end dialog, explain overlay and callout arrows).

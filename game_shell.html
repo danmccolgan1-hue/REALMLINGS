@@ -767,6 +767,44 @@ body.in-menu .gtime { display: none; }
 .trav-btns button:disabled { opacity: 0.5; cursor: not-allowed; }
 body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { display: none !important; }
 .insp-win, .country-win, .rename-pop { zoom: var(--ui, 1); }
+
+/* the tutorial (tutorial.js) */
+#mTutScreen .menu-start small, #mTutScreen .menu-start small { display: block; font: 700 12px var(--font-ui); opacity: 0.8; }
+#mTutCombat[disabled] { opacity: 0.55; cursor: default; }
+.tut-glow { position: relative; z-index: 30; animation: tutGlow 1.2s ease-in-out infinite; }
+@keyframes tutGlow { 0%, 100% { box-shadow: 0 0 0 3px var(--sun), 0 0 14px 6px rgba(255, 201, 60, 0.75); } 50% { box-shadow: 0 0 0 3px var(--sun), 0 0 26px 12px rgba(255, 201, 60, 0.95); } }
+.tut-obj { margin-top: 8px; padding: 8px 10px 9px; max-width: 260px; pointer-events: auto; }
+.tut-obj h3 { margin: 0 0 4px; font: 800 13px var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
+.tut-obj ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.tut-obj li { display: flex; align-items: center; gap: 6px; font: 700 13px var(--font-ui); }
+.tut-obj li::before { content: ''; flex: none; width: 12px; height: 12px; border: 2.5px solid var(--ink); border-radius: 4px; background: var(--chip-hi); }
+.tut-obj li span { flex: 1; }
+.tut-obj li.done { color: var(--muted); }
+.tut-obj li.done span { text-decoration: line-through; }
+.tut-obj li.done::before { background: #6bbf59; }
+.tut-play { flex: none; width: 24px; height: 22px; padding: 0; font: 800 11px/1 var(--font-ui); border: 2px solid var(--ink); border-radius: 6px; background: var(--chip-hi); color: var(--chip-text); cursor: pointer; }
+.tut-play:hover { background: var(--sun); }
+.tut-explain-btn { margin-top: 8px; padding: 6px 12px; font: 800 13px var(--font-ui); cursor: pointer; pointer-events: auto; }
+.tut-explain-btn[aria-pressed="true"] { background: var(--sun); }
+.tut-say { position: fixed; z-index: 40; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 200px); transform: translateX(-50%); width: min(620px, calc(100vw - 40px)); padding: 10px 14px 10px; }
+.tut-say-h { display: flex; justify-content: space-between; align-items: baseline; font: 800 13px var(--font-ui); text-transform: uppercase; letter-spacing: 0.04em; }
+.tut-say-h span { text-transform: none; letter-spacing: 0; font-weight: 700; color: var(--muted); }
+.tut-say p { margin: 6px 0 8px; font: 600 16px/1.4 var(--font-ui); }
+.tut-say-b { display: flex; justify-content: flex-end; gap: 8px; }
+.tut-skip, .tut-stay { padding: 5px 14px; font: 800 14px var(--font-ui); border: 2.5px solid var(--ink); border-radius: 10px; background: var(--chip-hi); color: var(--chip-text); cursor: pointer; box-shadow: 0 3px 0 var(--ink); }
+.tut-skip:hover:not(:disabled), .tut-stay:hover { background: var(--sun); }
+.tut-skip:disabled { opacity: 0.45; cursor: default; }
+.tut-end { position: fixed; z-index: 45; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 40px)); padding: 16px 20px; text-align: center; }
+.tut-end h2 { margin: 0 0 6px; font-family: var(--font-display); font-weight: 400; font-size: 28px; color: var(--sun); -webkit-text-stroke: 2px var(--ink); paint-order: stroke fill; }
+.tut-end p { margin: 0 0 12px; font: 600 15px/1.4 var(--font-ui); }
+.tut-end-b { display: flex; justify-content: center; gap: 10px; }
+.tut-block { position: fixed; inset: 0; z-index: 35; background: rgba(20, 16, 28, 0.35); cursor: default; }
+.tut-ghost { position: fixed; z-index: 36; left: 12px; bottom: 210px; padding: 18px 16px; max-width: 220px; font: 700 13px var(--font-ui); color: var(--chip-hi); border: 3px dashed var(--chip-hi); border-radius: 14px; background: rgba(29, 26, 34, 0.55); }
+.tut-call { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 37; pointer-events: none; overflow: visible; }
+.tut-call .ta-o, .tut-call .ta-ho { fill: none; stroke: var(--ink); stroke-width: 9; stroke-linecap: round; stroke-linejoin: round; }
+.tut-call .ta-i, .tut-call .ta-hi { fill: none; stroke: var(--sun); stroke-width: 4.5; stroke-linecap: round; stroke-linejoin: round; }
+.tut-ctext { font-family: var(--font-display); fill: var(--sun); stroke: var(--ink); stroke-width: 5px; paint-order: stroke fill; text-anchor: middle; }
+body.tut-explain .tut-explain-btn { position: relative; z-index: 38; }
 </style>
 
 <canvas id="map" aria-label="Realmlings playtest map"></canvas>
@@ -854,6 +892,7 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
     <div class="menu-row"><span class="lbl">Sound effects</span><div class="menu-mus"><button type="button" class="menu-tog" id="mSfx" aria-pressed="true"><span>On</span></button><input type="range" id="mSfxVol" min="0" max="100" value="70" aria-label="Sound effects volume"></div></div>
     <button type="button" class="menu-start menu-cont" id="mCont" hidden>Continue<small id="mContInfo"></small></button>
     <button type="button" class="menu-start" id="mNew">New Game</button>
+    <button type="button" class="menu-start menu-mp" id="mTut">Tutorial</button>
     <button type="button" class="menu-start menu-mp" id="mMulti">Multiplayer</button>
     <button type="button" class="menu-how" id="mImport" title="Load a game exported from Settings (a .realmsave file)">Load a save file</button>
     <button type="button" class="menu-how" id="mHow" aria-expanded="false" aria-controls="mHowText">How to play</button>
@@ -865,6 +904,11 @@ body.in-menu .insp-win, body.in-menu .country-win, body.in-menu .rename-pop { di
       <li>Pick your race: Realmlings, or Swamplings, who start in a swamp, are faster and fiercer in swamps, train Berserkers and Ogres, run Thug Dens and learn Pyromancy.</li>
       <li>The gear in the top-left corner opens Settings, with the full How to Play guide.</li>
     </ul>
+    </div>
+    <div class="menu-screen" id="mTutScreen" hidden>
+    <div class="menu-sub"><button type="button" class="menu-back" id="mTutBack" aria-label="Back to the main menu">← Back</button><h2>Tutorial</h2><span></span></div>
+    <button type="button" class="menu-start" id="mTutBasic">Basic Tutorial<small>Explore, expand and train your first army</small></button>
+    <button type="button" class="menu-start menu-mp" id="mTutCombat" disabled>Combat Tutorial<small>Coming later</small></button>
     </div>
     <div class="menu-screen" id="mMultiScreen" hidden>
     <div class="menu-sub"><button type="button" class="menu-back" id="mMultiBack" aria-label="Back to the main menu">← Back</button><h2>Multiplayer</h2><span></span></div>
