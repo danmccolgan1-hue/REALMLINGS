@@ -766,7 +766,11 @@ function humanoid(g, s, R, t, seated) {
       add(ds > 0 ? ds + 1.5 : ds - 0.4, () => {
         const fac = Math.cos(0.5 + R.th), w = Math.max(0.3, Math.abs(fac));
         g.save(); g.translate(R.X(sp[0], sp[1]), sp[2] + ds * TILT * 0.4); g.scale(w, 1);
-        item(g, name === 'buckler' ? 'buckler' : (fac < -0.08 ? 'heater-back' : 'heater-knight'), 0, 0, 0, t, false);
+        // v99: the shield of the design (Round, Kite, Tower); seen from behind it is darker, with its straps
+        const kind = name === 'buckler' ? 'buckler' : name === 'heater-knight' || !name ? null : name;
+        if (!kind) item(g, fac < -0.08 ? 'heater-back' : 'heater-knight', 0, 0, 0, t, false);
+        else if (fac < -0.08 && kind !== 'buckler') { g.save(); try { g.filter = 'brightness(0.62) saturate(0.7)'; } catch (e) {} item(g, kind, 0, 0, 0, t, false); g.restore(); for (const yy of [-6, 8]) { rr(g, -10, yy, 20, 4.5, 2); ink(g, P.leatherD, 1.6); } }
+        else item(g, kind, 0, 0, 0, t, false);
         g.restore();
       });
     }

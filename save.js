@@ -3,7 +3,7 @@
 // One save slot in this browser (localStorage), written by Save in Settings and by an autosave every 5 minutes of play.
 // Continue on the main menu loads it. Export / Import move a save as a file (to another computer, or to send with a bug report).
 // The map itself isn't stored: it is rebuilt from its seed, then everything that happened since is laid back on top.
-const GAME_VERSION = 'v96', SAVE_FORMAT = 1, SAVE_KEY = 'realm-save', AUTOSAVE_EVERY = 300;
+const GAME_VERSION = 'v101', SAVE_FORMAT = 1, SAVE_KEY = 'realm-save', AUTOSAVE_EVERY = 300;
 // every soldier design ever made (yours and the computer nations'), so troops of older designs still work after loading
 const ALL_DESIGNS = new Map();
 const _registerDesign = registerDesign;

@@ -63,7 +63,7 @@ const TECH_EQUIP = { 'w-gladius': 'gladius', 'w-rapier': 'rapier', 'w-estoc': 'e
 const MIL_TECHS = [
   ['w-pike', 1], ['w-bastard', 1], ['w-mace', 1], ['s-round', 1], ['a-leather2', 1], ['a-chain1', 1], ['horse-breeding', 1, 'stable', 60],
   ['w-polearm', 2, 'w-pike'], ['w-longsword', 2, 'w-bastard'], ['w-morningstar', 2, 'w-mace'], ['s-kite', 2, 's-round'], ['a-leather3', 2, 'a-leather2'], ['a-chain2', 2, 'a-chain1'], ['a-plate1', 2, 'a-chain1'], ['a-plate2', 2, 'a-plate1'], ['horse-training', 2, 'horse-breeding'],
-  ['w-halberd', 3, 'w-polearm'], ['w-greatsword', 3, 'w-longsword'], ['w-warhammer', 3, 'w-morningstar'], ['s-tower', 3, 's-kite'], ['s-aegis', 3, 's-tower'], ['a-leather4', 3, 'a-leather3'], ['a-chain3', 3, 'a-chain2'], ['a-chain4', 3, 'a-chain3'], ['a-plate3', 3, 'a-plate2'], ['a-plate4', 3, 'a-plate3']
+  ['w-halberd', 3, 'w-polearm'], ['w-greatsword', 3, 'w-longsword'], ['w-warhammer', 3, 'w-morningstar'], ['s-tower', 3, 's-kite'], ['a-leather4', 3, 'a-leather3'], ['a-chain3', 3, 'a-chain2'], ['a-chain4', 3, 'a-chain3'], ['a-plate3', 3, 'a-plate2'], ['a-plate4', 3, 'a-plate3']
 ];
 MIL_TECHS.push(['battleforge', 1, null, 60], ['warforge', 2, 'battleforge', 140], ['horde', 2, null, 100]);
 // Swamplings: axes and their own armor lines in place of swords, shields, leather, chain and plate; and dual wielding
@@ -403,7 +403,12 @@ const techEl = $q('#techPanel');
 techEl.addEventListener('pointerdown', e => e.stopPropagation());
 techEl.addEventListener('wheel', e => e.stopPropagation());
 techEl.addEventListener('click', e => {
-  const b = e.target.closest('[data-tech]'); if (b) { pickTech(b.dataset.tech); return; }
+  const b = e.target.closest('[data-tech]');
+  if (b) {   // choosing a technology closes the Research screen
+    const id = b.dataset.tech, x = TECH_BY_ID[id]; pickTech(id);
+    if (x && (S.tech[x.tree].cur === id || !S.tech[x.tree].opts.includes(id))) toggleTech(false);
+    return;
+  }
   if (e.target.closest('[data-tp="close"]')) { toggleTech(false); return; }
   const tg = e.target.closest('[data-tp^="opts:"], [data-tp^="done:"]');
   if (tg) { const [k, tree] = tg.dataset.tp.split(':'); if (k === 'opts') techShow[tree] = !techShow[tree]; else techDoneOpen[tree] = !techDoneOpen[tree]; techKey = ''; }

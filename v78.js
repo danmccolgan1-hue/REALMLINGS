@@ -720,8 +720,7 @@ function openSplitMenu(a) {
   const ks = Object.keys(a.troops).filter(k => a.troops[k] > 0), nm = k => UNIT_DEFS[k] ? UNIT_DEFS[k].name : k, pl = (n, k) => n + ' ' + (n > 1 ? PLURAL_OF(nm(k)) : nm(k));
   const rows = ks.map(k => {
     const n = a.troops[k], half = Math.floor(n / 2);
-    return (ks.length > 1 ? `<button type="button" class="bm-item" data-split="${k}:all" data-army="${a.id}"><img alt="" src="${portrait(k)}"><span class="bm-name">Split off the ${pl(n, k)}<small>They form a new army; the rest stay</small></span></button>` : '') +
-      (half >= 1 && (ks.length > 1 || n >= 2) ? `<button type="button" class="bm-item" data-split="${k}:half" data-army="${a.id}"><img alt="" src="${portrait(k)}"><span class="bm-name">Split off ${pl(half, k)}<small>Half of this kind</small></span></button>` : '');
+    return (ks.length > 1 ? `<button type="button" class="bm-item" data-split="${k}:all" data-army="${a.id}"><img alt="" src="${portrait(k)}"><span class="bm-name">Split off the ${pl(n, k)}<small>They form a new army; the rest stay</small></span></button>` : '') ;   // v99: no 'half of one kind' rows
   }).join('');
   popNearCard(`<div class="bm-head"><b>Split ${escHTML(a.name)}</b><span>${troopText(a)}</span></div><button type="button" class="bm-item" data-split="mix:half" data-army="${a.id}"><img alt="" src="${splitIcon}"><span class="bm-name">Split in half<small>Each half gets a fair mix</small></span></button>${rows}<button type="button" class="bm-item bm-move" data-insp-close="1"><span class="bm-name">Close</span></button>`);
 }

@@ -201,7 +201,7 @@ function stepAllyForts(t) {
       if (left <= WAR_TIMER_SHOW && left > 0 && !w.parent) extra.push({ id: 'wpt:' + w.id, img: 'wptimer', warn: true, cd: left, tip: `The war with the ${PLAYERS[o].name} ends in white peace in ${Math.ceil(left)} s unless a peace deal is made. Left-click to open Diplomacy`, label: 'White peace' });
     }
     for (const A of S.allies) if (A.fortAt !== undefined && (A.a === ME || A.b === ME)) { const o = A.a === ME ? A.b : A.a; extra.push({ id: 'allyfort:' + o, img: 'allyfort', warn: true, cd: ALLY_FORT_GRACE - (S.t - A.fortAt), tip: `A fort at ${provName(A.fortProv)} sits on your border with the ${PLAYERS[o].name}: the alliance ends when the timer runs out. Left-click to look at it`, label: 'Ally border' }); }
-    if (S.banditWave && S.t - S.banditWave.t < 60) extra.push({ id: 'bandits:' + S.banditWave.n, img: 'bandits', warn: true, tip: `Bandits (power ${fmtPow(S.banditWave.power)}) have appeared at ${provName(S.banditWave.prov)}. Left-click to look`, label: 'Bandits' });
+    // v99: no flag when bandits appear
     return out.concat(extra.filter(f => !flagDismissed.has(f.id)));
   };
   $q('#nflags').addEventListener('click', e => {
@@ -234,7 +234,7 @@ let v96BarKey = '';
   setupBar = function () {
     _sb();
     const tick = $q('#res .tick');
-    tick.insertAdjacentHTML('beforebegin', `<span class="r v96c" id="r-forts" title="Forts you hold (and are building) out of your fort limit">${FORT_SVG}<b></b></span><span class="r v96c" id="r-provs" title="Provinces you hold out of the provinces your forts allow (each fort and the capital allow itself plus ${OUTPOSTS_PER_FORT} outposts; Efficient and Expand Administration add more)">${PROV_SVG}<b></b></span>`);
+    tick.insertAdjacentHTML('beforebegin', `<span class="r v96c" id="r-forts" title="Forts you hold out of your fort limit (a fort counts once its upgrade has finished)">${FORT_SVG}<b></b></span><span class="r v96c" id="r-provs" title="Provinces you hold out of the provinces your forts allow (each fort and the capital allow itself plus ${OUTPOSTS_PER_FORT} outposts; Efficient and Expand Administration add more)">${PROV_SVG}<b></b></span>`);
   };
   const _ub = updateBar;
   updateBar = function (t) {
@@ -410,7 +410,7 @@ function rallyArrivals() {
     if (a.moving || a.battle) continue;
     if (a.prov !== a.rallyTo) { a.rallyTo = undefined; continue; }
     a.rallyTo = undefined;
-    const host = S.units.find(v => v !== a && v.kind === 'army' && v.owner === ME && v.prov === a.prov && !v.moving && !v.battle && !v.exiting && !v.retro && !v.retroWant);
+    const host = S.units.find(v => v !== a && v.kind === 'army' && v.owner === ME && v.prov === a.prov && !v.moving && !v.battle && !v.exiting && !v.retro && !v.retroWant && !(v.troops[MAGE] > 0 && a.troops[MAGE] > 0));
     if (!host) continue;
     for (const k in a.troops) host.troops[k] = (host.troops[k] || 0) + a.troops[k];
     host.grew = S.t; S.units = S.units.filter(v => v !== a); S.selected = S.selected.filter(v => v !== a);
@@ -514,8 +514,7 @@ function stepBanditWaves(t) {
   a.troops = { 'd-sword': Math.max(2, Math.ceil(power / footmanPower())) };
   a.wave = n + 1;
   S.banditWave = { n: n + 1, prov: p, power: powerOf(a), t };
-  flagKey = ''; sfx('wn_enemy');
-  toast(`${a.name}, a bandit gang of power ${fmtPow(powerOf(a))}, has appeared in ${S.explored.has(p) ? provName(p) : 'the wilds'}! Every 3 minutes a stronger one turns up.`, true);
+  // v99: bandits turn up without a notification
 }
 const ROMAN_N = n => ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][n] || String(n);
 
@@ -612,99 +611,9 @@ function stepV96(t, dt) {
   if (autoPickFor !== null && !S.selected.some(v => v.id === autoPickFor)) { autoPickFor = null; cmdKey = ''; }
   { const m = S.selected.find(v => v.kind === MASON && v.owner === ME), k = m ? m.id + ':' + !!m.pending + ':' + (m.auto || '') : ''; if (k !== stepV96.mk) { stepV96.mk = k; cmdKey = ''; } }
 }
-window.__v96 = { rowsOn: a => rowsOn(a), rowBack: (a, k) => rowBack(a, k), rowFront: a => rowFront(a), rowDeal: (a, k) => rowDeal(a, k), setBack: (a, k, n) => setBack(a, k, n), openRowsMenu: a => openRowsMenu(a), fmtPow, spellHitWall, dismantleFort, autoResearch, stepWarTimers, stepBanditWaves, stepAllyForts, allyWhy: (a, b) => allyWhy(a, b), borderFort: (a, b) => borderFort(a, b), demandMax: (s, o) => demandMax(s, o), perFort: o => perFort(o), provLimit: o => provLimit(o), rallyOf, stepAutoBuild, siegedProvs, setupV96, spellTime: (k, o) => spellTime(k, o) };
+window.__v96 = { fmtPow, spellHitWall, dismantleFort, autoResearch, stepWarTimers, stepBanditWaves, stepAllyForts, allyWhy: (a, b) => allyWhy(a, b), borderFort: (a, b) => borderFort(a, b), demandMax: (s, o) => demandMax(s, o), perFort: o => perFort(o), provLimit: o => provLimit(o), rallyOf, stepAutoBuild, siegedProvs, setupV96, spellTime: (k, o) => spellTime(k, o) };
 
-// ---------- Front Row and Back Row (armies of 6 or more) ----------
-// a.back: kind -> how many of that kind stand in the back row. Mages (Druids, Warlocks) stand in the back on their own
-// unless a.magesFront is set. Back-row soldiers deal half damage (Mages deal full damage from the back) and take half
-// damage, and only once the front row has fallen. An army of 5 or fewer fights as one line.
-const ROW_MIN = 6, BACK_DEAL = 0.5, BACK_TAKE = 0.5;
-function rowsOn(a) { return !!a && a.kind === 'army' && troopCount(a) >= ROW_MIN; }
-function rowBack(a, k) {
-  if (!rowsOn(a) || !(a.troops[k] > 0)) return 0;
-  if (k === MAGE && !a.magesFront) return a.troops[k];
-  return Math.min(a.troops[k], (a.back && a.back[k]) || 0);
-}
-// the row a kind is set to, whatever the army's size (rowBack only counts it while rows are in effect)
-function rowBackSet(a, k) { const n = a.troops[k] || 0; return k === MAGE && !a.magesFront ? n : Math.min(n, (a.back && a.back[k]) || 0); }
-function rowBackCount(a) { let n = 0; for (const k in a.troops) n += rowBack(a, k); return n; }
-function rowFront(a) { return troopCount(a) - rowBackCount(a); }
-// how many blows a kind lands this round: back-row soldiers count half, Mages always count in full
-function rowDeal(a, k) { const n = a.troops[k] || 0; if (k === MAGE) return n; return n - rowBack(a, k) * (1 - BACK_DEAL); }
-function setBack(a, k, n) {
-  if (k === MAGE) { a.magesFront = n < (a.troops[MAGE] || 0); a.back = a.back || {}; a.back[MAGE] = Math.max(0, Math.min(a.troops[MAGE] || 0, n)); return; }
-  a.back = a.back || {}; a.back[k] = Math.max(0, Math.min(a.troops[k] || 0, n)); if (!a.back[k]) delete a.back[k];
-}
-const rowText = a => rowsOn(a) ? `Front ${rowFront(a)} · Back ${rowBackCount(a)}` : `One line (rows from ${ROW_MIN} soldiers)`;
-// combining armies keeps everyone's row
-{
-  const _ca = combineArmies;
-  combineArmies = function (list) {
-    const backs = list.map(a => Object.keys(a.troops).map(k => [k, rowsOn(a) && !(k === MAGE && !a.magesFront) ? rowBack(a, k) : 0]));
-    _ca(list);
-    const main = list[0]; if (!main || !S.units.includes(main)) return;
-    main.back = {}; for (const bl of backs) for (const [k, n] of bl) if (n && k !== MAGE) main.back[k] = (main.back[k] || 0) + n;
-  };
-}
-// the Rows button: the first free cell among 2, 9, 7, 6, 5, 4 on the army card
-{
-  const armyGet = Object.getOwnPropertyDescriptor(CMD, 'army').get;
-  Object.defineProperty(CMD, 'army', { configurable: true, get() {
-    const list = armyGet.call(CMD), a = S.selected.find(v => v.kind === 'army' && v.owner === ME); if (!a) return list;
-    const used = new Set(list.map(c => c.cell)), cell = [2, 9, 7, 6, 5, 4].find(c => !used.has(c));
-    return cell === undefined ? list : list.concat([{ id: 'rows', cell, key: '' }]);
-  } });
-  const info0 = extraCmdInfo, use0 = extraCmdUse;
-  extraCmdInfo = id => {
-    if (id !== 'rows') return info0(id);
-    const a = S.selected.find(v => v.kind === 'army' && v.owner === ME);
-    return { name: 'Front and back rows', desc: `Armies of ${ROW_MIN} or more fight in two rows. The front row takes the blows first; the back row only takes damage once the front row has fallen, and then only half of it, but back-row soldiers also deal half damage. ${UNIT_DEFS[MAGE].name}s stand in the back on their own and deal full damage from there.${a ? ' Now: ' + rowText(a) + '.' : ''}`, cost: null, why: !a ? 'No army selected' : a.battle ? 'Not during battle' : null, ok: 'Click to arrange the rows', icon: rowsIcon() };
-  };
-  extraCmdUse = id => { if (id !== 'rows') return use0(id); const a = S.selected.find(v => v.kind === 'army' && v.owner === ME); if (a) openRowsMenu(a); return true; };
-}
-let rowsIco = null;
-function rowsIcon() {
-  if (rowsIco) return rowsIco;
-  const c = document.createElement('canvas'); c.width = c.height = 88; const g = c.getContext('2d'); g.lineJoin = 'round'; g.lineCap = 'round';
-  const man = (x, y, col, s) => { g.beginPath(); g.arc(x, y - 14 * s, 6 * s, 0, 7); g.fillStyle = '#f1d3b0'; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.moveTo(x - 8 * s, y + 8 * s); g.lineTo(x - 7 * s, y - 6 * s); g.lineTo(x + 7 * s, y - 6 * s); g.lineTo(x + 8 * s, y + 8 * s); g.closePath(); g.fillStyle = col; g.fill(); g.stroke(); };
-  for (const x of [26, 44, 62]) man(x, 36, '#9aa7c0', 0.85);   // back row
-  for (const x of [18, 36, 54, 72]) man(x, 64, '#c7362b', 1.05);   // front row
-  g.beginPath(); g.moveTo(10, 50); g.lineTo(78, 50); g.setLineDash([5, 5]); g.lineWidth = 2.5; g.strokeStyle = OL; g.stroke(); g.setLineDash([]);
-  return rowsIco = c.toDataURL();
-}
-function openRowsMenu(a) {
-  if (a.battle) return toast('Rows can’t be changed during a battle.', true);
-  const ks = Object.keys(a.troops).filter(k => a.troops[k] > 0), nm = k => k === MAGE ? UNIT_DEFS[MAGE].name : designById(k) ? designById(k).name : UNIT_DEFS[k] ? UNIT_DEFS[k].name : k;
-  const on = rowsOn(a), b = btn => `<button type="button" class="bm-item" data-rows="${btn.k}:${btn.how}" data-army="${a.id}"${btn.off ? ' aria-disabled="true"' : ''}><img alt="" src="${btn.img}"><span class="bm-name">${btn.t}<small>${btn.s}</small></span></button>`;
-  let html = `<div class="bm-head"><b>Rows of ${escHTML(a.name)}</b><span>${rowText(a)}</span></div>`;
-  if (!on) html += `<div class="bm-sec">An army of ${ROW_MIN} or more fights in two rows; this one is one line for now. You can still set the rows: they apply once it is big enough.</div>`;
-  html += b({ k: 'all', how: 'front', img: rowsIcon(), t: 'Everyone to the front', s: `${UNIT_DEFS[MAGE].name}s stay in the back` });
-  for (const k of ks) {
-    const n = a.troops[k], back = rowBackSet(a, k), front = n - back, hf = Math.floor(front / 2), hb = Math.floor(back / 2);
-    html += `<div class="bm-sec">${nm(k)} ×${n}: front ${front}, back ${back}</div>`;
-    if (front) html += b({ k, how: 'back', img: portrait(k), t: `All ${front} to the back`, s: k === MAGE ? 'Full damage from the back' : 'Half the damage taken, half the damage dealt' });
-    if (hf >= 1 && hf < front) html += b({ k, how: 'halfback', img: portrait(k), t: `${hf} to the back`, s: 'Half of those in front' });
-    if (back) html += b({ k, how: 'front', img: portrait(k), t: `All ${back} to the front`, s: 'They take the blows first' });
-    if (hb >= 1 && hb < back) html += b({ k, how: 'halffront', img: portrait(k), t: `${hb} to the front`, s: 'Half of those in back' });
-  }
-  popNearCard(html);
-}
-menuEl.addEventListener('click', e => {
-  const t = e.target.closest('[data-rows]'); if (!t) return; e.stopImmediatePropagation();
-  const a = S.units.find(v => v.id === +t.dataset.army);
-  if (!a || a.battle) { closeBuildMenu(); return toast('Rows can’t be changed during a battle.', true); }
-  const [k, how] = t.dataset.rows.split(':');
-  if (k === 'all') { a.back = {}; a.magesFront = false; }
-  else {
-    const n = a.troops[k] || 0, back = rowBackSet(a, k), front = n - back;
-    if (how === 'back') setBack(a, k, n);
-    else if (how === 'halfback') setBack(a, k, back + Math.floor(front / 2));
-    else if (how === 'front') setBack(a, k, 0);
-    else if (how === 'halffront') setBack(a, k, back - Math.floor(back / 2));
-  }
-  sfx('ui_click'); cmdKey = ''; rosterKey = '';
-  openRowsMenu(a);   // stay open to keep arranging
-}, true);
+// (Front and back rows: replaced in v97.js)
 
 // ---------- Armory: Weapons / Armor / Horses (or Ogres) as tabs instead of one long page ----------
 let armTab = 'Weapons';

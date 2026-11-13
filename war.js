@@ -11,8 +11,9 @@ const WAR = {
   tickEvery: 10,               // every 10 s the side that is ahead gains +1
   truce: 480,                  // 8 minute truce after any peace deal
   goldTerm: 300,               // gold taken by the "Take gold" term
-  occVal: [5, 10, 25],         // warscore for holding an outpost / fort / capital
-  kill: 1, wipe: 5,
+  occVal: [2, 10, 25],         // warscore for holding an outpost / fort / capital (v99: an outpost is 2)
+  occTick: [0, 1, 5],          // v99: and every 10 s, for each fort / capital held
+  kill: 0, wipe: 5, wipeBig: 1, wipeMin: 10,   // v99: no points per soldier; beating an army of more than 10 is 1, of more than half the loser's whole army 5
   gold: 20, provs: 50, total: 100, maxProvs: 5, splitAt: 10,
   stallWindow: 300, stallScore: 10, heavyLoss: 0.1,   // white peace if neither side passes 10 warscore in 5 minutes; the time tick starts after a fort falls or a battle costs a side 10% of its army
   maxVsPlayer: 2,              // no more than 2 nations may be at war with the player at the same time
@@ -151,7 +152,7 @@ function addScore(w, side, n) { w.base = clampWS(w.base + (side === w.a ? n : -n
 const battleWar = b => b && b.order && b.order.length >= 2 ? warBetween(b.order[0], b.order[1]) : null;
 const nationBattle = b => !!battleWar(b);
 function warKill(b, owner, n) { const w = battleWar(b); if (!w || !n || (owner !== w.a && owner !== w.b)) return; const foe = foeOf(w, owner); addScore(w, foe, WAR.kill * n); w.battles += foe === w.a ? n : -n; }
-function warWipe(b, a) { const w = battleWar(b); if (!w || (a.owner !== w.a && a.owner !== w.b)) return; const foe = foeOf(w, a.owner); addScore(w, foe, WAR.wipe); w.battles += foe === w.a ? WAR.wipe : -WAR.wipe; }
+function warWipe(b, a) { const w = battleWar(b); if (!w || (a.owner !== w.a && a.owner !== w.b)) return; const foe = foeOf(w, a.owner), n = a.wsSize || (b.lost[a.owner] || 0), all = Math.max(n, a.wsTotal || 0), pts = n > all / 2 ? WAR.wipe : n > WAR.wipeMin ? WAR.wipeBig : 0; if (!pts) return; addScore(w, foe, pts); w.battles += foe === w.a ? pts : -pts; }
 
 // ---------- occupation, the time tick and AI peace ----------
 let warLastT = null;
@@ -206,9 +207,10 @@ function stepOneWar(w, t) {
   // v96: there is no Total Victory any more: at 100 warscore a flag tells you to call for peace (v96.js), and every war ends
   // in white peace after 5 minutes unless a deal is made first (v96.js stepWarTimers)
   // a nation with every province occupied and no army left has lost: the warscore goes straight to 100 (GPC27)
-  for (const L of [w.a, w.b]) if (brokenNation(L) && !w.broken) { w.broken = L; const win = foeOf(w, L); addScore(w, win, 200); if (w.a === ME || w.b === ME) toast(L === ME ? `Every province you hold is occupied and you have no army left: the ${PLAYERS[win].name} is at 100 warscore.` : `The ${PLAYERS[L].name} is fully occupied and has no army left: warscore 100%. Call for peace in Diplomacy.`, L === ME); }
+  for (const L of [w.a, w.b]) if (allOccupied(L, foeOf(w, L)) && !w.broken) { w.broken = L; const win = foeOf(w, L); addScore(w, win, 200); if (w.a === ME || w.b === ME) toast(L === ME ? `Every province you hold is occupied: the ${PLAYERS[win].name} is at 100 warscore.` : `Every province of the ${PLAYERS[L].name} is occupied: warscore 100%. Call for peace in Diplomacy.`, L === ME); }
   // the time tick only runs once the war has turned serious: a fort or capital occupied, or a battle that cost a side 10% of its army
-  while (t >= w.nextTick) { const s = warscore(w, w.a); if (s && w.active) addScore(w, s > 0 ? w.a : w.b, 1); w.nextTick += WAR.tickEvery; }
+  // v99: no more "the side ahead gains 1": every 10 s each side gains 1 for every enemy fort it occupies and 5 for an occupied capital
+  while (t >= w.nextTick) { for (const [p, o] of S.occ) { const b = S.buildings.get(p); if (!b || !WAR.occTick[b.stage]) continue; if (b.owner === w.b && o === w.a) addScore(w, w.a, WAR.occTick[b.stage]); else if (b.owner === w.a && o === w.b) addScore(w, w.b, WAR.occTick[b.stage]); } w.nextTick += WAR.tickEvery; }
   // a war where neither side gets past 10 warscore in 5 minutes ends in white peace
   w.peak = Math.max(w.peak, Math.abs(warscore(w, w.a)));
   if (t - w.winStart >= WAR.stallWindow) {
@@ -221,6 +223,8 @@ function stepOneWar(w, t) {
   if (w.a !== ME && w.b !== ME) aiPeace(w, t);
 }
 // between two AI nations, the side that is ahead dictates the peace
+// v99: a nation whose every province is occupied by its foe has lost: the foe goes straight to 100 warscore
+function allOccupied(o, by) { const own = provsOf(o); return own.length > 0 && own.every(p => S.occ.get(p) === by); }
 function brokenNation(o) {
   const own = provsOf(o); if (!own.length || !own.every(p => S.occ.has(p))) return false;
   return !S.units.some(v => v.kind === 'army' && v.owner === o && troopCount(v) > 0);

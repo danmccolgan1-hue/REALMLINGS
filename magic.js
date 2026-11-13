@@ -282,7 +282,8 @@ function magicCmdUse(id) {
   if (what === 'mauto') { const c = selCaster(); if (c) { c.auto = { ...(c.auto || {}), [k]: !autoOn(c, k) }; if (autoOn(c, k) && (k === 'curse' || k === 'risen')) { const was = autoOn(c, k === 'curse' ? 'risen' : 'curse'); normAuto(c, k); if (was && !autoOn(c, k === 'curse' ? 'risen' : 'curse')) toast(`One Mage can’t keep both Cursed Weapons and Risen Dead ready; ${AUTO[k === 'curse' ? 'risen' : 'curse'].name()} is off. Add a second Mage to the army to use both.`); } toast(`${AUTO[k].name()} autocast ${autoOn(c, k) ? 'on' : 'off'}.`); } return true; }
   if (what === 'join') {
     const ms = S.selected.filter(v => v.kind === MAGE); let n = 0;
-    for (const m of ms) { const a = S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === m.prov && !v.battle); if (!a) continue; cancelCast(m); a.troops[MAGE] = (a.troops[MAGE] || 0) + 1; if (a.troops[MAGE] > 1) { const merged = {}; for (const kk of Object.keys(AUTO)) merged[kk] = autoOn(m, kk) || autoOn(a, kk); a.auto = merged; } else a.auto = { ...(m.auto || {}) }; a.grew = S.t; S.units = S.units.filter(v => v !== m); n++; S.selected = [a]; }
+    for (const m of ms) { const a = S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === m.prov && !v.battle && !(v.troops[MAGE] > 0)); if (!a) { if (S.units.some(v => v.kind === 'army' && v.owner === ME && v.prov === m.prov && v.troops[MAGE] > 0)) toast(`An army can have only one ${UNIT_DEFS[MAGE].name}.`, true); continue; }   // v97: one Mage per army
+ cancelCast(m); a.troops[MAGE] = (a.troops[MAGE] || 0) + 1; if (a.troops[MAGE] > 1) { const merged = {}; for (const kk of Object.keys(AUTO)) merged[kk] = autoOn(m, kk) || autoOn(a, kk); a.auto = merged; } else a.auto = { ...(m.auto || {}) }; a.grew = S.t; S.units = S.units.filter(v => v !== m); n++; S.selected = [a]; }
     if (n) { computeIncome(); toast(`${n > 1 ? n + ' ' + UNIT_DEFS[MAGE].name + 's' : 'The ' + UNIT_DEFS[MAGE].name} joined the army.`); }
     return true;
   }
@@ -305,7 +306,8 @@ function drawMagic(g, t) {
     const e = world.edges[+i]; if (!S.explored.has(e.a) && !S.explored.has(e.b)) continue;
     const a = V[e.v[0]], b = V[e.v[1]], mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2, ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
     g.save(); g.translate(mx, my); g.rotate(ang);
-    if (kind === 'forest') { g.beginPath(); g.ellipse(0, 0, 30, 24, 0, 0, Math.PI * 2); g.fillStyle = '#9bd95f'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = 'rgba(29,26,34,0.35)'; g.stroke(); g.beginPath(); g.rect(-9, -26, 18, 52); g.fillStyle = '#c9a46b'; g.fill(); for (const s of [-1, 1]) { g.beginPath(); g.arc(s * 22, -14, 4, 0, 7); g.arc(s * 24, 12, 3, 0, 7); g.fillStyle = '#5fae4a'; g.fill(); } }
+    if (kind === 'bridge') bridgeArt(g, 1);   // v99 (v99.js)
+    else if (kind === 'forest') { g.beginPath(); g.ellipse(0, 0, 30, 24, 0, 0, Math.PI * 2); g.fillStyle = '#9bd95f'; g.fill(); g.lineWidth = 2.5; g.strokeStyle = 'rgba(29,26,34,0.35)'; g.stroke(); g.beginPath(); g.rect(-9, -26, 18, 52); g.fillStyle = '#c9a46b'; g.fill(); for (const s of [-1, 1]) { g.beginPath(); g.arc(s * 22, -14, 4, 0, 7); g.arc(s * 24, 12, 3, 0, 7); g.fillStyle = '#5fae4a'; g.fill(); } }
     else { for (const s of [-1, 1]) { g.save(); g.translate(0, s * 14); g.rotate(s < 0 ? Math.PI : 0); g.beginPath(); g.moveTo(-14, 6); g.lineTo(-14, -4); g.quadraticCurveTo(0, -20, 14, -4); g.lineTo(14, 6); g.closePath(); g.fillStyle = '#8a8f9b'; g.fill(); g.lineWidth = 2.6; g.strokeStyle = OL; g.stroke(); g.beginPath(); g.moveTo(-8, 6); g.lineTo(-8, -2); g.quadraticCurveTo(0, -12, 8, -2); g.lineTo(8, 6); g.closePath(); g.fillStyle = '#1d1a22'; g.fill(); g.restore(); } g.fillStyle = 'rgba(160,110,220,0.35)'; g.fillRect(-6, -10, 12, 20); }
     g.restore();
   }

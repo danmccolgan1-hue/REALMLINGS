@@ -203,14 +203,14 @@ const SETTLE = [
   // fort: a ring of huts behind spiked stakes, a watch platform
   [{ x: -40, y: -36, r: 16, h: 20, smoke: true }, { x: 10, y: -46, r: 14, h: 17 }, { x: 40, y: -6, r: 15, h: 19 }, { x: -46, y: 12, r: 13, h: 16 }],
   // capital: a great chieftain hut with horns, many huts, totems and a bonfire
-  [{ x: -6, y: -40, r: 30, h: 30, smoke: true, horns: true, big: true }, { x: -64, y: -30, r: 16, h: 19 }, { x: 46, y: -54, r: 15, h: 18, smoke: true }, { x: 64, y: -6, r: 17, h: 20 }, { x: -64, y: 22, r: 14, h: 17 }, { x: 38, y: 34, r: 13, h: 16 }]
+  [{ x: -6, y: -40, r: 32, h: 58, smoke: true, horns: true, big: true }, { x: -64, y: -30, r: 17, h: 26, smoke: true }, { x: 46, y: -54, r: 16, h: 25, smoke: true }, { x: 64, y: -6, r: 18, h: 28 }, { x: -64, y: 22, r: 15, h: 22 }, { x: 38, y: 34, r: 14, h: 20 }]
 ];
 function drawSettlement(g, stage, t, opts = {}) {
   const R = [70, 100, 130][stage] || 70;
   g.save(); g.lineJoin = 'round'; g.lineCap = 'round'; g.scale(0.8, 0.8);
   ground(g, R);
   const items = [];
-  for (const h of SETTLE[stage] || SETTLE[0]) items.push({ d: h.x + h.y, f: () => hut(g, h.x, h.y, h.r, h.h, t, { smoke: h.smoke, horns: h.horns, wall: h.big ? CLAY : MUD, roof: h.big ? 34 : undefined }) });
+  for (const h of SETTLE[stage] || SETTLE[0]) items.push({ d: h.x + h.y, f: () => hut(g, h.x, h.y, h.r, h.h, t, { smoke: h.smoke, horns: h.horns, wall: h.big ? CLAY : MUD, roof: h.big ? 62 : undefined }) });
   items.push({ d: 30, f: () => { const [fx, fy] = ISO(8, 22, 0); campfire(g, 8, 22, t); void fx; void fy; } });
   items.push({ d: -30 + 60, f: () => skullPole(g, -30, 30, 28) });
   if (stage >= 1) {
@@ -218,7 +218,7 @@ function drawSettlement(g, stage, t, opts = {}) {
     items.push({ d: 200, f: () => spikes(g, [-R * 0.8, R * 0.62], [R * 0.2, R * 0.62], 7, 16) });
     items.push({ d: 10, f: () => { const [sx, sy] = ISO(58, 40, 0); for (const dx of [-8, 8]) stick(g, [sx + dx, sy], [sx + dx, sy - 44], '#7a5532', 3); g.beginPath(); g.rect(sx - 13, sy - 48, 26, 8); g.fillStyle = '#8a6038'; g.fill(); g.lineWidth = 2; g.strokeStyle = OL; g.stroke(); path(g, [[sx - 14, sy - 48], [sx, sy - 62], [sx + 14, sy - 48]]); g.fillStyle = THATCH; g.fill(); g.stroke(); } });
   }
-  if (stage >= 2) { items.push({ d: -60, f: () => totem(g, -40, -80, 50, t) }); items.push({ d: 60, f: () => totem(g, 60, -80, 46, t + 1) }); for (const [x, y] of [[-84, -6], [84, 26], [-20, 70]]) items.push({ d: x + y, f: () => shroom(g, x, y, 1.6, '#d8443a') }); }
+  if (stage >= 2) { items.push({ d: -60, f: () => totem(g, -40, -80, 78, t) }); items.push({ d: 60, f: () => totem(g, 60, -80, 72, t + 1) }); items.push({ d: -45, f: () => { for (const zz of [0.3, 0.62]) { const [bx, by] = ISO(-6, -40, 58 * zz), rx = 32 * Math.SQRT2; for (let k = 0; k < 9; k++) { const a = k * TAU / 9 + 0.2; if (Math.sin(a) > 0.05) dot(g, bx + Math.cos(a) * rx, by + Math.sin(a) * rx / 2, 2.8, BONE, 1.3); } } } }); for (const [x, y] of [[-84, -6], [84, 26], [-20, 70]]) items.push({ d: x + y, f: () => shroom(g, x, y, 1.6, '#d8443a') }); }
   items.sort((a, b) => a.d - b.d).forEach(i => i.f());
   g.restore();
 }

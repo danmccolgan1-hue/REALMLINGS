@@ -335,7 +335,7 @@ function stepPyromancy(t) {
     const foe = S.units.find(v => v.kind === 'army' && v.prov === T.prov && hostile(v.owner, T.owner) && troopCount(v) > 0 && !v.retreating && !(T.ignore || []).includes(v.id));
     if (!foe) continue;
     S.ftraps = S.ftraps.filter(x => x !== T);
-    const killed = burnArmy(foe, FIRE_TRAP[T.lv] * arrowDmg() * (T.mult || 1));   // arrowDmg: exactly what it takes to bring down one Footman
+    const killed = pureFront(foe, FIRE_DMG[T.lv] * (T.mult || 1));   // v98: damage that ignores armor, to the front line (v98.js)
     S.trapBooms = (S.trapBooms || []).concat([{ x: foe.x, y: foe.y, t0: t, prov: T.prov }]);
     if (T.owner === ME) toast(`Your fire trap in ${provName(T.prov)} engulfs ${foe.name || 'an enemy army'}: ${killed} soldier${killed === 1 ? '' : 's'} burned.`);
     else if (foe.owner === ME) toast(`${foe.name} walks into a fire trap in ${provName(T.prov)}: ${killed} soldier${killed === 1 ? '' : 's'} lost.`, true);
