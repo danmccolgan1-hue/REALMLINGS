@@ -28,7 +28,7 @@ function aiUnitCost(N, kind) {
 // lightly held provinces (enemy land, or its own occupied land) away from the enemy's main army, to force it back.
 const aiWarGoal0 = aiWarGoal;
 const aiWarPlans = new Map();   // per nation, recomputed twice a second (kept off the save)
-const AI_RAID_MIN_PUSH = 3;   // soldiers in the main body before it counterattacks an advancing enemy
+const AI_RAID_MIN_PUSH = 5;   // soldiers in the main body before it counterattacks an advancing enemy
 const AI_ENGAGE = 1.2;   // an army engages an enemy force up to 19.9% stronger than itself, never one 20% or more stronger
 function aiWarPlan(N, enemies) {
   const key = Math.floor(S.t * 2), old = aiWarPlans.get(N.id);
@@ -43,12 +43,12 @@ function aiWarPlan(N, enemies) {
   const cap = capitalOf(N.id) >= 0 ? capitalOf(N.id) : provsOf(N.id)[0];
   const strong = foeMain < myTotal * AI_ENGAGE;   // the enemy's biggest stack is less than 20% stronger than everything we have
   // is the enemy pushing? one of its armies with at least half the power of its biggest stack is marching into our land
-  // (or toward our capital), or is already standing in it
+  // or toward our capital
   const capNow = capitalOf(N.id) >= 0 ? capitalOf(N.id) : provsOf(N.id)[0], home = capNow >= 0 ? hopsFrom(capNow, allNbr) : null;
   let pushing = false;
   for (const v of S.units) {
     if (v.kind !== 'army' || !enemies.includes(v.owner) || troopCount(v) <= 0 || v.retreating || rawStrength([v]) < foeMain * 0.5) continue;
-    if (nationOf(v.prov) === N.id) { pushing = true; break; }
+    // v101: an enemy army that just stands in our land is holding position, not pushing
     if (v.moving && v.final !== undefined && (nationOf(v.final) === N.id || (home && home[v.final] !== undefined && home[v.prov] !== undefined && home[v.final] < home[v.prov]))) { pushing = true; break; }
   }
   const plan = { key, main, mainStr: ms, myTotal, stacks, foeMain, foeProv, cap, strong, pushing }; aiWarPlans.set(N.id, plan); return plan;

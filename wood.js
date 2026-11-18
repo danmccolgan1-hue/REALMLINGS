@@ -134,7 +134,7 @@ aiRedesign = function (N) {
   const champW = aiHas(N, 'horse-training') ? (N.family === 'thrust' ? 'oblivion' : 'worldaxe') : aiHas(N, 'horse-breeding') ? (N.family === 'pole' ? 'wrathspear' : 'ancienthammer') : 'champsword';
   const sig = [weapon, armor, champA, champW].join('|'); if (sig === N.designSig) return; N.designSig = sig; N.dv++;
   const role = { pole: 'Spear Protector', thrust: 'Sword Protector', blunt: 'Club Protector' }[N.family] || 'Protector';
-  const inf = { id: `ai${N.id}i${N.dv}`, name: role, type: 'inf', weapon, shield: null, off: null, armor, horse: null, race: 'wood' };
+  const inf = { id: `ai${N.id}i${N.dv}`, name: role, type: 'inf', weapon, shield: null, off: null, armor, horse: null, race: 'wood', ...(WEAPONS[weapon].fam === 'blunt' && !WEAPONS[weapon].twoH ? { two: true } : {}) };   // (v104: blunt weapons two-handed for Woodlings)
   const cav = { id: `ai${N.id}c${N.dv}`, name: 'Champion', type: 'cav', weapon: champW, shield: null, off: null, armor: champA, horse: null, race: 'wood' };
   registerDesign(inf); registerDesign(cav);
   N.design = { inf: inf.id, cav: cav.id };
@@ -203,11 +203,11 @@ bldArt = function (g, type, idx, t, rise, race) { if (race === 'wood' && WoodBui
 // Barracks + Stable rule), retrofitted there, boosted by Champion Toughness / Swiftness (the cavalry repeatables). Champions are
 // on foot: no cavalry penalties in forest or swamp, no grassland charge, and spears get no bonus against them (sideMix).
 ITEM_SPAN.champsword = [-110, 26]; ITEM_SPAN.ancienthammer = [-104, 26]; ITEM_SPAN.wrathspear = [-160, 30]; ITEM_SPAN.worldaxe = [-116, 26]; ITEM_SPAN.oblivion = [-114, 28];
-// selecting a Hall of Champions selects the Barracks beside it, where the Champions are trained
+// (until v101, selecting a Hall of Champions selected the Barracks beside it)
 const _selectPartWd = selectPart;
 selectPart = function (p, part) {
   _selectPartWd(p, part);
-  if (isWd(ME) && ptype(part) === 'stable' && owned(p) && extrasIn(p).some(e => e.type === 'barracks')) { S.selBuilding = p; S.selKind = 'barracks'; }
+  // v102: the Hall of Champions trains nothing itself (it is only what a Barracks needs to train Champions), so it gets its own card
 };
 // Inspect: a two-handed design says so where the off hand would be
 const _gearOfWd = gearOf;

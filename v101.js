@@ -1,7 +1,18 @@
 
 // ================= v101: Thug Den flag and Highwaymen mark, research panel closing, AI armies that stop feeding the enemy =================
 
-// ---------- Thug Dens: a flag while one has room, and a gold "$" over a den that Highwaymen is doubling ----------
+// ---------- Thug Dens: a flag while one has room, and a gold number and coin over a den that Highwaymen is doubling ----------
+// v102: a small golden number with a coin of the same size beside it, centered on (x, y) (Thug Dens, Bazaars)
+function coinLabel(g, x, y, n) {
+  const txt = String(n);
+  g.save(); g.font = 'bold 22px Georgia, serif'; g.textBaseline = 'middle'; g.textAlign = 'left'; g.lineJoin = 'round';
+  const tw = g.measureText(txt).width, r = 10, gap = 4, w = tw + gap + r * 2, x0 = x - w / 2;
+  g.lineWidth = 5; g.strokeStyle = OL; g.strokeText(txt, x0, y + 1); g.fillStyle = '#ffd34f'; g.fillText(txt, x0, y + 1);
+  const cx = x0 + tw + gap + r;
+  g.beginPath(); g.arc(cx, y, r, 0, 7); g.fillStyle = '#f4c44f'; g.fill(); g.lineWidth = 2.6; g.strokeStyle = OL; g.stroke();
+  g.beginPath(); g.arc(cx, y, r - 4, 0, 7); g.lineWidth = 1.6; g.strokeStyle = '#c99a2c'; g.stroke();
+  g.restore();
+}
 FLAG_IMG.denroom = bannerSVG('#5a7a3a', '#3f5a28', '<path d="M18 46 L32 26 L46 46 Z" fill="#8a6a44"/><rect x="28" y="36" width="8" height="10" fill="#3b3330"/><circle cx="44" cy="22" r="7" fill="#faf1dc"/><path d="M44 18 V26 M40 22 H48" stroke-width="2.4"/>');
 const denRooms = () => isSw(ME) ? myDens().filter(d => !S.occ.has(d.p) && (d.e.thugs || 0) < denCap(ME)) : [];
 { const fl = flagList; flagList = function () {
@@ -24,10 +35,8 @@ const denHighway = p => techOf(ME, 'traderoutes') && denBorders(p, ME);
   for (const d of myDens()) {
     if (!S.visible.has(d.p) || !denHighway(d.p)) continue;
     const c = G.provs[d.p].ic, [ox, oy] = bslotOf(d.p, d.e.slot), x = c[0] + ox, y = c[1] + oy - 74 + Math.sin(t * 2.2 + d.p) * 3;
-    g.save();
-    g.beginPath(); g.arc(x, y, 13, 0, 7); g.fillStyle = '#f4c44f'; g.fill(); g.lineWidth = 3; g.strokeStyle = OL; g.stroke();
-    g.font = 'bold 19px Georgia, serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = '#5a3d10'; g.fillText('$', x, y + 1);
-    g.restore();
+    // v102: the extra gold Highwaymen brings in (one more coin per Thug inside), as a golden number beside a coin (no "$")
+    const n = d.e.thugs || 0; if (n > 0) coinLabel(g, x, y, n);
   }
 }; }
 

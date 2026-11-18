@@ -24,7 +24,8 @@ const WAR = {
 };
 // v95: how many provinces a peace deal may take: 2 for every fort the winner holds, at least 1
 const fortsHeld = o => { let n = 0; for (const b of S.buildings.values()) if (b.owner === o && b.stage === 1) n++; return n; };
-const maxTake = o => Math.max(1, 2 * fortsHeld(o));
+const maxTake0 = o => Math.max(1, 2 * fortsHeld(o));
+const maxTake = o => o === ME ? Math.min(maxTake0(o), sustainRoom()) : maxTake0(o);   // v102: no more than the player can hold
 // v95: a nation that surrendered can't declare any war until this runs out
 const warLockLeft = o => Math.max(0, ((S.warLock && S.warLock[o]) || 0) - S.t);
 // the AI nations, by owner id (filled in by the lobby when a game starts)
@@ -52,7 +53,8 @@ const truceLeft = (x, y) => Math.max(0, (S.truces.get(pairKey(x, y)) || 0) - S.t
 // v96: a nation may have up to 2 allies (alliesOf); allyOf gives the first, for old callers
 const alliesOf = o => { const out = []; for (const A of S.allies) { if (A.a === o) out.push(A.b); else if (A.b === o) out.push(A.a); } return out; };
 const allyOf = o => alliesOf(o)[0] || 0;
-const MAX_ALLIES = 2;
+const MAX_ALLIES = 1;   // v104: one ally each
+const treatyCount = o => alliesOf(o).length;
 const allied = (x, y) => S.allies.some(A => (A.a === x && A.b === y) || (A.a === y && A.b === x));
 const provsOf = o => { const out = []; for (const [p, b] of S.buildings) if (b.owner === o) out.push(p); return out; };
 const myProvs = () => provsOf(ME);
@@ -147,7 +149,7 @@ function occScore(w) {
 const takeable = (p, winner) => { const o = S.occ.get(p); return o === undefined || o === winner; };
 const clampWS = n => Math.max(-100, Math.min(100, n));
 // warscore of a war seen from one side (positive = that side is winning)
-const warscore = (w, side) => { if (!w) return 0; const s = clampWS(Math.round(w.base + occScore(w))); return side === w.b ? -s : s; };
+let warscore = (w, side) => { if (!w) return 0; const s = clampWS(Math.round(w.base + occScore(w))); return side === w.b ? -s : s; };
 function addScore(w, side, n) { w.base = clampWS(w.base + (side === w.a ? n : -n)); }
 const battleWar = b => b && b.order && b.order.length >= 2 ? warBetween(b.order[0], b.order[1]) : null;
 const nationBattle = b => !!battleWar(b);
@@ -170,7 +172,7 @@ function stepWar(t) {
     if (!isNation(b.owner)) continue;
     const O = b.owner, occBy = S.occ.get(p);
     if (occBy !== undefined && !atWar(O, occBy)) { S.occ.delete(p); continue; }
-    const foes = enemiesOf(O);
+    const foes = enemiesOf(O).filter(f => !proxyShield(O, f));   // v105: a nation in a Proxy War can't be occupied by the attacker
     if (!foes.length) { if (S.occProg.has(p)) S.occProg.delete(p); continue; }
     let goal = null;   // who is taking control of this province
     if (!fighting.has(p)) {
@@ -239,6 +241,27 @@ function aiPeace(w, t) {
 }
 
 // ---------- peace ----------
+// v102: the provinces the player may pick in a peace deal: theirs, explored by a scout or an army, not held by a third nation
+// (the capital only at +100)
+function dipPickable(o, w) { const cap = capitalOf(o); return provsOf(o).filter(p => (p !== cap || warscore(w, ME) >= WAR.total) && scoutedBy(ME, p) && takeable(p, ME)); }
+// v102: which of a foe's provinces connect to your capital through your own land or the provinces picked so far
+function pickReach(o) {
+  const land = capitalLand(ME), out = new Set(); let grew = true;
+  const picks = [...S.dipPick];
+  while (grew) { grew = false; for (const p of picks) if (!land.has(p) && allNbr[p].some(q => land.has(q))) { land.add(p); grew = true; } }
+  for (const p of provsOf(o)) if (land.has(p) || allNbr[p].some(q => land.has(q))) out.add(p);
+  return out;
+}
+// v102: a province counts as explored for taking it only once one of the nation's scouts or armies has been there
+// (the player: S.wf, entered by a Wayfinder, and S.known, entered by an army or seen by a Far-Seeing Wayfinder;
+// computer nations: S.aiScouted, filled in by v102.js)
+function scoutedBy(o, p) {
+  if (nationOf(p) === o) return true;
+  if (o === ME) return S.wf.has(p) || S.known.has(p);
+  const L = S.aiScouted && S.aiScouted[o]; return !L || L.has(p);
+}
+// v102: the player can only take as many provinces as his forts let him hold
+const sustainRoom = () => Math.max(0, provLimit(ME) - provsOf(ME).length);
 // terms (seen from the player): white peace (any score), take gold (+20), take up to 5 non-capital provinces (+50), total victory (+100)
 function peaceCheck(w, kind, provs) {
   if (!w || !S.wars.includes(w)) return 'Not at war';
@@ -253,6 +276,8 @@ function peaceCheck(w, kind, provs) {
   if (kind === 'provs') {
     if (s < WAR.provs) return `Needs +${WAR.provs} warscore`;
     if (!provs || !provs.length) return 'Pick at least one province';
+    if (provs.length > sustainRoom()) return sustainRoom() ? `You can only hold ${sustainRoom()} more province${sustainRoom() > 1 ? 's' : ''}: build forts to hold more` : 'You can’t hold any more provinces: build forts first';   // v102
+    { const un = provs.filter(p => !scoutedBy(ME, p)); if (un.length) return `${un.map(provName).join(', ')} ${un.length > 1 ? 'haven’t' : 'hasn’t'} been explored by a scout or an army`; }   // v102
     if (provs.length > demandMax(s)) return `At most ${demandMax(s)} province${demandMax(s) > 1 ? 's' : ''} at ${s} warscore (1 at 50, +1 for every 5 more)`;
     if (provs.some(p => nationOf(p) !== foe)) return 'Only their provinces can be demanded';
     if (provs.some(p => S.buildings.get(p).stage === 2) && !(s >= WAR.total && provsOf(foe).every(p => provs.includes(p)))) return s >= WAR.total ? 'Their capital can only be taken with every other province (annexation)' : 'Capitals can’t be demanded below 100 warscore';
@@ -284,7 +309,7 @@ function seizeWhy(winner, loser, provs) {
 // the up-to-5 provinces a winner takes: nearest first, each one touching the winner's capital land (or one already taken)
 function connectedPick(winner, loser, n = WAR.maxProvs) {
   const land = capitalLand(winner), cap = capitalOf(loser), out = [];
-  const cand = provsOf(loser).filter(p => p !== cap && takeable(p, winner));
+  const cand = provsOf(loser).filter(p => p !== cap && takeable(p, winner) && scoutedBy(winner, p));   // v102: explored ones only
   while (out.length < n) {
     const ok = cand.filter(p => !out.includes(p) && allNbr[p].some(q => land.has(q)));
     if (!ok.length) break;
@@ -310,7 +335,7 @@ function totalPick(winner, loser, n = maxTake(winner)) {   // v95: as many provi
   const cap = capitalOf(winner), src = cap >= 0 ? [cap] : provsOf(winner);
   if (!src.length) return connectedPick(winner, loser, n);
   const d = walkDistFrom(src), lcap = capitalOf(loser);
-  return provsOf(loser).filter(p => p !== lcap && takeable(p, winner) && d[p] < Infinity).sort((a, b) => d[a] - d[b] || a - b).slice(0, n);
+  return provsOf(loser).filter(p => p !== lcap && takeable(p, winner) && scoutedBy(winner, p) && d[p] < Infinity).sort((a, b) => d[a] - d[b] || a - b).slice(0, n);
 }
 // annexing the whole country is only possible when no third nation occupies any of it
 function totalTerms(loser, winner) { const own = provsOf(loser); return own.length <= (winner === undefined ? WAR.maxProvs : maxTake(winner)) && (winner === undefined || own.every(p => takeable(p, winner))) ? 'annex' : 'split'; }
@@ -525,8 +550,9 @@ function allyWhy(a, b) {
   if (!aliveNation(a) || !aliveNation(b) || a === b) return 'Not possible';
   if (raceOf(a) !== raceOf(b)) return 'Only nations of the same race can ally';
   if (allied(a, b)) return 'Already allies';
-  if (alliesOf(a).length >= MAX_ALLIES) return a === ME ? `You already have ${MAX_ALLIES} allies` : `They already have ${MAX_ALLIES} allies`;
-  if (alliesOf(b).length >= MAX_ALLIES) return b === ME ? `You already have ${MAX_ALLIES} allies` : `They already have ${MAX_ALLIES} allies`;
+  const most = MAX_ALLIES === 1 ? 'an ally' : `${MAX_ALLIES} allies`;
+  if (treatyCount(a) >= MAX_ALLIES) return a === ME ? `You already have ${most}` : `They already have ${most}`;
+  if (treatyCount(b) >= MAX_ALLIES) return b === ME ? `You already have ${most}` : `They already have ${most}`;
   if (atWar(a, b) || everWar(a, b)) return a === ME || b === ME ? 'You have been at war with each other' : 'They have been at war with each other';
   for (const [x, y] of [[a, b], [b, a]]) { const bad = alliesOf(y).find(z => everWar(x, z)); if (bad) return `${x === ME ? 'You have' : `The ${PLAYERS[x].name} has`} been at war with ${theName(y) === 'you' ? 'your' : 'their'} ally, the ${PLAYERS[bad].name}`; }
   if (truceLeft(a, b) > 0) return `Truce: ${fmtTime(truceLeft(a, b))} left`;
@@ -543,7 +569,8 @@ function borderFort(a, b) {
 }
 // v96 peace terms: provinces by warscore (1 at 50, +1 for every 5 more; at 100 the whole country may be annexed)
 // at +100 the winner may take up to its full cap: 2 per fort it holds (maxTake), if that is more than the 11 the warscore steps give
-const demandMax = (s, o = ME) => s >= WAR.total ? Math.max(1 + Math.floor((WAR.total - WAR.provs) / 5), maxTake(o)) : s >= WAR.provs ? 1 + Math.floor((s - WAR.provs) / 5) : 0;
+const demandMax0 = (s, o = ME) => s >= WAR.total ? Math.max(1 + Math.floor((WAR.total - WAR.provs) / 5), maxTake0(o)) : s >= WAR.provs ? 1 + Math.floor((s - WAR.provs) / 5) : 0;
+const demandMax = (s, o = ME) => o === ME ? Math.min(demandMax0(s, o), sustainRoom()) : demandMax0(s, o);   // v102: no more than the player can hold
 const annexable = (winner, loser) => provsOf(loser).every(p => takeable(p, winner));
 function formAlliance(a, b, vs) {
   S.allies.push({ a, b, vs, since: S.t });
@@ -698,7 +725,7 @@ function dipNationHTML(o, w) {
     return head + `<p class="dp-p">${al ? 'You are allies: if anyone declares war on one of you, the other joins the war. Building a fort on your shared border ends the alliance.' : 'You are at peace. While at peace, neither side’s armies may enter the other’s land.'}${theirAllies.length ? ` They are allied with ${theirAllies.map(x => `the ${dot(x)}${PLAYERS[x].name}`).join(' and ')}, who would join a war against them.` : ''}</p>` +
       (al ? `<button type="button" class="dp-go" data-dp="unally">End the alliance <small>${WAR.allyTruce / 60}-minute truce afterwards; you can’t ally again until it ends</small></button>`
         : `<button type="button" class="dp-go war" data-dp="declare"${why ? ' disabled' : ''}>Declare war <small>${why || '−' + costText(WAR.declareCost)}</small></button>` +
-          `<button type="button" class="dp-go ally" data-dp="ally"${aw ? ' disabled' : ''}>Propose an alliance <small>${aw || 'If anyone declares war on one of you, the other joins. Up to ' + MAX_ALLIES + ' allies'}</small></button>`) +
+          `<button type="button" class="dp-go ally" data-dp="ally"${aw ? ' disabled' : ''}>Propose an alliance <small>${aw || 'If anyone declares war on one of you, the other joins. ' + (MAX_ALLIES === 1 ? 'One ally at a time' : 'Up to ' + MAX_ALLIES + ' allies')}</small></button>`) +
       `<ul class="dp-rules"><li>Each enemy soldier killed: +${WAR.kill}. Destroying a whole army: +${WAR.wipe}.</li><li>Hold an enemy province unopposed to occupy it: 60 s with 1 soldier, 40 s with 2–5, 20 s with 6 or more (capitals take twice as long; retaking takes the same). Worth outpost +${WAR.occVal[0]}, fort +${WAR.occVal[1]}, capital +${WAR.occVal[2]} while held.</li><li>Every ${WAR.tickEvery} s the side ahead gains +1.</li><li>A peace deal starts a ${WAR.truce / 60}-minute truce for both sides.</li><li>No more than ${WAR.maxVsPlayer} nations can be at war with you at once.</li></ul>`;
   }
   const s = warscore(w, ME), mineBase = w.a === ME ? w.base : -w.base;
@@ -706,10 +733,10 @@ function dipNationHTML(o, w) {
   const occMe = occVal(ME, o), occThem = occVal(o, ME);
   const term = (k, name, need, desc) => { const why = peaceCheck(w, k, k === 'provs' ? [...S.dipPick] : null), locked = why && why.startsWith('Needs'); return `<label class="dp-term${dipTerm === k ? ' on' : ''}${locked ? ' locked' : ''}"><input type="radio" name="dpt" value="${k}"${dipTerm === k ? ' checked' : ''}${locked ? ' disabled' : ''}><span><b>${name}</b><small>${desc}</small></span><em>${need}</em></label>`; };
   const n = provsOf(o).length, tt = totalTerms(o, ME);
-  const cap = capitalOf(o), pickable = provsOf(o).filter(p => (p !== cap || warscore(w, ME) >= WAR.total) && (S.explored.has(p) || p === cap) && takeable(p, ME));
+  const cap = capitalOf(o), pickable = dipPickable(o, w).sort((a, b) => provName(a).localeCompare(provName(b)));   // v102: alphabetical, explored by a scout or an army
   const mt = maxTake(ME), theirMt = maxTake(o);
-  const dm = demandMax(s), dmTxt = dm;
-  const pick = dipTerm === 'provs' ? `<div class="dp-pick"><div class="dp-pick-h">Choose up to ${dm} <span>${S.dipPick.size}/${dmTxt}</span><button type="button" class="dp-pk" data-dp="pickall">All</button><button type="button" class="dp-pk" data-dp="picknone">None</button></div>` + (pickable.length ? pickable.map(p => { const b = S.buildings.get(p), on = S.dipPick.has(p), full = !on && S.dipPick.size >= dm; return `<label class="dp-prov${on ? ' on' : ''}" data-prov="${p}"><input type="checkbox" value="${p}"${on ? ' checked' : ''}${full ? ' disabled' : ''}><i style="background:${TER[G.provs[p].terrain].base}"></i><span>${provName(p)}</span><small>${STAGE_WORD[b.stage]}${S.occ.get(p) === ME ? ' · occupied' : ''}</small></label>`; }).join('') : '<small>None of their provinces you know of can be taken.</small>') + '</div>' : '';
+  const dm = demandMax(s), dmTxt = dm, reach = pickReach(o);
+  const pick = dipTerm === 'provs' ? `<div class="dp-pick"><div class="dp-pick-h">Choose up to ${dm} <span>${S.dipPick.size}/${dmTxt}</span><button type="button" class="dp-pk" data-dp="pickall">All</button><button type="button" class="dp-pk" data-dp="picknone">None</button></div>` + (pickable.length ? pickable.map(p => { const b = S.buildings.get(p), on = S.dipPick.has(p), far = !reach.has(p), full = !on && (S.dipPick.size >= dm || far); return `<label class="dp-prov${on ? ' on' : ''}${far ? ' far' : ''}" data-prov="${p}"${far ? ' title="Can’t be reached from your capital through your land or the provinces picked so far"' : ''}><input type="checkbox" value="${p}"${on ? ' checked' : ''}${full ? ' disabled' : ''}><i style="background:${TER[G.provs[p].terrain].base}"></i><span>${provName(p)}</span><small>${STAGE_WORD[b.stage]}${S.occ.get(p) === ME ? ' · occupied' : ''}</small></label>`; }).join('') : '<small>None of their provinces you have explored (with a scout or an army) can be taken.</small>') + (sustainRoom() < demandMax0(s) ? `<small class="dp-room">${sustainRoom() ? `You can only hold ${sustainRoom()} more province${sustainRoom() > 1 ? 's' : ''}` : 'You can’t hold any more provinces'} (${provsOf(ME).length}/${provLimit(ME)}): build forts to hold more.</small>` : '') + '</div>' : '';
   const why = peaceCheck(w, dipTerm, dipTerm === 'provs' ? [...S.dipPick] : null);
   return head +
     `<p class="dp-p">${w.by === ME ? 'You declared this war' : 'They declared this war'}${w.parent ? ' (through an alliance)' : ''}, ${fmtTime(S.t - w.since)} ago.</p>` +
@@ -744,7 +771,7 @@ dipEl.addEventListener('click', e => {
   else if (act === 'sel') selectDip(+b.dataset.o);
   else if (act === 'declare') { declareWar(ME, dipSel); selectDip(dipSel); }
   else if (act === 'ally') { const why = allyWhy(ME, dipSel); if (why) return toast(why, true); formAlliance(ME, dipSel, commonThreat(ME, dipSel)); }
-  else if (act === 'pickall' || act === 'picknone') { S.dipPick.clear(); if (act === 'pickall') { const w = warBetween(ME, dipSel), dm = w ? demandMax(warscore(w, ME)) : 0, cap = capitalOf(dipSel); for (const p of provsOf(dipSel)) if (S.dipPick.size < dm && (p !== cap || warscore(w, ME) >= WAR.total) && (S.explored.has(p) || p === cap) && takeable(p, ME)) S.dipPick.add(p); } }
+  else if (act === 'pickall' || act === 'picknone') { S.dipPick.clear(); if (act === 'pickall') { const w = warBetween(ME, dipSel), dm = w ? demandMax(warscore(w, ME)) : 0, list = dipPickable(dipSel, w).sort((a, b) => provName(a).localeCompare(provName(b))); let grew = true; while (grew && S.dipPick.size < dm) { grew = false; const reach = pickReach(dipSel); for (const p of list) if (S.dipPick.size < dm && !S.dipPick.has(p) && reach.has(p)) { S.dipPick.add(p); grew = true; break; } } } }
   else if (act === 'unally') {   // v96: either side may end it at any time: a 10-minute truce follows (no new alliance between them until it ends)
     const A = S.allies.find(x => (x.a === ME && x.b === dipSel) || (x.b === ME && x.a === dipSel)); if (A) endAlliance(A, 'you ended it'); }
   else if (act === 'offer') {
