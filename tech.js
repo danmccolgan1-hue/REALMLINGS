@@ -106,17 +106,17 @@ const MAG_TECHS = [
   ['mending', 1, 'school-life', 'life', 40, 'Mending', 'Mages heal an army’s wounds back to full over 1 minute. 3-minute cooldown.'],
   ['rejuvenation', 2, 'mending', 'life', 100, 'Rejuvenation', 'Healing takes 30 seconds; cooldown 2 minutes.'],
   ['restoration', 3, 'rejuvenation', 'life', 200, 'Restoration', 'Healing is instant and has no cooldown.'],
-  ['forest', 1, 'school-life', 'life', 40, 'Speak with the Forest', 'A Mage can open a path through a border of trees after 2 minutes of casting. Lumber Mills are unaffected.'],
-  ['commune', 2, 'forest', 'life', 100, 'Commune with Nature', 'Opening a forest path takes 1 minute.'],
-  ['arboreal', 3, 'commune', 'life', 200, 'Arboreal Restoration', 'A Mage can close a forest path again with 1 minute of casting.'],
+  ['forest', 1, 'school-life', 'life', 40, 'Speak with the Forest', 'A Mage standing in a province you own or occupy can open a path through a border of trees after 20 seconds of casting (200 mana). Lumber Mills are unaffected.'],
+  ['commune', 2, 'forest', 'life', 100, 'Commune with Nature', 'Opening a forest path takes 10 seconds.'],
+  ['arboreal', 3, 'commune', 'life', 200, 'Arboreal Restoration', 'A Mage can close a forest path again with 10 seconds of casting (200 mana).'],
   ['terrascape', 3, 'forest', 'life', 200, 'Terrascaping', 'A Mage grows a line of trees along an open border, with a forest path left open in the middle: only a path through the trees remains. 5 minutes of casting.'],
   // Necromancy (Death)
   ['curse1', 1, 'school-death', 'death', 40, 'Cursed Weapons I', 'Autocast: when an army with a Mage starts a battle, its weapons deal +5% damage. 5-minute cooldown per army.'],
   ['curse2', 2, 'curse1', 'death', 100, 'Cursed Weapons II', 'Cursed Weapons deal +10% damage; cooldown 3 minutes.'],
   ['curse3', 3, 'curse2', 'death', 200, 'Cursed Weapons III', 'Cursed Weapons deal +15% damage; cooldown 90 seconds.'],
-  ['underworld', 1, 'school-death', 'death', 40, 'Underworld Passage', 'A Mage can open a tunnel through a mountain border after 2 minutes of casting.'],
-  ['hallways', 2, 'underworld', 'death', 100, 'Hallways of Pain', 'Opening a mountain tunnel takes 1 minute.'],
-  ['sealed', 3, 'hallways', 'death', 200, 'Sealed Gates', 'A Mage can seal a mountain tunnel again with 1 minute of casting.'],
+  ['underworld', 1, 'school-death', 'death', 40, 'Underworld Passage', 'A Mage standing in a province you own or occupy can open a tunnel through a mountain border after 20 seconds of casting (200 mana).'],
+  ['hallways', 2, 'underworld', 'death', 100, 'Hallways of Pain', 'Opening a mountain tunnel takes 10 seconds.'],
+  ['sealed', 3, 'hallways', 'death', 200, 'Sealed Gates', 'A Mage can seal a mountain tunnel again with 10 seconds of casting (200 mana).'],
   ['risen', 1, 'school-death', 'death', 40, 'Risen Dead', 'Autocast: while a Mage with Risen Dead ready is in the army, every 4th soldier who falls in battle rises again at once. One Mage can keep this or Cursed Weapons ready, not both; two Mages can use both. 2-minute cooldown after the battle.'],
   ['necro', 2, 'risen', 'death', 100, 'Necromantic Energies', 'Every 3rd fallen soldier rises again.'],
   ['armyofdeath', 3, 'necro', 'death', 200, 'Army of Death', 'Every other fallen soldier rises again.'],
@@ -136,11 +136,11 @@ const MAG_TECHS = [
   ['rift', 1, 'school-arcane', 'arcane', 40, 'Teleportation Rift', 'A Mage opens a rift where he stands. Later, a casting Mage anywhere can send one army through it to the rift. Single use.'],
   ['portal', 2, 'rift', 'arcane', 100, 'Teleportation Portal', 'Rifts can be used 3 times.'],
   // every school: staves (two-handed) and wands (one-handed, allow a shield)
-  ['grandstave', 2, null, '*', 100, 'Grand Staves', 'Mages can carry a Grand Stave: attack 6 (Stave 4).'],
-  ['mythicstave', 3, 'grandstave', '*', 200, 'Mythic Staves', 'Mages can carry a Mythic Stave: attack 9.'],
-  ['crypticwand', 2, null, '*', 100, 'Cryptic Wands', 'Mages can carry a Cryptic Wand: attack 3 (Wand 2), leaving a hand free for a shield.'],
-  ['enigmaticwand', 3, 'crypticwand', '*', 200, 'Enigmatic Wands', 'Mages can carry an Enigmatic Wand: attack 5, with a shield.'],
-  ['earthquake', 3, null, '*', 200, 'Earthquake', 'A Mage standing in an enemy province your army occupies can cast an Earthquake: after 2 minutes every building in that province is destroyed, and every wall on its borders.'],
+  ['grandstave', 2, null, '*', 100, 'Grand Staves', 'Mages can carry a Grand Stave: attack 6 (Stave 4), and every spell casts 10% faster while they carry it.'],
+  ['mythicstave', 3, 'grandstave', '*', 200, 'Mythic Staves', 'Mages can carry a Mythic Stave: attack 9, and every spell casts 20% faster while they carry it.'],
+  ['crypticwand', 2, null, '*', 100, 'Cryptic Wands', 'Mages can carry a Cryptic Wand: attack 3 (Wand 2), leaving a hand free for a shield. Every spell costs 10% less mana while they carry it.'],
+  ['enigmaticwand', 3, 'crypticwand', '*', 200, 'Enigmatic Wands', 'Mages can carry an Enigmatic Wand: attack 5, with a shield. Every spell costs 20% less mana while they carry it.'],
+  ['earthquake', 3, null, '*', 200, 'Earthquake', 'A Mage standing in an enemy province your army occupies can cast an Earthquake: after 30 seconds every building in that province is destroyed, and every wall on its borders takes 120 wall damage.'],
   // Pyromancy (Swamplings only)
   ['school-pyro', 1, null, null, 40, 'School of Pyromancy', 'Commit to Pyromancy: fiery weapons, scouting pyres, fire traps, sacred pyres and paths of fire.'],
   ['fiery1', 1, 'school-pyro', 'pyro', 40, 'Fiery Weapons I', 'Autocast: when an army with a Warlock starts a battle, every blow has a 5% chance to strike twice as hard. 5-minute cooldown per army.'],
@@ -162,10 +162,9 @@ const MAG_TECHS = [
   ['forestspirit', 2, 'school-elemental', 'elemental', 100, 'Forest Spirit', 'A Druid calls a spirit into a border of trees beside the province he stands in (20 seconds of casting). Both provinces along that border make 25% more gold, wood and food. One spirit per living Druid: if a Druid falls, a spirit fades.'],
   ['gelemental', 3, 'school-elemental', 'elemental', 200, 'Grand Elemental', 'A Druid summons a towering man of living water for 2 minutes (10 seconds of casting): he hits as hard as a fully upgraded Champion and has twice its health, but no armor. He joins the Druid’s army (or forms one), fights, and can capture provinces. 5-minute cooldown per Druid.'],
   // v95: Warlocks' off-hand skulls (Swamplings): with a wand, a skull adds to the attack
-  ['skull-cracked', 1, null, '*', 40, 'Cracked Skulls', 'Warlocks with a wand can hold a Cracked Skull in the off hand: +1 attack. Set it in the Armory.'],
-  ['skull-chipped', 2, 'skull-cracked', '*', 100, 'Chipped Skulls', 'Warlocks with a wand can hold a Chipped Skull in the off hand: +2 attack.'],
-  ['skull-polished', 3, 'skull-chipped', '*', 200, 'Polished Skulls', 'Warlocks with a wand can hold a Polished Skull in the off hand: +3 attack.'],
-  ['skull-flawless', 3, 'skull-polished', '*', 200, 'Flawless Skulls', 'Warlocks with a wand can hold a Flawless Skull in the off hand: +4 attack.'],
+  ['skull-cracked', 1, null, '*', 40, 'Cracked Skulls', 'Warlocks with a wand can hold a Cracked Skull in the off hand: +1 attack, and the Fireball casts 2 s faster. Set it in the Armory.'],
+  ['skull-polished', 2, 'skull-cracked', '*', 100, 'Polished Skulls', 'Warlocks with a wand can hold a Polished Skull in the off hand: +2 attack, and the Fireball casts 4 s faster.'],
+  ['skull-flawless', 3, 'skull-polished', '*', 200, 'Flawless Skulls', 'Warlocks with a wand can hold a Flawless Skull in the off hand: +3 attack, and the Fireball casts 6 s faster.'],
   ['abandon', 3, null, '*', 300, 'Abandon Magic School', 'Costs 1000 gold to begin. When finished, your school and all of its spells are forgotten, and you can choose a new school.']
 ];
 for (const [id, tier, req, school, cost, name, blurb] of MAG_TECHS) TECHS.push({ id, tree: 'mag', tier, cost, req, school, name, blurb, gold: id === 'abandon' ? 1000 : 0 });
@@ -192,8 +191,8 @@ TECHS.find(x => x.id === 'traderoutes').reqSw = 'market';   // Highwaymen (the S
 S.rep = {};
 const REP_STEP = 1.3, REP_LEFT = 5;
 const REP_TECHS = [
-  ['rep-forts', 'gov', 100, 'Garrison Charters', 'Raises the Fort limit by 1. Its cost never rises, and once offered it stays on offer.', null],
-  ['rep-admin', 'gov', 100, 'Expand Administration', 'Every Fort (and your capital) allows 1 more province.', null],   // v96
+  ['rep-forts', 'gov', 100, 'Garrison Charters', 'Raises the Fort limit by 2. Its cost never rises, and once offered it stays on offer.', null],
+  ['rep-admin', 'gov', 100, 'Expand Administration', 'Every Fort (and your capital) allows 2 more provinces.', null],   // v96
   ['rep-storage', 'gov', 100, 'Deeper Cellars', 'Raises gold, wood and food storage by 500 each.', null],
   ['rep-trade', 'gov', 100, 'Merchant Guilds', 'Trade Routes give 5% more gold.', 'traderoutes'],
   ['rep-lumber', 'gov', 100, 'Sawyer Guilds', 'Lumber Mills give 5% more wood.', null],
@@ -403,12 +402,7 @@ const techEl = $q('#techPanel');
 techEl.addEventListener('pointerdown', e => e.stopPropagation());
 techEl.addEventListener('wheel', e => e.stopPropagation());
 techEl.addEventListener('click', e => {
-  const b = e.target.closest('[data-tech]');
-  if (b) {   // choosing a technology closes the Research screen
-    const id = b.dataset.tech, x = TECH_BY_ID[id]; pickTech(id);
-    if (x && (S.tech[x.tree].cur === id || !S.tech[x.tree].opts.includes(id))) toggleTech(false);
-    return;
-  }
+  const b = e.target.closest('[data-tech]'); if (b) { pickTech(b.dataset.tech); return; }
   if (e.target.closest('[data-tp="close"]')) { toggleTech(false); return; }
   const tg = e.target.closest('[data-tp^="opts:"], [data-tp^="done:"]');
   if (tg) { const [k, tree] = tg.dataset.tp.split(':'); if (k === 'opts') techShow[tree] = !techShow[tree]; else techDoneOpen[tree] = !techDoneOpen[tree]; techKey = ''; }

@@ -129,7 +129,7 @@ function siegeHold(u, time) {
 }
 // a wall under siege falls after 2 minutes of battering, however big the army (or however many armies) at it;
 // walls hold an enemy up for a good while (a Shockwave takes 2 minutes to break one)
-const SIEGE_TIME = 120, SIEGE_MIN = 6;   // armies of fewer than 6 soldiers can't batter a wall
+const SIEGE_TIME = 120, SIEGE_MIN = 10;   // v102: armies of fewer than 10 soldiers can't batter a wall (and it loses 1 health a second: stepSiege in v102.js)
 function stepSiege(dt) {
   if (!dt) return;
   const hit = new Map();
@@ -283,7 +283,9 @@ const SPELL2 = { quake: { name: 'Earthquake', time: QUAKE_TIME }, shock: { get n
 const SHOCK = (o = ME) => isSw(o) ? 'Fireball' : 'Shockwave';
 // v96: Swift Shockwave / Swift Earthquake (repeatable Magic) shorten the cast by 5% a level (compounding), for any nation
 const repOf = (o, id) => o === ME ? repLv(id) : NATIONS[o] ? aiRep(NATIONS[o], id) : 0;
-const spellTime = (k, o) => SPELL2[k].time * Math.pow(0.95, repOf(o, k === 'quake' ? 'rep-quakecast' : 'rep-shockcast'));
+// v102: staves cast faster (castMult) and a Warlock's skull shortens the Fireball (skullCut); both are set in v102.js
+let castMult = o => 1, skullCut = o => 0;
+const spellTime = (k, o) => Math.max(1, SPELL2[k].time * Math.pow(0.95, repOf(o, k === 'quake' ? 'rep-quakecast' : 'rep-shockcast')) * castMult(o) - (k === 'shock' ? skullCut(o) : 0));
 const castLen = T => T >= 60 ? `${+(T / 60).toFixed(T % 60 ? 1 : 0)} minute${T === 60 ? '' : 's'}` : `${Math.round(T)} seconds`;
 const quakeT = c => (c.quake && c.quake.T) || SPELL2[c.quake.kind].time;
 S.quakes = []; let quakeSeq = 0, quakeAim = false;
@@ -307,7 +309,7 @@ function shockWhy(c, q) {
   if (!wallBetween(c.prov, q)) return 'There is no wall on that border';
   if (c.moving) return 'Stop moving first';
   if (c.battle) return 'Not during battle';
-  if (S.units.some(v => v.quake && v.quake.kind === 'shock' && v.quake.to !== undefined && linkKey(v.prov, v.quake.to) === linkKey(c.prov, q))) return 'A Shockwave is already being cast there';
+  // v102: any number of Shockwaves / Fireballs may be cast at the same wall at once
   return null;
 }
 function startSpell2(c, kind, q) {
@@ -335,9 +337,9 @@ function quakeStrike(c) {
   for (const k of [...S.xup.keys()]) if (+k.split('@')[0] === p) S.xup.delete(k);
   for (const v of S.units) if (v.build && v.build.prov === p && BUILD_DEFS[v.build.type]) cancelBuild(v);
   const walls = [...S.walls].filter(i => { const e = world.edges[i]; return e.a === p || e.b === p; });
-  let broke = 0, cracked = 0; for (const i of walls) { if (spellHitWall(i, null)) broke++; else cracked++; }   // v96: a stone wall only cracks on the first hit
+  let broke = 0, cracked = 0; for (const i of walls) { if (spellHitWall(i, c, WALL_SPELL.quake)) broke++; else cracked++; }   // v102: 120 wall damage to every wall around
   territory = null; cacheDirty = true; computeIncome(); provKey = '';
-  const msg = `The earth splits at ${provName(p)}: ${lost} building${lost === 1 ? '' : 's'} and ${broke} wall${broke === 1 ? '' : 's'} destroyed${cracked ? `; ${cracked} stone wall${cracked === 1 ? '' : 's'} cracked` : ''}.`;
+  const msg = `The earth splits at ${provName(p)}: ${lost} building${lost === 1 ? '' : 's'} and ${broke} wall${broke === 1 ? '' : 's'} destroyed${cracked ? `; ${cracked} wall${cracked === 1 ? '' : 's'} damaged` : ''}.`;
   if (c.owner === ME) { toast(msg); sfx('war_fort_win', { vol: 0.7 }); }
   else if (nationOf(p) === ME || S.explored.has(p)) toast(msg, nationOf(p) === ME);
 }
@@ -352,7 +354,7 @@ function stepQuakes(t) {
     if (k === 'quake') { if (!quakeWhyAt(c)) { spellFx('quake', c, c.prov); quakeStrike(c); } continue; }
     const e = wallBetween(c.prov, q), i = e ? world.edges.indexOf(e) : -1;
     if (i >= 0) spellFx(isSw(c.owner) ? 'fireball' : 'shock', c, q, e);
-    if (i >= 0) { const gone = spellHitWall(i, c); if (c.owner === ME) toast(gone ? `The ${SHOCK()} ${isSw(ME) ? 'blasts apart' : 'shatters'} the wall between ${provName(c.prov)} and ${provName(q)}.` : `The ${SHOCK()} cracks the stone wall between ${provName(c.prov)} and ${provName(q)}. One more ${SHOCK()} or an Earthquake will bring it down.`); }
+    if (i >= 0) { const gone = spellHitWall(i, c, WALL_SPELL.shock), w = wallLife(i); if (c.owner === ME) toast(gone ? `The ${SHOCK()} ${isSw(ME) ? 'blasts apart' : 'shatters'} the wall between ${provName(c.prov)} and ${provName(q)}.` : `The ${SHOCK()} hits the wall between ${provName(c.prov)} and ${provName(q)}: ${Math.ceil(w.hp)}/${w.max} wall health left.`); }   // v102: 40 wall damage
   }
   // banners only last while the caster is still at war with you
   if (S.quakes.length) S.quakes = S.quakes.filter(x => atWar(ME, x.by) && S.units.some(v => v.quake && v.quake.id === x.id));
@@ -371,10 +373,10 @@ extraCmdInfo = id => {
   const c = selCaster(), on = c && c.quake && c.quake.kind === id, T = on ? quakeT(c) : spellTime(id, ME);
   if (id === 'quake') {
     const why = !c ? 'No Mage selected' : on ? null : castBusy(c) || quakeWhy(c);
-    return { name: on ? `Earthquake (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : 'Earthquake', desc: `Cast it while standing in an enemy province your army occupies: after ${castLen(T)} every building in that province is destroyed, and every wall on its borders.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click to cast', icon: xIcon('quake') };
+    return { name: on ? `Earthquake (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : 'Earthquake', desc: `Cast it while standing in an enemy province your army occupies: after ${castLen(T)} every building in that province is destroyed, and every wall on its borders takes 120 wall damage.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click to cast', icon: xIcon('quake') };
   }
   const why = !c ? 'No Mage selected' : on ? null : castBusy(c) || (c.moving ? 'Stop moving first' : c.battle ? 'Not during battle' : null);
-  return { name: on ? `${SHOCK()} (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : quakeAim ? 'Pick a province…' : SHOCK(), desc: `Click this, then click a neighboring province of a nation you are at war with: after ${castLen(T)} of casting the wall on that border is destroyed. Every ${UNIT_DEFS[MAGE].name} knows it.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click, then pick a province', icon: xIcon('shock') };
+  return { name: on ? `${SHOCK()} (${Math.ceil(T - (S.t - c.quake.t0))} s left)` : quakeAim ? 'Pick a province…' : SHOCK(), desc: `Click this, then click a neighboring province of a nation you are at war with: after ${castLen(T)} of casting the wall on that border takes 40 wall damage (palisades 40 health, spiked walls 80, stone 120). Several can hit the same wall at once. Every ${UNIT_DEFS[MAGE].name} knows it.${on ? ' Click again to stop.' : ''}`, cost: null, why, ok: on ? 'Click to stop casting' : 'Click, then pick a province', icon: xIcon('shock') };
 };
 const _extraUse = extraCmdUse;
 extraCmdUse = id => {

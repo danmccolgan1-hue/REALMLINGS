@@ -82,7 +82,9 @@ function bslotOf(p, slot) {
 const MAX_EXTRAS = 6;
 // plots open in a province by settlement stage: outpost 2, fort 4, capital 6
 const PLOTS_BY_STAGE = [2, 4, 6];
-const plotCap = p => { const b = S.buildings.get(p); return b ? PLOTS_BY_STAGE[b.stage] : 0; };
+// v102: a Conquered Capital (b.cc) keeps 6 plots; Master Builders gives outposts a third plot
+const plotCap = p => { const b = S.buildings.get(p); return !b ? 0 : b.cc ? 6 : PLOTS_BY_STAGE[b.stage] + (b.stage === 0 && techOf(b.owner, 'autobuild') ? 1 : 0); };
+const stageName = b => b.cc ? 'Conquered Capital' : STAGE_NAME[b.stage];
 const FORT_UPGRADE = { cost: { gold: 200, wood: 300 }, time: 15 };
 const BUILD_DEFS = {
   farm: { name: 'Farm', variant: 0, cost: { gold: 50, wood: 100 }, upkeep: { wood: 2 }, gives: { food: 5 } },
@@ -185,8 +187,9 @@ const fogState = i => S.visible.has(i) ? 'visible' : S.explored.has(i) ? 'explor
 // at peace, armies stay out of other nations' land (armies heading home after a peace deal are let through)
 // every unit may only walk through its own land, unclaimed land, the land of a nation it is at war with, or the land of a nation it has a truce with (units marching home after a peace deal excepted)
 // a truce after a peace deal opens the border too (GPC23)
-const nationOk = (u, q) => { if (u.exiting || u.owner === RAIDERS || (u.kind === WAYFINDER && u.stealth)) return true;   // a sneaking Wayfinder / Swampstrider may cross anyone's land, war or not
-  const n = nationOf(q); return !n || n === u.owner || hostile(u.owner, n) || truceLeft(u.owner, n) > 0; };
+const nationOk = (u, q) => { if (u.exiting || u.owner === RAIDERS || (u.kind === WAYFINDER && (u.stealth || u.detected))) return true;   // v102: a detected one keeps moving through foreign land
+    // a sneaking Wayfinder / Swampstrider may cross anyone's land, war or not
+  const n = nationOf(q); return !n || n === u.owner || hostile(u.owner, n) || truceLeft(u.owner, n) > 0 || hasAccess(u.owner, n); };   // v105: military access (and alliances)
 // at war, any unit may march into unexplored land that belongs to the enemy
 // a Wayfinder / Swampstrider of yours only steps into unexplored land when it is the province you sent him to (tgt):
 // his route never cuts across the fog on the way (v87)
@@ -504,7 +507,7 @@ const rawStrength = armies => armies.reduce((n, a) => n + Object.entries(a.troop
 function stepBattles(t) {
   // start battles where armies of different owners share a province
   const byProv = new Map();
-  for (const a of S.units) { if (a.kind !== 'army' || a.retreating || a.moving && !a.battle && !a.sieging || troopCount(a) <= 0) continue; if (!byProv.has(a.prov)) byProv.set(a.prov, []); byProv.get(a.prov).push(a); }
+  for (const a of S.units) { if (a.kind !== 'army' || a.retreating || a.exiting || troopCount(a) <= 0) continue; if (!byProv.has(a.prov)) byProv.set(a.prov, []); byProv.get(a.prov).push(a); }   // v102: armies on the move fight too (they used to walk straight past each other)
   for (const [p, list] of byProv) {
     // only owners that are hostile to each other fight (raiders always; nations only while at war)
     const os = [...new Set(list.map(a => a.owner))]; let pair = null;
@@ -1037,7 +1040,7 @@ const capNote = (p, type) => buildCap(p, type) > 1 ? ` · ${countOf(p, type)}/${
 const ptype = part => part ? part.split('@')[0] : part;
 function extrasBonus(p) { const y = { gold: 0, wood: 0, food: 0 }; for (const e of extrasIn(p)) { const gv = givesOf(e.type); for (const k in gv) y[k] += gv[k]; } return y; }
 function provinceIncome(p, b) {
-  const x = extrasBonus(p), y = {}; for (const k of RES) y[k] = yields[p][k] + (b.stage === 2 ? CAPITAL_BONUS[k] : 0) + x[k];
+  const x = extrasBonus(p), y = {}; for (const k of RES) y[k] = yields[p][k] + (b.stage === 2 || b.cc ? CAPITAL_BONUS[k] : 0) + x[k];   // v102: a Conquered Capital still pays its 5 of each
   if (b.stage === 2 && b.owner === ME) y.gold += tradeGold();   // Trade Routes: markets the capital reaches by road
   return y;
 }
@@ -1387,10 +1390,10 @@ function drawArt(g, key, fn, x, y, k) {
 }
 function drawBuilding(g, prov, b, t) {
   const p = G.provs[prov], dt = t - b.born, s = dt < 1.5 ? Math.max(0, 1 - Math.exp(-dt * 7) * Math.cos(dt * 15)) : 1;
-  const race = raceOf(b.owner);   // Swamplings live in mud huts
-  if (dt >= 1.5 && dpr * cam.z <= (b.owner === ME ? 0.5 : 2)) { const look = campLook(prov); if (drawArt(g, race + 'set|' + b.stage + '|' + look.variant + '|' + look.terrain, c => settleArt(c, b.stage, 0, look, race), p.ic[0], p.ic[1], KB)) return; }
+  const race = b.cc ? b.ccRace || raceOf(b.owner) : raceOf(b.owner), st = b.cc ? 2 : b.stage;   // Swamplings live in mud huts; v102: a Conquered Capital keeps its capital
+  if (dt >= 1.5 && dpr * cam.z <= (b.owner === ME ? 0.5 : 2)) { const look = campLook(prov); if (drawArt(g, race + 'set|' + st + '|' + look.variant + '|' + look.terrain, c => settleArt(c, st, 0, look, race), p.ic[0], p.ic[1], KB)) return; }
   g.save(); g.translate(p.ic[0], p.ic[1]); g.scale(KB * s, KB * s);
-  settleArt(g, b.stage, t, campLook(prov), race);
+  settleArt(g, st, t, campLook(prov), race);
   g.restore();
 }
 function drawSurveyQueue(g, t) {
@@ -1821,7 +1824,7 @@ function hoverAt(sx, sy) {
   const st = fogState(p), P = G.provs[p], T = TER[P.terrain];
   const b = S.visible.has(p) ? S.buildings.get(p) : null;
   tip.innerHTML = st === 'unexplored' ? '<strong>Unexplored</strong><div class="row">Only a Wayfinder can go here.</div>' :
-    `<strong>${T.label}</strong><div class="row">${st === 'visible' ? 'Visible' : 'Explored · contents unknown'}${b ? ' · ' + (b.stage === 2 ? 'Capital' : b.stage === 1 ? 'Fort' : 'Outpost') : ''}</div>` +
+    `<strong>${T.label}</strong><div class="row">${st === 'visible' ? 'Visible' : 'Explored · contents unknown'}${b ? ' · ' + stageName(b) : ''}</div>` +
     (!owned(p) ? `<div class="row">${bordersOwned(p) ? 'Outpost allowed here' : 'Too far from your land for an outpost'}</div>` : `<div class="row">Yours · ${extrasIn(p).length}/${plotCap(p)} buildings${extrasIn(p).length ? ': ' + extrasIn(p).map(e => BUILD_DEFS[e.type].name).join(', ') : ''}</div>`) +
     (S.surveyed.has(p) ? `<div class="row">Every 10 s: ${RES.map(k => yields[p][k] + ' ' + k + (yields[p].bonus[k] ? ' (bonus +' + yields[p].bonus[k] + ')' : '')).join(', ')}</div>` + (yields[p].deposit ? '<div class="row" style="color:#a67c00">Hidden Gold Deposit · a Gold Mine can be built</div>' : '') : '<div class="row">Resources unknown · survey it with a Wayfinder</div>') +
     (S.visible.has(p) && owned(p) && extrasIn(p).some(e => BUILD_DEFS[e.type].gives) ? `<div class="row" style="color:#1f7a2e">Buildings add ${(() => { const x = extrasBonus(p); return RES.filter(k => x[k]).map(k => '+' + x[k] + ' ' + k).join(', '); })()}</div>` : '') +
@@ -2076,7 +2079,7 @@ function renderSettleCard() {
   const key = 'settle|' + p + '|' + b.stage + '|' + !!up + '|' + RES.map(k => S.stock[k]).join(',') + '|' + rewallsAt(p).length + '|' + warsOf(ME).length + '|' + S.rewallJobs.has(p);
   if (key !== cmdKey) {
     cmdKey = key;
-    $q('#cmdTabs').innerHTML = `<span class="cmd-tab" aria-selected="true"><img alt="" src="${settlementThumb(b.stage)}">${STAGE_NAME[b.stage]}</span>`;
+    $q('#cmdTabs').innerHTML = `<span class="cmd-tab" aria-selected="true"><img alt="" src="${settlementThumb(b.cc ? 2 : b.stage)}">${stageName(b)}</span>`;
     const cells = new Array(16).fill('<div class="cmd-cell"></div>');
     if (b.stage === 0) { const info = cmdInfo(up ? 'cancelup' : 'upgrade'); cells[0] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="${up ? 'cancelup' : 'upgrade'}" aria-label="${info.name}"${cmdBg('build:outpost')}><img alt="" src="${info.icon}">${up ? '<i class="cmd-prog"><s></s></i>' : ''}</button>`; }
     if (b.stage >= 1 && (b.stage === 1 || rewallsAt(p).length)) { const info = cmdInfo('rewalls'); cells[0] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="rewalls" aria-label="${info.name}"><img alt="" src="${info.icon}"></button>`; }
@@ -2155,7 +2158,7 @@ function settlementThumb(stage) {
 }
 const STAGE_NAME = ['Outpost', 'Fort', 'Capital'];
 function partInfo(p, part, lvE) {
-  if (part === 'settlement') { const st = S.buildings.get(p).stage; return { name: STAGE_NAME[st], img: settlementThumb(st), desc: st === 2 ? `Trains ${UNIT_DEFS[WAYFINDER].name}s and ${UNIT_DEFS[MASON].name}s. +${CAPITAL_BONUS.gold} of each resource. 6 building plots.` : st === 1 ? 'A stone fort. 4 building plots.' : 'Claims the province. 2 building plots; upgrade to a Fort for 4.' }; }
+  if (part === 'settlement') { const b = S.buildings.get(p), st = b.stage; if (b.cc) return { name: stageName(b), img: settlementThumb(2), desc: `A capital taken in war. +${CAPITAL_BONUS.gold} of each resource. 6 building plots.` }; return { name: STAGE_NAME[st], img: settlementThumb(st), desc: st === 2 ? `Trains ${UNIT_DEFS[WAYFINDER].name}s and ${UNIT_DEFS[MASON].name}s. +${CAPITAL_BONUS.gold} of each resource. 6 building plots.` : st === 1 ? 'A stone fort. 4 building plots.' : 'Claims the province. 2 building plots; upgrade to a Fort for 4.' }; }
   const d = BUILD_DEFS[part];
   if (d.levels) { const lv = (lvE && lvE.level) || 1; return { name: d.levels[lv - 1], img: buildThumb(part, lv), desc: `${part === 'forge' ? 'Military' : 'Magic'} research Tier ${['', 'I', 'II', 'III'][lv]} · +${[0, 2, 4, 6][lv]} points every 10 s` + (lv < 3 ? ' · select to upgrade' : '') }; }
   return { name: d.name, img: buildThumb(part), desc: d.store ? d.note : d.gives ? Object.entries(givesOf(part)).map(([k, v]) => '+' + v + ' ' + k).join(', ') + ' every 10 s' : part === 'barracks' ? (isWd(ME) ? (extrasIn(p).some(e => e.type === 'stable') ? 'Trains Protectors and Champions' : 'Trains Protectors') : extrasIn(p).some(e => e.type === 'stable') ? 'Trains infantry and cavalry' : 'Trains infantry') : part === 'stable' ? (isWd(ME) ? 'Lets this province’s Barracks train Champions' : 'Lets this province’s Barracks train cavalry') : '' };
@@ -2171,7 +2174,7 @@ function provMenu() {
   let res;
   if (!surveyed) res = '<div class="pm-res none" title="Survey it with a Wayfinder to learn its resources">Resources unknown</div>';
   else {
-    const x = b ? extrasBonus(p) : { gold: 0, wood: 0, food: 0 }, cap = b && b.stage === 2;
+    const x = b ? extrasBonus(p) : { gold: 0, wood: 0, food: 0 }, cap = b && (b.stage === 2 || b.cc);
     res = '<div class="pm-res">' + RES.map(k => { const base = y[k], add = x[k] + (cap ? CAPITAL_BONUS[k] : 0); return `<span class="cst" title="${RES_LABEL[k]}: ${base} from the land${y.bonus[k] ? ' (incl. +' + y.bonus[k] + ' bonus)' : ''}${add ? ', +' + add + ' from buildings' : ''}"><img alt="${k}" src="${icoURL[k]}"><b class="${y.bonus[k] ? 'bonus' : ''}">${base}</b>${add ? `<em>+${add}</em>` : ''}</span>`; }).join('') + '</div>';
   }
   const tags = [y.deposit && surveyed ? '<span class="pm-tag gold">Hidden Gold Deposit</span>' : '', treeBorder[p] ? `<span class="pm-tag">${treeBorder[p]} tree border${treeBorder[p] > 1 ? 's' : ''}</span>` : '', P.coastal ? '<span class="pm-tag">Coastal</span>' : '', P.lakeside ? '<span class="pm-tag">Lakeside</span>' : '', setpieceTag(p), banditTag(p)].join('');
@@ -2184,7 +2187,7 @@ function provMenu() {
       const e = list.find(v => v.slot === i), s2 = site.find(v => v.build.slot === i);
       if (e) cells.push(slot(e.type + '@' + e.slot, partInfo(p, e.type, e)));
       else if (s2) cells.push(`<div class="pm-b building"><img alt="" src="${buildThumb(s2.build.type)}"><span>${BUILD_DEFS[s2.build.type].name}<small>building…</small></span></div>`);
-      else if (pend.find(v => v.pending.slot === i)) { const v = pend.find(w => w.pending.slot === i); cells.push(`<div class="pm-b building"><img alt="" src="${buildThumb(v.pending.type)}"><span>${BUILD_DEFS[v.pending.type].name}<small>Mason on the way</small></span></div>`); }
+      else if (pend.find(v => v.pending.slot === i)) { const v = pend.find(w => w.pending.slot === i); cells.push(`<div class="pm-b building"><img alt="" src="${buildThumb(v.pending.type)}"><span>${BUILD_DEFS[v.pending.type].name}<small>${UNIT_DEFS[MASON].name} on the way</small></span></div>`); }
       else if (b && b.owner === ME) cells.push(`<button type="button" class="pm-b empty open${menuSlot === i && menuProv === p ? ' on' : ''}" data-plot="${i}" title="Click to build something on this plot"><span>＋ Empty plot</span></button>`);
       else cells.push(`<div class="pm-b empty"><span>${b ? 'Empty plot' : '—'}</span></div>`);
     }
@@ -2243,7 +2246,7 @@ function renderRoster() {
     const bar = `<div class="ro-bar"><button type="button" class="ro-hide" data-hidefull="1" aria-pressed="${VIEW.hideFull}" title="Hide provinces whose building plots are all built">${VIEW.hideFull ? '☑' : '☐'} Hide full${nFull ? ` <span>${nFull}</span>` : ''}</button></div>`;
     el.innerHTML = tabs + bar + roHead('provs', 'Provinces', `<span>${provs.length}</span>`) + (roHidden('provs') ? '' : shown.length ? shown.map(p => {
       const n = extrasIn(p).length, cap = plotCap(p), t = G.provs[p].terrain, st = S.buildings.get(p).stage;
-      return `<button type="button" class="ro-p${S.selProv === p ? ' on' : ''}" data-prov="${p}" title="${provName(p)} · ${TER[t].label} ${STAGE_NAME[st].toLowerCase()} · ${n} of ${cap} plots built${n < cap ? ' (' + (cap - n) + ' empty)' : ''}. Click to open, double-click to go there."><b style="color:${TER_TEXT[t] || 'var(--chip-text)'}">${provName(p)}</b>${st ? `<small>${STAGE_NAME[st]}</small>` : ''}<em class="${n >= cap ? 'full' : 'miss'}">${n}/${cap}</em></button>`;
+      return `<button type="button" class="ro-p${S.selProv === p ? ' on' : ''}" data-prov="${p}" title="${provName(p)} · ${TER[t].label} ${stageName(S.buildings.get(p)).toLowerCase()} · ${n} of ${cap} plots built${n < cap ? ' (' + (cap - n) + ' empty)' : ''}. Click to open, double-click to go there."><b style="color:${TER_TEXT[t] || 'var(--chip-text)'}">${provName(p)}</b>${st ? `<small>${STAGE_NAME[st]}</small>` : ''}<em class="${n >= cap ? 'full' : 'miss'}">${n}/${cap}</em></button>`;
     }).join('') : `<div class="ro-none">${provs.length ? 'Every province is full' : 'No provinces yet'}</div>`);
     return;
   }
@@ -2254,6 +2257,7 @@ $q('#roster').addEventListener('pointerdown', e => e.stopPropagation());
 $q('#roster').addEventListener('click', e => {
   { const c = e.target.closest('[data-rocol]'); if (c) { roToggle(c.dataset.rocol); return; } }   // v96: fold a section away
   { const mt = e.target.closest('[data-mt]'); if (mt) { const [p, slot] = mt.dataset.mt.split('@').map(Number); selectPart(p, 'magetower@' + slot); rosterKey = ''; return; } }
+  { const oc = e.target.closest('[data-oc]'); if (oc) { const [p, slot] = oc.dataset.oc.split('@').map(Number); selectPart(p, 'stable@' + slot); rosterKey = ''; return; } }   // v102: Ogre Caves
   if (e.target.closest('[data-hidefull]')) { VIEW.hideFull = !VIEW.hideFull; viewSave(); rosterKey = ''; return; }
   const tb = e.target.closest('[data-rtab]');
   if (tb) { rosterTab = tb.dataset.rtab; rosterKey = ''; try { localStorage.setItem('realm-roster-tab', rosterTab); } catch (er) {} return; }
@@ -2270,8 +2274,8 @@ $q('#roster').addEventListener('click', e => {
 $q('#roster').addEventListener('dblclick', e => {
   const pb = e.target.closest('[data-prov]');
   if (pb) { const P = G.provs[+pb.dataset.prov]; flyTo({ x: P.ic[0], y: P.ic[1], z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) }); return; }
-  const bk = e.target.closest('[data-bk], [data-mt]');
-  if (bk) { const P = G.provs[+(bk.dataset.bk || bk.dataset.mt).split('@')[0]]; flyTo({ x: P.ic[0], y: P.ic[1], z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) }); return; }
+  const bk = e.target.closest('[data-bk], [data-mt], [data-oc]');
+  if (bk) { const P = G.provs[+(bk.dataset.bk || bk.dataset.mt || bk.dataset.oc).split('@')[0]]; flyTo({ x: P.ic[0], y: P.ic[1], z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) }); return; }
   const b = e.target.closest('[data-uid]'); if (!b) return;
   const u = S.units.find(v => v.id === +b.dataset.uid); if (u) flyTo({ x: u.x, y: u.y, z: Math.max(cam.z, fitZ * 2.2 * WORLD_K) });
 });

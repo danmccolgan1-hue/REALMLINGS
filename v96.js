@@ -47,7 +47,7 @@ function druidStaves() {
   const fortIco = (g, n) => { ICO.disc(g, '#ece4d2'); ICO.poly(g, [[12, 54], [12, 28], [20, 28], [20, 34], [28, 34], [28, 22], [36, 22], [36, 34], [44, 34], [44, 28], [52, 28], [52, 54]], '#cfc8ba', 2.6); ICO.poly(g, [[27, 54], [27, 42], [37, 42], [37, 54]], '#6b4a2a', 2); if (n) ICO.roman(g, n, 32, 18); };
   REP_ICONS['rep-shockcast'] = shockIco;
   REP_ICONS['rep-quakecast'] = quakeIco;
-  REP_ICONS['rep-admin'] = g => fortIco(g, '+1');
+  REP_ICONS['rep-admin'] = g => fortIco(g, '+2');
   REP_ICONS['rep-skin'] = g => MAGIC_ICONS.skin(g);
   REP_ICONS['rep-curse'] = g => MAGIC_ICONS.curse1(g);
   REP_ICONS['rep-stasis'] = g => MAGIC_ICONS.stasis(g);
@@ -98,16 +98,12 @@ function autoResearch() {
 S.wallCrack = {};
 const wallOwner = i => { const e = world.edges[i], g = e && S.gateOwn.get(linkKey(e.a, e.b)); return g ? g.owner : ME; };
 const wallStone = i => techOf(wallOwner(i), 'walls2');
-// returns true when the wall comes down, false when it only cracked
-function spellHitWall(i, by) {
+// v102: spells deal wall damage (WALL_SPELL in v102.js); returns true when the wall comes down
+function spellHitWall(i, by, dmg) {
   if (!S.walls.has(i)) return false;
-  if (wallStone(i) && !S.wallCrack[i]) {
-    S.wallCrack[i] = true; cacheDirty = true;
-    const e = world.edges[i], ctl = gateCtl(linkKey(e.a, e.b));
-    if (ctl === ME && (!by || by.owner !== ME)) toast(`The stone wall between ${provName(e.a)} and ${provName(e.b)} is cracked! One more spell will bring it down.`, true);
-    return false;
-  }
-  delete S.wallCrack[i]; breakWall(i, by); return true;
+  const gone = damageWall(i, dmg === undefined ? 40 : dmg, by);
+  if (!gone) { const e = world.edges[i], ctl = gateCtl(linkKey(e.a, e.b)), w = wallLife(i); if (ctl === ME && (!by || by.owner !== ME)) toast(`The wall between ${provName(e.a)} and ${provName(e.b)} was hit by a spell: ${Math.ceil(w.hp)}/${w.max} wall health left.`, true); }
+  return gone;
 }
 function drawWallCracks(g, a, b, spiked) {
   const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L, n = Math.max(3, Math.round(L / 45));
@@ -497,7 +493,7 @@ function stepAutoBuild(now) {
 }
 
 // ---------- bandit waves: from 30 minutes on, a bigger gang turns up in an unclaimed province every 3 minutes ----------
-const BANDIT_WAVE = { start: 1800, every: 180, power: 1000, grow: 300 };
+const BANDIT_WAVE = { start: 1800, every: 180, power: 1000, grow: 300, cap: 50 };   // v102: cap, the most soldiers a wave can have
 const WAVE_NAMES = ['Marauders', 'Brigands', 'Reavers', 'Cutthroats', 'Outlaws', 'Raiders', 'Freebooters', 'Highwaymen'];
 const footmanPower = () => { const k = 'd-sword'; return Math.max(1, Math.round(rawStrength([{ owner: RAIDERS, troops: { [k]: 1 }, kind: 'army' }]) * 10)); };
 function stepBanditWaves(t) {
@@ -511,7 +507,7 @@ function stepBanditWaves(t) {
   const p = free[Math.floor(Math.random() * free.length)], power = BANDIT_WAVE.power + BANDIT_WAVE.grow * n;
   const a = spawnBandit(p);
   a.name = 'The ' + WAVE_NAMES[n % WAVE_NAMES.length] + (n >= WAVE_NAMES.length ? ' ' + ROMAN_N(Math.floor(n / WAVE_NAMES.length) + 1) : '');
-  a.troops = { 'd-sword': Math.max(2, Math.ceil(power / footmanPower())) };
+  a.troops = { 'd-sword': Math.min(BANDIT_WAVE.cap, Math.max(2, Math.ceil(power / footmanPower()))) };   // v102: never more than 50
   a.wave = n + 1;
   S.banditWave = { n: n + 1, prov: p, power: powerOf(a), t };
   // v99: bandits turn up without a notification

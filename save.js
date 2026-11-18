@@ -3,7 +3,7 @@
 // One save slot in this browser (localStorage), written by Save in Settings and by an autosave every 5 minutes of play.
 // Continue on the main menu loads it. Export / Import move a save as a file (to another computer, or to send with a bug report).
 // The map itself isn't stored: it is rebuilt from its seed, then everything that happened since is laid back on top.
-const GAME_VERSION = 'v101', SAVE_FORMAT = 1, SAVE_KEY = 'realm-save', AUTOSAVE_EVERY = 300;
+const GAME_VERSION = 'v105', SAVE_FORMAT = 1, SAVE_KEY = 'realm-save', AUTOSAVE_EVERY = 300;
 // every soldier design ever made (yours and the computer nations'), so troops of older designs still work after loading
 const ALL_DESIGNS = new Map();
 const _registerDesign = registerDesign;
@@ -114,7 +114,7 @@ function loadSave(d) {
   const bad = checkSave(d); if (bad) { toast(bad, true); return false; }
   const R = unpackGraphLater(d);
   menuOpts.race = d.race; menuOpts.practice = d.mode === 'practice';
-  if (d.seed !== world.pickSeed || d.mode !== (world.mode || 'normal')) regenerate(d.seed, d.mode === 'practice');
+  if (d.seed !== world.pickSeed || (d.mode || 'normal') !== (world.mode || 'normal')) regenerate(d.seed, d.mode || 'normal');
   S.explored = new Set(); S.visible = new Set(); S.sig = '';
   applyRace(d.race); setupGame(); spawnAINations([], []); setupContent(); setupV78();
   const g = R();

@@ -316,10 +316,9 @@ function stepFlights() {
 
 // ---------- Warlock skulls (Swamplings): an off-hand skull adds to a wand's attack ----------
 const SKULLS = {
-  skull1: { name: 'Cracked Skull', atk: 1, tech: 'skull-cracked' },
-  skull2: { name: 'Chipped Skull', atk: 2, tech: 'skull-chipped' },
-  skull3: { name: 'Polished Skull', atk: 3, tech: 'skull-polished' },
-  skull4: { name: 'Flawless Skull', atk: 4, tech: 'skull-flawless' }
+  skull1: { name: 'Cracked Skull', atk: 1, tech: 'skull-cracked', lv: 1 },
+  skull3: { name: 'Polished Skull', atk: 2, tech: 'skull-polished', lv: 2 },   // v102: the Chipped Skull is gone
+  skull4: { name: 'Flawless Skull', atk: 3, tech: 'skull-flawless', lv: 3 }
 };
 {
   // a Swampling Warlock carries no shield; with a wand he can hold a skull in the other hand instead

@@ -103,7 +103,7 @@ function aiGives(N, type) {
   return base;
 }
 function aiProvIncome(N, p, b) {
-  const y = {}; for (const k of RES) y[k] = yields[p][k] + (b.stage === 2 ? CAPITAL_BONUS[k] : 0);
+  const y = {}; for (const k of RES) y[k] = yields[p][k] + (b.stage === 2 || b.cc ? CAPITAL_BONUS[k] : 0);   // v102: Conquered Capitals too
   for (const e of extrasIn(p)) { const g = aiGives(N, e.type); for (const k in g) y[k] += g[k]; }
   if (aiRep(N, 'rep-lumber')) y.wood += Math.round(extrasIn(p).filter(e => e.type === 'lumber').reduce((n, e) => n + (aiGives(N, 'lumber').wood || 0), 0) * 0.05 * aiRep(N, 'rep-lumber'));
   return y;
@@ -132,7 +132,7 @@ function aiStorage(N, k) {
   return n;
 }
 const aiForts = N => [...S.buildings.values()].filter(b => b.owner === N.id && b.stage === 1).length;
-const aiFortLimit = N => FORT_LIMIT[['forts', 'forts2', 'forts3'].filter(id => aiHas(N, id)).length] + aiRep(N, 'rep-forts');
+const aiFortLimit = N => FORT_LIMIT[['forts', 'forts2', 'forts3'].filter(id => aiHas(N, id)).length] + 2 * aiRep(N, 'rep-forts');   // v102: +2 per level
 const aiFortCount = N => aiForts(N) + N.ups.size;
 const aiOutposts = N => [...S.buildings].filter(([p, b]) => b.owner === N.id && b.stage === 0 && !N.ups.has(p)).length;
 const aiOutpostLimit = N => perFort(N.id) * fortsHeldBy(N.id);

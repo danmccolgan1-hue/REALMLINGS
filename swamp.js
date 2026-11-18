@@ -15,7 +15,7 @@ const THUG = 'thug:A';
 // ---------- the Thug: trained at a Thug Den, he does no fighting; inside a den he makes 1 gold every 10 s ----------
 UNIT_DEFS[THUG] = { name: 'Thug', cost: { gold: 40 }, upkeep: { food: 1 }, blurb: 'Doesn’t fight. Sits in a Thug Den and squeezes 1 gold out of the neighborhood every 10 s.' };
 UNIT_SPEED[THUG] = 0.9;
-const denCap = o => 2 + (techOf(o, 'thugs2') ? 1 : 0) + (techOf(o, 'thugs3') ? 1 : 0);
+const denCap = o => 2 + (techOf(o, 'thugs2') ? 1 : 0) + (techOf(o, 'thugs3') ? 1 : 0) + crimeSlots(o);   // v105: +1 per Organized Crime Agreement
 const myDens = () => { const out = []; for (const [p, l] of S.extras) if (owned(p)) for (const e of l) if (e.type === 'market') out.push({ p, e }); return out; };
 // you can have as many Thugs as your dens can hold
 Object.defineProperty(UNIT_LIMIT, THUG, { configurable: true, get() { return Math.max(1, myDens().length * denCap(ME)); } });

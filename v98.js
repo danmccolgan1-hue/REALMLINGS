@@ -18,7 +18,7 @@ function manaRegen(o) {
 const isCasterAny = u => !!u && magesIn(u) > 0;
 const channeling = c => !!c.cast && (c.cast.spell === 'harvest' || c.cast.spell === 'q:fspirit');
 const castingNow = c => !!c.cast || !!c.quake;   // v99: no regeneration while any spell is being cast
-function spendMana(c, n) { c.mana = Math.max(0, manaOf(c) - n); cmdKey = ''; }
+function spendMana(c, n) { c.mana = Math.max(0, manaOf(c) - mc(c, n)); cmdKey = ''; }   // v102: less with a Cryptic / Enigmatic Wand
 
 // mana follows a Magic User from one unit to the next: when he joins an army, leaves one, or two armies combine,
 // whoever carries him next picks up what he had (anything that loses its Magic User leaves its mana in a short-lived pool
@@ -58,11 +58,16 @@ function regenMana() {
 const SPELL_MANA = { harvest: 'drain', mending: 25, eyes: 25, graverob: 'all', haunt: 25, trading: 'all', mind: 50, stasis: 50, rift: 100,
   spyre: 25, ftrap: 50, pfire: 50, sacred: 100, wrocks: 25, tportal: 100, fspirit: 'drain', gelem: 100 };
 const AUTO_MANA = 50;          // Hardened Skin, Cursed Weapons, Risen Dead, Fiery Weapons, Rock Armor
-const PATH_MANA = 100;         // Speak with the Forest, Underworld Passage, Terrascaping (opening or closing)
+const PATH_MANA = 100;         // Terrascaping (opening or closing)
+const PATHS_MANA = 200;        // v102: Speak with the Forest and Underworld Passage (opening or closing)
+const pathMana = kind => kind === 'forest' || kind === 'tunnel' ? PATHS_MANA : PATH_MANA;
+// v102: wands make every spell cheaper for their carrier's nation (v102.js sets manaMult); mc(c, n) is what a caster pays for n
+let manaMult = o => 1;
+const mc = (c, n) => typeof n === 'number' ? Math.round(n * manaMult(c && c.owner !== undefined ? c.owner : ME)) : n;
 const SPELL2_MANA = { shock: 50, quake: 200 };
 const CAST_TIME = 3;           // most spells are now a 3-second cast
 const manaNeed = k => { const m = SPELL_MANA[k]; return m === 'all' || m === 'drain' ? 1 : m || 0; };
-const manaText = k => { const m = SPELL_MANA[k]; return m === 'all' ? 'all of the caster’s mana' : m === 'drain' ? '1 mana a second while channeling (no regeneration meanwhile)' : m ? m + ' mana' : 'no mana'; };
+const manaText = k => { const m = SPELL_MANA[k]; return m === 'all' ? 'all of the caster’s mana' : m === 'drain' ? '1 mana a second while channeling (no regeneration meanwhile)' : m ? mc(null, m) + ' mana' : 'no mana'; };
 const notEnough = (c, n) => `Not enough mana (${Math.floor(manaOf(c))}/${n})`;
 
 // ---------- techs: Magic Well, Magic Abundance, Eyes of the Forest, Haunt ----------
@@ -94,13 +99,13 @@ const V98_BLURBS = {
   stoneskin: 'Hardened Skin gives +10% health.', diamondskin: 'Hardened Skin gives +15% health.',
   mending: 'A Mage heals an army’s wounds back to full over 1 minute. 25 mana, no cooldown.',
   rejuvenation: 'Healing takes 30 seconds.', restoration: 'Healing is instant.',
-  forest: 'A Mage can open a path through a border of trees after 2 minutes of casting (100 mana). Lumber Mills are unaffected.',
-  commune: 'Opening a forest path takes 1 minute.', arboreal: 'A Mage can close a forest path again with 1 minute of casting (100 mana).',
+  forest: 'A Mage standing in a province you own or occupy can open a path through a border of trees after 20 seconds of casting (200 mana). Lumber Mills are unaffected.',
+  commune: 'Opening a forest path takes 10 seconds.', arboreal: 'A Mage can close a forest path again with 10 seconds of casting (200 mana).',
   terrascape: 'A Mage grows a line of trees along an open border, with a forest path left open in the middle: only a path through the trees remains. 5 minutes of casting, 100 mana.',
   curse1: 'Autocast (50 mana): when an army with a Mage starts a battle, its weapons deal +5% damage. 5-minute cooldown per army.',
   curse2: 'Cursed Weapons deal +10% damage; cooldown 3 minutes.', curse3: 'Cursed Weapons deal +15% damage; cooldown 90 seconds.',
-  underworld: 'A Mage can open a tunnel through a mountain border after 2 minutes of casting (100 mana).',
-  hallways: 'Opening a mountain tunnel takes 1 minute.', sealed: 'A Mage can seal a mountain tunnel again with 1 minute of casting (100 mana).',
+  underworld: 'A Mage standing in a province you own or occupy can open a tunnel through a mountain border after 20 seconds of casting (200 mana).',
+  hallways: 'Opening a mountain tunnel takes 10 seconds.', sealed: 'A Mage can seal a mountain tunnel again with 10 seconds of casting (200 mana).',
   risen: 'Autocast: the first time a soldier of the army falls in a battle, the Mage spends 50 mana and the dead rise: that soldier and the next 4 to fall get straight back up, looking rather worse for it (same strength). Then it stops; when the battle ends it has a 2-minute cooldown. One Mage keeps this or Cursed Weapons ready, not both.',
   necro: 'Risen Dead raises 7 soldiers in a battle.', armyofdeath: 'Risen Dead raises 10 soldiers in a battle.',
   graverob: 'A 3-second cast that spends all of the Mage’s mana: 1 gold for every point. Then the nation waits 3 minutes.',
@@ -125,7 +130,7 @@ const V98_BLURBS = {
   townportal: 'After 3 seconds of casting (100 mana), a Druid and the army he is in are carried to your capital. 5-minute cooldown per Druid.',
   forestspirit: 'A Druid channels a Forest Spirit into the province he stands in: while he keeps it up, the province makes twice the gold, wood, food and research. It drains 1 mana a second, and he regains none meanwhile.',
   gelemental: 'A Druid summons a towering man of living water for 2 minutes (3 seconds of casting, 100 mana): 500 health, no armor, 50 damage a swing. He joins the Druid’s army (or forms one), fights, and can capture provinces. 5-minute cooldown per Druid.',
-  earthquake: 'A Mage standing in an enemy province your army occupies can cast an Earthquake (200 mana: it needs Magic Abundance): after 30 seconds every building in that province is destroyed, and every wall on its borders.'
+  earthquake: 'A Mage standing in an enemy province your army occupies can cast an Earthquake (200 mana: it needs Magic Abundance): after 30 seconds every building in that province is destroyed, and every wall on its borders takes 120 wall damage (enough to bring down any wall).'
 };
 for (const [id, b] of Object.entries(V98_BLURBS)) if (TECH_BY_ID[id]) TECH_BY_ID[id].blurb = b;
 if (SW_TEXT.techs.earthquake) SW_TEXT.techs.earthquake[1] = V98_BLURBS.earthquake.replace('A Mage', 'A Warlock');
@@ -320,15 +325,15 @@ menuEl.addEventListener('click', e => {
 { const cw = castWhy; castWhy = function (c, k) {
   if (c.cast && c.cast.spell === 'q:' + k) return null;
   const w = cw(c, k); if (w) return w;
-  const need = manaNeed(k); if (need && manaOf(c) < need) return SPELL_MANA[k] === 'all' || SPELL_MANA[k] === 'drain' ? 'No mana left' : notEnough(c, need);
+  const need = manaNeed(k); if (need && manaOf(c) < mc(c, need)) return SPELL_MANA[k] === 'all' || SPELL_MANA[k] === 'drain' ? 'No mana left' : notEnough(c, mc(c, need));
   return null;
 }; }
 { const cs0 = castSpell; castSpell = function (c, k) { if (c.cast && c.cast.spell === 'q:' + k) { cancelCast(c, 'Casting stopped.'); return; } return cs0(c, k); }; }
-{ const pw = pathWhy; pathWhy = function (c, q, kind, close) { const w = pw(c, q, kind, close); return w || (manaOf(c) < PATH_MANA ? notEnough(c, PATH_MANA) : null); }; }
-{ const tw = terraWhy; terraWhy = function (c, q) { const w = tw(c, q); return w || (manaOf(c) < PATH_MANA ? notEnough(c, PATH_MANA) : null); }; }
-{ const sc = startCast; startCast = function (c, spell, dur, data) { if (spell === 'pathopen' || spell === 'pathclose' || spell === 'terrascape') spendMana(c, PATH_MANA); return sc(c, spell, dur, data); }; }
-{ const qw = quakeWhy; quakeWhy = function (c) { const w = qw(c); return w || (manaOf(c) < SPELL2_MANA.quake ? notEnough(c, SPELL2_MANA.quake) + (techOf(c.owner, 'magicabund') ? '' : ' · it needs Magic Abundance') : null); }; }
-{ const sw = shockWhy; shockWhy = function (c, q) { const w = sw(c, q); return w || (manaOf(c) < SPELL2_MANA.shock ? notEnough(c, SPELL2_MANA.shock) : null); }; }
+{ const pw = pathWhy; pathWhy = function (c, q, kind, close) { const w = pw(c, q, kind, close); return w || (manaOf(c) < mc(c, pathMana(kind)) ? notEnough(c, mc(c, pathMana(kind))) : null); }; }
+{ const tw = terraWhy; terraWhy = function (c, q) { const w = tw(c, q); return w || (manaOf(c) < mc(c, PATH_MANA) ? notEnough(c, mc(c, PATH_MANA)) : null); }; }
+{ const sc = startCast; startCast = function (c, spell, dur, data) { if (spell === 'pathopen' || spell === 'pathclose') spendMana(c, pathMana(data && data.kind)); else if (spell === 'terrascape') spendMana(c, PATH_MANA); return sc(c, spell, dur, data); }; }
+{ const qw = quakeWhy; quakeWhy = function (c) { const w = qw(c); return w || (manaOf(c) < mc(c, SPELL2_MANA.quake) ? notEnough(c, mc(c, SPELL2_MANA.quake)) + (techOf(c.owner, 'magicabund') ? '' : ' · it needs Magic Abundance') : null); }; }
+{ const sw = shockWhy; shockWhy = function (c, q) { const w = sw(c, q); return w || (manaOf(c) < mc(c, SPELL2_MANA.shock) ? notEnough(c, mc(c, SPELL2_MANA.shock)) : null); }; }
 { const s2 = startSpell2; startSpell2 = function (c, kind, q) { const ok = s2(c, kind, q); if (ok) spendMana(c, SPELL2_MANA[kind]); return ok; }; }
 
 // ---------- every frame: mana moves with its Magic User, channels drain it, 3-second casts finish, sights fade ----------
@@ -363,7 +368,7 @@ menuEl.addEventListener('click', e => {
 const AUTO_CDS = ['skinCd', 'curseCd', 'fieryCd', 'rockCd'];
 { const obj = onBattleJoin; onBattleJoin = function (a, t) {
   if (a.kind !== 'army' || !(magesIn(a) > 0)) { a.risenArm = 0; return obj(a, t); }
-  const poor = manaOf(a) < AUTO_MANA, saved = {};
+  const poor = manaOf(a) < mc(a, AUTO_MANA), saved = {};
   if (poor) for (const k of AUTO_CDS) { saved[k] = a[k]; a[k] = Infinity; }   // too little mana: nothing fires (only one of them can, by school)
   obj(a, t);
   if (poor) for (const k of AUTO_CDS) a[k] = saved[k];
@@ -377,7 +382,7 @@ const AUTO_CDS = ['skinCd', 'curseCd', 'fieryCd', 'rockCd'];
 // called from applyDamage when a soldier of kind k falls: true if he gets back up
 function risenRise(a, k, b, t) {
   if (!a.risenArm || k === MAGE || !(magesIn(a) > 0)) return false;
-  if (!a.risenUsed) { if (manaOf(a) < AUTO_MANA) return false; spendMana(a, AUTO_MANA); a.risenUsed = true; a.risenLeft = a.risenArm; if (a.owner === ME) toast(`${a.name}: ${TECH_BY_ID[lineTech('risen')].name}! The fallen rise again (${a.risenArm}).`); }
+  if (!a.risenUsed) { if (manaOf(a) < mc(a, AUTO_MANA)) return false; spendMana(a, AUTO_MANA); a.risenUsed = true; a.risenLeft = a.risenArm; if (a.owner === ME) toast(`${a.name}: ${TECH_BY_ID[lineTech('risen')].name}! The fallen rise again (${a.risenArm}).`); }
   if (a.risenLeft <= 0) return false;
   a.risenLeft--; a.ghouls = (a.ghouls || 0) + 1; a.riseFx = t; a.risenTotal = (a.risenTotal || 0) + 1;
   if (a.owner === ME) sfx('mg_risen', { prov: b.prov });
@@ -412,14 +417,14 @@ for (const P of Object.values(AI_MAGIC_PREFS)) Object.assign(P, { magicwell: 14,
     if (k === 'fspirit' && c && c.cast && c.cast.spell === 'q:fspirit') { r.name = CAST[k].name() + ' (channeling)'; r.why = null; r.ok = 'Click to stop channeling'; }
     r.desc += ` Cost: ${manaText(k)}.` + (c ? ` Mana ${Math.floor(manaOf(c))}/${manaCap(ME)}.` : '');
   }
-  if (what === 'mauto') r.desc += ` Costs ${AUTO_MANA} mana when it fires.` + (c ? ` Mana ${Math.floor(manaOf(c))}/${manaCap(ME)}.` : '');
+  if (what === 'mauto') r.desc += ` Costs ${mc(null, AUTO_MANA)} mana when it fires.` + (c ? ` Mana ${Math.floor(manaOf(c))}/${manaCap(ME)}.` : '');
   return r;
 }; }
 { const mk = magicCmdKey; magicCmdKey = function () { const c = selCaster(); return mk() + (c ? '|m' + Math.floor(manaOf(c)) + (c.cast && c.cast.spell && c.cast.spell.startsWith('q:') ? Math.floor((S.t - c.cast.t0) * 2) : '') + '|' + Object.keys(S.cd).map(k => k + Math.ceil(cdLeft(k))).join(',') : ''); }; }
 { const ei = extraCmdInfo; extraCmdInfo = function (id) {
   const r = ei(id);
   if (r && (id === 'shock' || id === 'quake')) {
-    const c = selCaster(), need = SPELL2_MANA[id];
+    const c = selCaster(), need = mc(null, SPELL2_MANA[id]);
     if (c && !(c.quake && c.quake.kind === id) && !r.why && manaOf(c) < need) r.why = notEnough(c, need) + (id === 'quake' && !hasTech('magicabund') ? ' · research Magic Abundance to hold that much' : '');
     r.desc += ` Cost: ${need} mana.` + (c ? ` Mana ${Math.floor(manaOf(c))}/${manaCap(ME)}.` : '');
   }

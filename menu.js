@@ -3,10 +3,24 @@
 // the map drifts behind a title card; Start builds a fresh world from the chosen seed and begins play
 const MENU_WORDS = ['amber', 'bramble', 'cinder', 'dapple', 'ember', 'fable', 'gilded', 'hollow', 'ivy', 'juniper', 'kestrel', 'lantern', 'meadow', 'nettle', 'oaken', 'pebble', 'quill', 'rook', 'sable', 'thistle', 'umber', 'vale', 'willow', 'yarrow'];
 const randomSeed = () => MENU_WORDS[Math.floor(Math.random() * MENU_WORDS.length)] + '-' + MENU_WORDS[Math.floor(Math.random() * MENU_WORDS.length)] + '-' + (10 + Math.floor(Math.random() * 90));
-const menuOpts = { start: 'center', practice: false, slots: ['easy', 'easy', 'moderate', 'closed', 'closed', 'closed', 'closed'], race: 'realm', races: ['random', 'random', 'random', 'random', 'random', 'random', 'random'] };
+const menuOpts = { start: 'center', practice: false, map: { shape: 'classic', pens: 2, coves: 2, trees: 0 }, slots: ['easy', 'easy', 'moderate', 'closed', 'closed', 'closed', 'closed'], race: 'realm', races: ['random', 'random', 'random', 'random', 'random', 'random', 'random'] };
 // your race and each opponent's: Realmlings, Swamplings or (opponents only) Random
 const RACE_CYCLE = ['realm', 'swamp', 'wood', 'random'], RACE_TEXT = { realm: 'R', swamp: 'S', wood: 'W', random: '?' }, RACE_LONG = { realm: 'Realmlings', swamp: 'Swamplings', wood: 'Woodlings', random: 'Random race' };
 try { const v = JSON.parse(localStorage.getItem('realm-races') || 'null'); if (v && RACE_CYCLE.includes(v.race) && v.race !== 'random') menuOpts.race = v.race; if (v && Array.isArray(v.races) && v.races.length === 7 && v.races.every(x => RACE_CYCLE.includes(x))) menuOpts.races = v.races; } catch (e) {}
+// the island: shape, peninsulas, coves, trees (v105; Practice mode is gone)
+const MAP_SHAPES = ['classic', 'crescent', 'ring', 'random'], TREE_WORDS = ['Classic', 'More', 'Many', 'Lots', 'Dense'];
+try { const v = JSON.parse(localStorage.getItem('realm-map') || 'null'); if (v && MAP_SHAPES.includes(v.shape)) menuOpts.map = { shape: v.shape, pens: Math.max(0, Math.min(5, v.pens | 0)), coves: Math.max(0, Math.min(5, v.coves | 0)), trees: Math.max(0, Math.min(4, v.trees | 0)) }; } catch (e) {}
+// the world's mode, saved with the game: 'normal' is the classic island with 2 peninsulas, 2 coves and the usual trees
+function mapMode(o = menuOpts.map) { return o.shape === 'classic' && o.pens === 2 && o.coves === 2 && !o.trees ? 'normal' : `map:${o.shape}:${o.pens}:${o.coves}:${o.trees}`; }
+function mapOptsOf(mode) { const m = /^map:(\w+):(\d):(\d):(\d)$/.exec(mode || ''); return m ? { shape: m[1], pens: +m[2], coves: +m[3], trees: +m[4] } : { shape: 'classic', pens: 2, coves: 2, trees: 0 }; }
+function renderMapOpts() {
+  const o = menuOpts.map;
+  $q('#mShape').querySelectorAll('[data-shape]').forEach(b => b.setAttribute('aria-pressed', b.dataset.shape === o.shape ? 'true' : 'false'));
+  $q('#mPens').value = o.pens; $q('#mPensV').textContent = o.pens;
+  $q('#mCoves').value = o.coves; $q('#mCovesV').textContent = o.coves;
+  $q('#mTrees').value = o.trees; $q('#mTreesV').textContent = TREE_WORDS[o.trees];
+}
+function mapSave() { try { localStorage.setItem('realm-map', JSON.stringify(menuOpts.map)); } catch (e) {} }
 // where your capital is: near the middle of the island, toward the edge, or anywhere (always on your race's home land)
 const START_POS = ['center', 'edge', 'random'];
 try { const v = localStorage.getItem('realm-start'); if (START_POS.includes(v)) menuOpts.start = v; } catch (e) {}
@@ -48,12 +62,8 @@ function menuScreen(which) {
 // on the title screen the whole island is shown, unfogged
 function showAllLand() { S.explored = new Set(G.provs.map((_, i) => i)); S.visible = new Set(S.explored); S.sig = 'menu'; fogDirty = true; miniDirty = true; }
 function renderMenuToggles() {
-  for (const [id, key, on, off] of [['mPractice', 'practice', 'On · a 10-province island, just you', 'Off']]) {
-    const b = $q('#' + id); b.setAttribute('aria-pressed', menuOpts[key]); b.querySelector('span').textContent = menuOpts[key] ? on : off;
-  }
-  // practice is just you: the opponent slots sit out
-  $q('#mSlots').closest('.menu-row').classList.toggle('off', menuOpts.practice);
-  renderSlots(); renderStartPos();
+  menuOpts.practice = false;
+  renderSlots(); renderStartPos(); renderMapOpts();
 }
 // slow drift of the camera across the island while the menu is up
 function menuDrift(realT) {
@@ -61,8 +71,10 @@ function menuDrift(realT) {
   cam.x = mx + Math.cos(realT * 0.05) * (x1 - x0) * 0.22; cam.y = my + Math.sin(realT * 0.07) * (y1 - y0) * 0.18;
   cacheDirty = true;
 }
-function regenerate(seed, practice) {
-  world = scaleWorld(practice ? RealmGen.generatePractice(seed) : RealmGen.generateWorld(seed)); world.mode = practice ? 'practice' : 'normal'; world.pickSeed = seed; G = prep(world);
+// mode: 'normal' (the classic island), 'map:<shape>:<peninsulas>:<coves>:<trees>', or 'practice' (only for old Practice saves)
+function regenerate(seed, mode) {
+  if (mode === true) mode = 'practice'; else if (!mode || mode === false) mode = 'normal';
+  world = scaleWorld(mode === 'practice' ? RealmGen.generatePractice(seed) : RealmGen.generateWorld(seed, mapOptsOf(mode))); world.mode = mode; world.pickSeed = seed; G = prep(world);
   provNames.length = 0; territory = null; cacheDirty = true; fogDirty = true; miniDirty = true;
   window.__realm.world = world; window.__realm.G = G;
 }
@@ -71,12 +83,13 @@ function startGame() {
   const btn = $q('#mStart'); btn.disabled = true; btn.textContent = 'Building the realm…';
   // let the button repaint before the generator runs
   setTimeout(() => {
-    const mode = menuOpts.practice ? 'practice' : 'normal';
-    if (seed !== world.pickSeed || mode !== (world.mode || 'normal')) regenerate(seed, menuOpts.practice);
+    const mode = mapMode();
+    if (seed !== world.pickSeed || mode !== (world.mode || 'normal')) regenerate(seed, mode);
+    mapSave();
     S.explored = new Set(); S.visible = new Set(); S.sig = '';
     applyRace(menuOpts.race);   // Realmlings or Swamplings: names, buildings, technologies and art
     setupGame();
-    spawnAINations(menuOpts.practice ? [] : menuOpts.slots, menuOpts.races);
+    spawnAINations(menuOpts.slots, menuOpts.races);
     setupContent();   // set pieces, Bandit Gangs, the civilians' zoom level
     setupV78();       // Roaming Monsters, the F4 unit-size zoom, war record (v78)
     setupV96(false);  // v96: hotkeys on the capital, Druids' staves, new state
@@ -112,7 +125,8 @@ $q('#mSlots').addEventListener('contextmenu', e => { const b = e.target.closest(
 $q('#mSlots').addEventListener('click', e => { const b = e.target.closest('[data-srace]'); if (!b || b.disabled) return; const i = +b.dataset.srace; menuOpts.races[i] = RACE_CYCLE[(RACE_CYCLE.indexOf(menuOpts.races[i]) + 1) % RACE_CYCLE.length]; racesSave(); renderSlots(); });
 $q('#mRace').addEventListener('click', e => { const b = e.target.closest('[data-race]'); if (!b) return; menuOpts.race = b.dataset.race; racesSave(); renderSlots(); });
 $q('#mQuick').addEventListener('click', e => { const b = e.target.closest('[data-q]'); if (!b) return; menuOpts.slots = menuOpts.slots.map(() => b.dataset.q); slotsSave(); renderSlots(); });
-$q('#mPractice').addEventListener('click', () => { menuOpts.practice = !menuOpts.practice; renderMenuToggles(); });
+$q('#mShape').addEventListener('click', e => { const b = e.target.closest('[data-shape]'); if (!b) return; sfx('ui_click'); menuOpts.map.shape = b.dataset.shape; renderMapOpts(); });
+for (const [id, key] of [['mPens', 'pens'], ['mCoves', 'coves'], ['mTrees', 'trees']]) $q('#' + id).addEventListener('input', e => { menuOpts.map[key] = +e.target.value; renderMapOpts(); });
 $q('#mStart').addEventListener('click', startGame);
 $q('#mNew').addEventListener('click', () => menuScreen('setup'));
 $q('#mMulti').addEventListener('click', () => { sfx('ui_click'); menuScreen('multi'); });

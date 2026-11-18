@@ -92,7 +92,10 @@
   const angDiff = (a, b) => { let d = Math.abs(a - b) % (2 * Math.PI); return d > Math.PI ? 2 * Math.PI - d : d; };
 
   // ---------- one generation attempt ----------
-  function tryGenerate(rng) {
+  // map options (v105): shape 'classic' | 'crescent' | 'ring' | 'random', peninsulas 0–5, coves 0–5, trees 0–4 (0 = the classic amount).
+  // The classic shape with 2 / 2 / 0 is exactly the island of earlier versions (same seed, same world).
+  const DEFAULT_OPTS = { shape: 'classic', pens: 2, coves: 2, trees: 0 };
+  function tryGenerate(rng, o = DEFAULT_OPTS) {
     // 1. points: hex-ish jittered grid + outer frame
     const P = [], frame = [];
     const rowH = S * 0.866;
@@ -160,35 +163,57 @@
     cellArea /= cnt;
     const ratio = 1.32 + rng() * 0.12;
     const nLakes = 1 + Math.floor(rng() * 3), lakeSizes = Array.from({ length: nLakes }, () => 2 + Math.floor(rng() * 2));
+    if (o.shape === 'ring') lakeSizes.length = 0;   // the ring's lake is the hole in the middle
     const LAKE_CELLS = lakeSizes.reduce((a, b) => a + b, 0), TARGET = NPROV + LAKE_CELLS;
     const A = Math.sqrt(TARGET * cellArea * ratio / Math.PI), B = A / ratio;
     const C = [W / 2 + (rng() - 0.5) * 50, H / 2 + (rng() - 0.5) * 40];
     const harm = []; for (let k = 2; k <= 6; k++) harm.push([k, (0.55 / k) * (0.5 + rng()), rng() * 7]);
     const nAng = th => harm.reduce((s, [k, a, ph]) => s + a * Math.sin(k * th + ph), 0);
-    const coastR = th => { const c = Math.cos(th), s = Math.sin(th); return (1 / Math.sqrt((c / A) ** 2 + (s / B) ** 2)) * (1 + 0.13 * nAng(th)); };
     const ph1 = rng() * 7, ph2 = rng() * 7;
+    // the other shapes: a bigger outline (scaled so the land still comes to the same number of provinces), with a bite or a hole taken out,
+    // or (random) a wobblier outline with extra lobes
+    let kScale = 1, wob = 0.13, bite = null, hole = null, lobes = [];
+    if (o.shape === 'ring') { kScale = 1 / Math.sqrt(1 - 0.42 * 0.42) * 1.06; hole = { q: 0.42, ph: rng() * 7 }; }
+    if (o.shape === 'crescent') { const b = rng() * Math.PI * 2; kScale = 1.38; bite = { th: b, off: 0.6, r: 0.7 }; }
+    if (o.shape === 'random') {
+      wob = 0.18 + rng() * 0.1; for (let k = 7; k <= 9; k++) harm.push([k, (0.55 / k) * (0.5 + rng()), rng() * 7]);
+      const nl = 1 + Math.floor(rng() * 3); for (let i = 0; i < nl; i++) lobes.push({ th: rng() * Math.PI * 2, d: 0.7 + rng() * 0.35, r: 0.32 + rng() * 0.22 });
+      kScale = 0.86;
+    }
+    const coastR = th => { const c = Math.cos(th), s = Math.sin(th); return kScale * (1 / Math.sqrt((c / A) ** 2 + (s / B) ** 2)) * (1 + wob * nAng(th)); };
+    const meanR = Math.sqrt(A * B) * kScale;
+    const biteC = bite && [C[0] + Math.cos(bite.th) * meanR * bite.off, C[1] + Math.sin(bite.th) * meanR * bite.off];
+    const inHole = (x, y) => { if (!hole) return false; const dx = x - C[0], dy = y - C[1], th = Math.atan2(dy, dx); return Math.hypot(dx, dy) < coastR(th) * hole.q * (1 + 0.08 * Math.sin(3 * th + hole.ph)); };
+    const shapeOK = th => (!bite || angDiff(th, bite.th) > 1.35) && lobes.every(l => angDiff(th, l.th) > 0.6);   // not inside the crescent's bite, nor on a random lobe
 
     // pick angles
     let pens = [], coves = [];
-    for (let t = 0; t < 200 && pens.length < 2; t++) {
+    const arc = (bite ? Math.PI * 2 - 2 * 1.35 : Math.PI * 2) - lobes.length * 1.2, nF = o.pens + o.coves;
+    const pSep = o.pens <= 2 && !bite ? 1.9 : Math.min(1.9, arc / Math.max(1, o.pens) * 0.66);
+    const pcSep = nF <= 4 && !bite ? 0.85 : Math.min(0.85, arc / Math.max(1, nF) * 0.6);
+    const cSep = o.coves <= 2 && !bite ? 1.2 : Math.min(1.2, arc / Math.max(1, o.coves) * 0.66);
+    for (let t = 0; t < 200 && pens.length < o.pens; t++) {
       const a = rng() * Math.PI * 2;
-      if (pens.every(p => angDiff(p, a) > 1.9)) pens.push(a);
+      if (shapeOK(a) && pens.every(p => angDiff(p, a) > pSep)) pens.push(a);
     }
-    for (let t = 0; t < 400 && coves.length < 2; t++) {
+    for (let t = 0; t < 400 && coves.length < o.coves; t++) {
       const a = rng() * Math.PI * 2;
-      if (pens.every(p => angDiff(p, a) > 0.85) && coves.every(c => angDiff(c, a) > 1.2)) coves.push(a);
+      if (shapeOK(a) && pens.every(p => angDiff(p, a) > pcSep) && coves.every(c => angDiff(c, a) > cSep)) coves.push(a);
     }
-    if (pens.length < 2 || coves.length < 2) return { ok: false, reason: 'feature angles' };
+    if (pens.length < o.pens || coves.length < o.coves) return { ok: false, reason: 'feature angles' };
     const at = (th, f) => [C[0] + Math.cos(th) * coastR(th) * f, C[1] + Math.sin(th) * coastR(th) * f];
     const perp = th => [-Math.sin(th), Math.cos(th)];
     const penLines = pens.map(th => {
       const bend = (rng() - 0.5) * 2 * 246, pp = perp(th), tip = at(th, 1.42);
       return { th, line: [at(th, 0.55), at(th, 1.02), [tip[0] + pp[0] * bend, tip[1] + pp[1] * bend]], hw: S * 0.95 };
     });
-    const coveLines = coves.map(th => ({ th, line: [at(th, 1.7), at(th, 0.6)], hw: S * 0.78 }));
+    const coveLines = coves.map(th => ({ th, line: [at(th, 1.7), at(th, hole ? 0.74 : 0.6)], hw: S * 0.78 }));
     function field(x, y) {
       const dx = x - C[0], dy = y - C[1], th = Math.atan2(dy, dx);
       let f = 1 - Math.hypot(dx, dy) / coastR(th) + 0.04 * (Math.sin(x / 273 + ph1) + Math.sin(y / 238 + ph2));
+      for (const l of lobes) { const lx = C[0] + Math.cos(l.th) * meanR * l.d, ly = C[1] + Math.sin(l.th) * meanR * l.d; f = Math.max(f, 1 - Math.hypot(x - lx, y - ly) / (meanR * l.r)); }
+      if (bite) f = Math.min(f, 1.4 * (Math.hypot(x - biteC[0], y - biteC[1]) / (meanR * bite.r) - 1));
+      if (inHole(x, y)) return -5;
       for (const p of penLines) { const d = distPolyline(x, y, p.line); if (d < p.hw) f = Math.max(f, 0.32 + 0.3 * (1 - d / p.hw)); }
       for (const c of coveLines) { if (distPolyline(x, y, c.line) < c.hw) f = -5; }
       return f;
@@ -219,8 +244,15 @@
       return c === nLand;
     };
     let reach = oceanReach();
+    const isLake = new Uint8Array(N), lakes = [];
+    if (hole) {
+      const big = [];
+      for (let i = 0; i < N; i++) if (!land[i] && !reach[i] && inHole(P[i][0], P[i][1])) { isLake[i] = 1; big.push(i); }
+      if (big.length < 6) return { ok: false, reason: 'ring lake too small' };
+      lakes.push(big);
+    }
     for (let i = 0; i < N; i++) {
-      if (!land[i] && !reach[i]) {
+      if (!land[i] && !reach[i] && !isLake[i]) {
         if (!valid(i)) return { ok: false, reason: 'lake on invalid cell' };
         land[i] = 1; nLand++;
       }
@@ -236,7 +268,8 @@
       if (!done) return { ok: false, reason: 'trim failed' };
     }
     reach = oceanReach();
-    for (let i = 0; i < N; i++) if (!land[i] && !reach[i]) return { ok: false, reason: 'lake remains' };
+    for (let i = 0; i < N; i++) if (!land[i] && !reach[i] && !isLake[i]) return { ok: false, reason: 'lake remains' };
+    if (hole && lakes[0].some(c => reach[c])) return { ok: false, reason: 'ring opened to the sea' };
     if (!landConnected()) return { ok: false, reason: 'not one landmass' };
     // no single-file corridors: a province with two land borders must have those two neighbors touching,
     // otherwise "block half the borders" and "everything reachable" contradict each other
@@ -248,10 +281,10 @@
       }
       return true;
     };
-    if (!noCorridors()) return { ok: false, reason: 'corridor' };
+    const strict = o.shape === 'classic' && o.pens === 2 && o.coves === 2;   // classic: no single-file corridors (the other maps allow them)
+    if (strict && !noCorridors()) return { ok: false, reason: 'corridor' };
 
     // 6b. carve 1–3 inland lakes, each 2–3 cells, with at least two provinces of land between lake and sea
-    const isLake = new Uint8Array(N), lakes = [];
     const nearLake = i => [...touch[i]].some(w => isLake[w]);
     function deepCell(i) {
       if (!land[i]) return false;
@@ -270,7 +303,7 @@
         }
         if (lc.length < size) continue;
         lc.forEach(c => { land[c] = 0; }); nLand -= size;
-        if (landConnected() && noCorridors()) { lc.forEach(c => { isLake[c] = 1; }); lakes.push(lc); placed = true; break; }
+        if (landConnected() && (!strict || noCorridors())) { lc.forEach(c => { isLake[c] = 1; }); lakes.push(lc); placed = true; break; }
         lc.forEach(c => { land[c] = 1; }); nLand += size;
       }
       if (!placed) return { ok: false, reason: 'lake placement' };
@@ -321,8 +354,8 @@
       }
       return { angle: c.th, cells: inner.length, ok: inner.length >= 2 && l && r, line: c.line };
     });
-    if (penReport.filter(p => p.ok).length < 2) return { ok: false, reason: 'peninsula check' };
-    if (coveReport.filter(c => c.ok).length < 2) return { ok: false, reason: 'cove check' };
+    if (penReport.filter(p => p.ok).length < o.pens) return { ok: false, reason: 'peninsula check' };
+    if (coveReport.filter(c => c.ok).length < o.coves) return { ok: false, reason: 'cove check' };
 
     // index land cells as provinces, ordered top-to-bottom, left-to-right
     const cells = [...Array(N).keys()].filter(i => land[i]).sort((a, b) => (Math.round(P[a][1] / 403) - Math.round(P[b][1] / 403)) || (P[a][0] - P[b][0]));
@@ -386,11 +419,11 @@
     }
     let lakePlan = null;
     for (let tryc = 0; tryc < 10 && !barrier; tryc++) {
-      terr = assignTerrain(n, nbr, adj, rng);
+      terr = assignTerrain(n, nbr, adj, rng, o);
       if (!terr) continue;
       lakePlan = planLakeRivers(terr);
       if (!lakePlan) continue;
-      barrier = solveBarriers(n, edges, pEdges, terr, rng, lakePlan.fixed);
+      barrier = solveBarriers(n, edges, pEdges, terr, rng, lakePlan.fixed, !strict);
     }
     if (!barrier) return { ok: false, reason: 'barrier solve' };
 
@@ -427,7 +460,7 @@
     const weights = { grassland: { mountains: 5, trees: 3, ruins: 2 }, forest: { trees: 6, mountains: 2.5, ruins: 1.5 }, swamp: { trees: 3, ruins: 3.5, mountains: 2 }, desert: { mountains: 1 } };
     edges.forEach(e => {
       if (!barrier[e.id] || style[e.id]) return;
-      const w = {}; for (const t of [TERRAINS[terr[e.a]], TERRAINS[terr[e.b]]]) for (const [k, v] of Object.entries(weights[t])) w[k] = (w[k] || 0) + v;
+      const w = {}; for (const t of [TERRAINS[terr[e.a]], TERRAINS[terr[e.b]]]) for (const [k, v] of Object.entries(weights[t])) w[k] = (w[k] || 0) + v * (k === 'trees' ? 1 + 0.75 * (o.trees || 0) : 1);
       let r = rng() * Object.values(w).reduce((a, b) => a + b, 0);
       for (const [k, v] of Object.entries(w)) { r -= v; if (r <= 0) { style[e.id] = k; break; } }
       if (!style[e.id]) style[e.id] = 'trees';
@@ -485,17 +518,18 @@
 
   // ---------- biomes: forest/desert/swamp in separate clumps of 5–15, the rest grassland ----------
   // nbr = shared-border neighbors, tch = any contact (corners too). Each biome lands between 15% and 35%.
-  function assignTerrain(n, nbr, tch, rng) {
+  function assignTerrain(n, nbr, tch, rng, o = DEFAULT_OPTS) {
+    const scatter = o.shape === 'random', minC = scatter ? 1 : 5, fBias = 1 / (1 + 0.6 * (o.trees || 0));
     const lo = Math.ceil(0.15 * n), hi = Math.floor(0.35 * n);
     for (let tries = 0; tries < 40; tries++) {
-      const counts = [0, 0, 0].map(() => lo + Math.floor(rng() * (hi - lo + 1)));   // forest, desert, swamp
+      const counts = [0, 0, 0].map((_, k) => lo + Math.floor((k === 0 ? rng() ** fBias : rng()) * (hi - lo + 1)));   // forest, desert, swamp (more trees: more forest)
       const grass = n - counts[0] - counts[1] - counts[2];
       if (grass < lo || grass > hi) continue;
       const clumps = [];
       counts.forEach((c, k) => {
-        const kmin = Math.ceil(c / 15), kmax = Math.floor(c / 5);
+        const kmin = Math.ceil(c / 15), kmax = Math.floor(c / minC);
         const kk = kmin + Math.floor(rng() * rng() * (kmax - kmin + 1));
-        const sizes = new Array(kk).fill(5); let rest = c - 5 * kk;
+        const sizes = new Array(kk).fill(minC); let rest = c - minC * kk;
         while (rest > 0) { const i = Math.floor(rng() * kk); if (sizes[i] < 15) { sizes[i]++; rest--; } }
         sizes.forEach(size => clumps.push({ type: k + 1, size }));
       });
@@ -504,7 +538,7 @@
       let failed = false;
       for (let ci = 0; ci < clumps.length && !failed; ci++) {
         const cl = clumps[ci];
-        const blocked = v => terr[v] !== -1 || tch[v].some(w => terr[w] === cl.type && clumpOf[w] !== ci);
+        const blocked = v => terr[v] !== -1 || (!scatter && tch[v].some(w => terr[w] === cl.type && clumpOf[w] !== ci));
         const seeds = shuffle([...Array(n).keys()].filter(v => !blocked(v)), rng);
         let done = false;
         for (const sd of seeds.slice(0, 25)) {
@@ -535,11 +569,11 @@
   }
 
   // ---------- barrier solver: half the borders blocked, deserts open, all reachable ----------
-  function solveBarriers(n, edges, pEdges, terr, rng, fixed) {
+  function solveBarriers(n, edges, pEdges, terr, rng, fixed, loose) {
     const DESERT = 2;
     const free = edges.filter(e => terr[e.a] !== DESERT && terr[e.b] !== DESERT && !fixed[e.id]).map(e => e.id);
     const isFree = new Uint8Array(edges.length); free.forEach(id => isFree[id] = 1);
-    const lo = pEdges.map(l => Math.floor(l.length / 2)), hi = pEdges.map(l => Math.ceil(l.length / 2));
+    const lo = pEdges.map(l => loose && l.length <= 2 ? 0 : Math.floor(l.length / 2)), hi = pEdges.map(l => Math.ceil(l.length / 2));   // loose: a corridor province may stay open
     const bar = new Uint8Array(edges.length), cnt = new Int16Array(n);
     edges.forEach(e => { if (fixed[e.id]) { bar[e.id] = 1; cnt[e.a]++; cnt[e.b]++; } });
     // feasibility: river sides fit within half, and enough free sides remain to reach half
@@ -614,7 +648,8 @@
       });
       clumpInfo.push(k + ' ' + t);
     }
-    add('Forest, desert, swamp grow in clumps of 5–15', sizes.every(s => s >= 5 && s <= 15), clumpInfo.join(', ') + ' clumps · sizes ' + Math.min(...sizes) + '–' + Math.max(...sizes));
+    const o = w.opts || DEFAULT_OPTS;
+    add(o.shape === 'random' ? 'Forest, desert, swamp scattered, in groups of 1–15' : 'Forest, desert, swamp grow in clumps of 5–15', sizes.every(s => s >= (o.shape === 'random' ? 1 : 5) && s <= (o.shape === 'random' ? 40 : 15)), clumpInfo.join(', ') + ' clumps · sizes ' + Math.min(...sizes) + '–' + Math.max(...sizes));
     const sides = ps.map(p => p.verts.length);
     add('Every province has 5–8 sides', sides.every(s => s >= 5 && s <= 8), 'range ' + Math.min(...sides) + '–' + Math.max(...sides));
     let half = 0, desertBad = 0;
@@ -634,7 +669,8 @@
     add('Every province reachable on foot', bfs(true) === n, bfs(true) + ' / ' + n + ' reachable');
     add('Ocean on every side', !w.touchesEdgeOfWorld, 'island never touches the map edge');
     const lk = w.lakes || [];
-    add('1–3 lakes, each 2–3 provinces big', lk.length >= 1 && lk.length <= 3 && lk.every(l => l.cells >= 2 && l.cells <= 3) && w.lakesInland, lk.length + (lk.length === 1 ? ' lake' : ' lakes') + ' · sizes ' + lk.map(l => l.cells).join(', '));
+    if (o.shape === 'ring') add('A big lake in the middle', lk.length === 1 && lk[0].cells >= 6 && w.lakesInland, lk.length ? lk[0].cells + ' cells of lake' : 'no lake');
+    else add('1–3 lakes, each 2–3 provinces big', lk.length >= 1 && lk.length <= 3 && lk.every(l => l.cells >= 2 && l.cells <= 3) && w.lakesInland, lk.length + (lk.length === 1 ? ' lake' : ' lakes') + ' · sizes ' + lk.map(l => l.cells).join(', '));
     const seaV = new Set(), lakeSets = lk.map(l => new Set(l.polys.flat()));
     ps.forEach(p => p.coast.forEach(([a, b, isL]) => { if (!isL) { seaV.add(a); seaV.add(b); } }));
     const eKey = new Map(w.edges.map(e => [Math.min(...e.v) + '_' + Math.max(...e.v), e]));
@@ -643,17 +679,28 @@
     add('Every river reaches the ocean', rv.length > 0 && rv.every(riverOk), rv.length + ' rivers, all flowing to the sea');
     const drained = lk.map((l, k) => rv.some(r => riverOk(r) && lakeSets[k].has(r.verts[r.verts.length - 1])));
     add('Every lake has a river to the sea', drained.every(Boolean), drained.filter(Boolean).length + ' / ' + lk.length + ' lakes drain to the sea');
-    add('At least 2 peninsulas', w.features.peninsulas.length >= 2, w.features.peninsulas.length + ' found');
-    add('At least 2 coves', w.features.coves.length >= 2, w.features.coves.length + ' found');
+    add(`At least ${o.pens} peninsula${o.pens === 1 ? '' : 's'}`, w.features.peninsulas.length >= o.pens, w.features.peninsulas.length + ' found');
+    add(`At least ${o.coves} cove${o.coves === 1 ? '' : 's'}`, w.features.coves.length >= o.coves, w.features.coves.length + ' found');
     return out;
   }
 
-  function generateWorld(seed) {
-    const reasons = {};
-    for (let attempt = 0; attempt < 80; attempt++) {
-      const r = tryGenerate(seedRng(seed + '#' + attempt));
-      if (r.ok) { r.world.seed = String(seed); r.world.attempts = attempt + 1; r.world.report = validate(r.world); return r.world; }
-      reasons[r.reason] = (reasons[r.reason] || 0) + 1;
+  // opts: see DEFAULT_OPTS. withUniques: also place Death Mountain, the Oasis and the Heart of the Forest, and try the next island
+  // if any of them doesn't fit (every game has all three)
+  function generateWorld(seed, opts, withUniques) {
+    const o = { ...DEFAULT_OPTS, ...(opts || {}) }, classic = o.shape === 'classic' && o.pens === 2 && o.coves === 2 && !o.trees;
+    const key = classic ? String(seed) : seed + '|' + o.shape + ':' + o.pens + ':' + o.coves + ':' + o.trees;
+    const reasons = {}, tries = classic ? 80 : 160;
+    for (let attempt = 0; attempt < tries; attempt++) {
+      const r = tryGenerate(seedRng(key + '#' + attempt), o);
+      if (!r.ok) { reasons[r.reason] = (reasons[r.reason] || 0) + 1; continue; }
+      r.world.seed = String(seed); r.world.attempts = attempt + 1; r.world.opts = o;
+      r.world.report = validate(r.world);
+      if (withUniques) {
+        placeUniques(r.world, seed);
+        const U = r.world.unique;
+        if (U.death < 0 || U.oasis < 0 || U.heart < 0) { reasons['unique provinces'] = (reasons['unique provinces'] || 0) + 1; continue; }
+      }
+      return r.world;
     }
     throw new Error('Could not generate a valid world: ' + JSON.stringify(reasons));
   }
@@ -742,12 +789,12 @@
     w.unique = U;
     return w;
   }
-  function generateWorldU(seed) { return placeUniques(generateWorld(seed), seed); }
+  function generateWorldU(seed, opts) { return generateWorld(seed, opts, true); }
 
   // ---------- practice world: a small 10-province island cut from a normal world ----------
   // 1 desert, 1 swamp, 5 grassland, 3 forest; every province reachable on foot; forests keep a border of trees for Lumber Mills
   function generatePractice(seed) {
-    const big = generateWorld('practice:' + seed), P = big.provinces, rng = seedRng('practice-pick:' + seed);
+    const big = generateWorld('practice:' + seed, null, false), P = big.provinces, rng = seedRng('practice-pick:' + seed);
     const want = { grassland: 5, forest: 3, desert: 1, swamp: 1 }, N = 10;
     const cx = big.center[0], cy = big.center[1];
     // start from a grassland province with plenty of land around it, near the middle

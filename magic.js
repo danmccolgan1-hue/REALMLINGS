@@ -55,7 +55,7 @@ S.trap = null; S.rift = null; S.harvest = null; S.detect = null;
 // Harvest is a continuous cast: while a Mage keeps it up, every Farm gives 10 / 20 / 30% more food by rank
 const HARVEST_PCT = [0, 0.1, 0.2, 0.3];
 // Fertile Fields adds 2 percentage points per level to every rank (10% becomes 12%, then 14%...)
-const harvestPct = () => lvl('harvest') ? HARVEST_PCT[lvl('harvest')] + 0.02 * repLv('rep-harvest') : 0;
+let harvestPct = () => lvl('harvest') ? HARVEST_PCT[lvl('harvest')] + 0.02 * repLv('rep-harvest') : 0;
 const HARVEST = [null, { bonus: 0.1, dur: 180, cd: 360, food0: 0 }, { bonus: 0.2, dur: 180, cd: 240, food0: 200 }, { bonus: 0.3, dur: Infinity, cd: 0, food0: 0, every: 180, food: 400 }];
 const SKIN = [0, { pct: 0.05, cd: 300 }, { pct: 0.10, cd: 180 }, { pct: 0.15, cd: 90 }];
 const CURSE = [0, { pct: 0.05, cd: 300 }, { pct: 0.10, cd: 180 }, { pct: 0.15, cd: 90 }];
@@ -68,7 +68,7 @@ const RES_SPELL = { graverob: 'gold', trading: 'all' }, RES_YIELD = [0, 300, 600
 const resYield = sp => Math.round(RES_YIELD[lvl(sp)] * (1 + 0.02 * repLv(sp === 'graverob' ? 'rep-graverob' : 'rep-trading')));
 const resWhy = (c, k) => S.units.some(v => v !== c && v.cast && v.cast.spell === k) ? 'Another Mage is already casting this' : null;
 const TRADE = [0, 100, 200], TRADE_TIME = 120;
-const PATH_OPEN = [0, 120, 60, 60], PATH_CLOSE = 60;
+const PATH_OPEN = [0, 20, 10, 10], PATH_CLOSE = 10;   // v102: 20 s, 10 s once upgraded (closing 10 s)
 const STASIS = [0, 10, 20], STASIS_CD = 60;
 const RIFT_USES = [0, 1, 3];
 
@@ -147,6 +147,7 @@ function pathWhy(c, q, kind, close) {
   else if (edgeBetween(c.prov, q, style, false) < 0) return kind === 'forest' ? 'No border of trees there' : 'No mountain border there';
   if (c.moving) return 'Stop moving first';
   if (c.battle) return 'Not during battle';
+  if (nationOf(c.prov) !== c.owner && S.occ.get(c.prov) !== c.owner) return 'Only from a province you own or occupy';   // v102
   return null;
 }
 function startPath(c, q, kind, close) {

@@ -301,6 +301,37 @@ function item(g, name, x, y, ang, t, flip) {
       g.globalAlpha = 1;
       break;
     }
+    // ---- v104: ranged weapons (bows, crossbows, slings); the grip is at the hand, the weapon points up ----
+    case 'shortbow': case 'compositebow': case 'longbow': {
+      const lb = name === 'longbow', cp = name === 'compositebow', top = lb ? -66 : cp ? -40 : -36, bot = lb ? 52 : cp ? 36 : 32, bx = lb ? 7 : 8;
+      const col = lb ? '#c99a5b' : cp ? '#6b4a2e' : P.wood, tips = cp ? [[bx + 7, top - 6], [bx + 7, bot + 6]] : null;
+      g.strokeStyle = '#efe6cf'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(tips ? tips[0][0] : bx, tips ? tips[0][1] : top); g.lineTo(tips ? tips[1][0] : bx, tips ? tips[1][1] : bot); g.stroke();
+      const stave = () => { g.beginPath(); g.moveTo(bx, top); g.quadraticCurveTo(-bx * 1.2, -(top + bot) / 2, bx, bot); if (tips) { g.moveTo(bx, top); g.quadraticCurveTo(bx - 1, top - 6, tips[0][0], tips[0][1]); g.moveTo(bx, bot); g.quadraticCurveTo(bx - 1, bot + 6, tips[1][0], tips[1][1]); } };
+      stave(); g.lineCap = 'round'; g.strokeStyle = OL; g.lineWidth = lb ? 8 : 8.5; g.stroke(); g.strokeStyle = col; g.lineWidth = lb ? 3.6 : 4; g.stroke();
+      rr(g, -5, -7, 8, 14, 2.5); ink(g, cp ? '#b8352d' : P.leatherD, 2);
+      break;
+    }
+    case 'handcrossbow': case 'levercrossbow': case 'windlasscrossbow': {
+      const lv = name === 'levercrossbow', wl = name === 'windlasscrossbow', pw = wl ? 24 : lv ? 20 : 18, py = -40;
+      rr(g, -3.5, py - 2, 7, 52, 3); ink(g, wl ? '#6b4a2e' : P.wood, 2.4);
+      g.strokeStyle = '#efe6cf'; g.lineWidth = 1.3; g.beginPath(); g.moveTo(-pw, py + 6); g.lineTo(0, py + 16); g.lineTo(pw, py + 6); g.stroke();
+      g.beginPath(); g.moveTo(-pw, py + 6); g.quadraticCurveTo(0, py - 8, pw, py + 6); g.lineCap = 'round'; g.strokeStyle = OL; g.lineWidth = 8; g.stroke(); g.strokeStyle = lv || wl ? P.steelL : P.wood; g.lineWidth = 3.6; g.stroke();
+      stick(g, 0, py + 14, 0, py - 12, 2, P.woodD, true); poly(g, [[0, py - 18], [3, py - 11], [-3, py - 11]]); ink(g, P.steel, 1.4, false);
+      rr(g, -5, py + 14, 10, 4, 1.5); ink(g, P.steelD, 1.5, false);
+      if (lv) { stick(g, 4, 2, 10, -26, 2.6, P.steel, true); circ(g, 10, -26, 2.4); ink(g, P.steelD, 1.4, false); }
+      if (wl) { rr(g, -7, 6, 14, 8, 2); ink(g, P.steel, 2); for (const sd of [-1, 1]) { stick(g, sd * 7, 10, sd * 13, 10 + Math.sin(t * 3 + sd) * 3, 2, P.steelD, true); circ(g, sd * 13, 10 + Math.sin(t * 3 + sd) * 3, 2.2); ink(g, P.wood, 1.2, false); } }
+      break;
+    }
+    case 'woolsling': case 'braidedsling': case 'leathersling': {
+      g.scale(1.45, 1.45);
+      const lt = name === 'leathersling', br = name === 'braidedsling', sw = Math.sin(t * 6) * 7, px = sw, py = 30;
+      const cord = br ? '#c9a46a' : lt ? '#7e5a3b' : '#efe6cf';
+      for (const ox of [-3, 3]) { g.beginPath(); g.moveTo(0, 0); g.quadraticCurveTo(ox + sw * 0.4, 16, px + ox, py); g.lineCap = 'round'; g.strokeStyle = OL; g.lineWidth = 4.2; g.stroke(); g.strokeStyle = cord; g.lineWidth = 1.8; if (br) g.setLineDash([2.5, 2]); g.stroke(); g.setLineDash([]); }
+      ell(g, px, py + 2, lt ? 7.5 : 6, lt ? 5 : 4.2); ink(g, lt ? P.leatherD : br ? '#a07a4a' : '#e8dcc0', 2);
+      circ(g, px, py - 1, 2.8); ink(g, '#9aa0a8', 1.4, false);
+      circ(g, 0, 0, 3); ink(g, cord, 1.6, false);
+      break;
+    }
     // ---- equipment: swords ----
     case 'shortsword':
       stick(g, 0, 5, 0, -5, 4, P.leatherD);

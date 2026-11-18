@@ -42,7 +42,7 @@ function givesOf(type) {
 }
 
 // ---------- fort limit ----------
-const fortLimit = () => FORT_LIMIT[['forts', 'forts2', 'forts3'].filter(hasTech).length] + repLv('rep-forts');
+const fortLimit = () => FORT_LIMIT[['forts', 'forts2', 'forts3'].filter(hasTech).length] + 2 * repLv('rep-forts');   // v102: Garrison Charters +2 per level
 const fortCount = () => [...S.buildings].filter(([, b]) => b.owner === ME && b.stage === 1).length;   // v98: a fort counts only once its upgrade has finished
 
 // ---------- roads and walls ----------
@@ -300,7 +300,7 @@ function stepScouts(t) {
 const OUTPOSTS_PER_FORT = 4, OUTPOST_UPKEEP = { wood: 1 };
 const outpostCount = () => [...S.buildings].filter(([p, b]) => b.owner === ME && b.stage === 0 && !S.upgrades.has(p)).length;
 // v96: each fort allows 4 outposts, +2 with Efficient Administration, +1 per Expand Administration (Fort Charters III no longer lifts the limit)
-const perFort = (o = ME) => OUTPOSTS_PER_FORT + (techOf(o, 'effadmin') ? 2 : 0) + repOf(o, 'rep-admin');
+const perFort = (o = ME) => OUTPOSTS_PER_FORT + (techOf(o, 'effadmin') ? 2 : 0) + 2 * repOf(o, 'rep-admin');   // v102: Expand Administration +2 per level
 const fortsHeldBy = (o = ME) => [...S.buildings.values()].filter(b => b.owner === o && b.stage >= 1).length;   // v98: upgrades still under way don't count yet
 const outpostLimit = () => perFort(ME) * fortsHeldBy(ME);
 // every province you may hold: each fort (the capital counts) and the outposts it allows
