@@ -379,11 +379,11 @@ function stepTraining(t) {
     Q.shift();
     if (q.retro) { finishRetro(q); capPanelKey = ''; continue; }
     const spot = srcSpot(key), d = UNIT_DEFS[q.kind];
-    const rp = rallyOf(key);   // v96: a rally point sends the new unit on its way
+    const rp = q.rally || rallyOf(key);   // v96: a rally point sends the new unit on its way (v106: an Army Training Order's own rally point first)
     if (MILITARY.has(q.kind)) {
       let a = rp ? null : S.units.find(v => v.kind === 'army' && v.owner === ME && v.prov === spot.prov && !v.moving && !v.battle);
       if (a) { a.troops[q.kind] = (a.troops[q.kind] || 0) + 1; a.grew = t; toast(`${d.name} joined ${a.name} (${troopCount(a)} soldiers).`); }
-      else { a = newArmy(spot.prov, { [q.kind]: 1 }); a.born = t; toast(rp ? `${d.name} is ready and marches to the rally point in ${provName(rp.prov)}.` : `${d.name} is ready and formed ${a.name}.`); if (rp) rallyGo(a, rp); }
+      else { a = newArmy(spot.prov, { [q.kind]: 1 }); a.born = t; if (q.order) a.trainOrder = q.order; toast(rp ? `${d.name} is ready and marches to the rally point in ${provName(rp.prov)}.` : `${d.name} is ready and formed ${a.name}.`); if (rp) rallyGo(a, rp); }
       sfx('pr_trained', { prov: spot.prov }); computeIncome(); capPanelKey = ''; continue;
     }
     if (q.kind === THUG && thugIntoDen(spot.prov, key)) { sfx('pr_trained', { prov: spot.prov }); computeIncome(); capPanelKey = ''; toast('A Thug is ready and settles into the Thug Den.'); continue; }
@@ -541,6 +541,7 @@ function stepBattles(t) {
     for (const o of owners) for (const a of sides[o]) if (troopCount(a) <= 0) { warWipe(b, a); if (a.bandit) banditSlain(a, b); removeArmy(a); }
   }
 }
+let takeMult = (a, k, front) => 1;   // v106 hook: how many times a soldier's health the blows must add up to
 function applyDamage(b, armies, dmg, t, pierce = 0) {
   const total = armies.reduce((n, a) => n + troopCount(a), 0); if (!total) return;
   // armor soaks part of each blow (blunt weapons get through half of it); swords parry some more
@@ -566,8 +567,9 @@ function applyDamage(b, armies, dmg, t, pierce = 0) {
       const pool = !lay ? a.troops : front ? lay.f : lay.b, weight = kk => pool[kk] || 0;
       let r = Math.random() * kinds.reduce((n, kk) => n + weight(kk), 0), k = kinds.find(kk => weight(kk) > 0) || kinds[0];
       for (const kk of kinds) { r -= weight(kk); if (r <= 0 && weight(kk) > 0) { k = kk; break; } }
-      if (a.wounds < hpOf(a, k)) break;
-      a.wounds -= hpOf(a, k);
+      const hk = hpOf(a, k) * takeMult(a, k, !lay || front);   // v106: back-row ranged soldiers shrug off most blows
+      if (a.wounds < hk) break;
+      a.wounds -= hk;
       // Risen Dead: every Nth soldier who falls gets straight back up
       if (risenRise(a, k, b, t)) continue;   // v98: Risen Dead raises the next few to fall (v98.js)
       ghoulFall(a, k);
@@ -2074,20 +2076,23 @@ function renderTrainCard() {
   const bar = $q('#cmdGrid .cmd-prog s'), q = Q[0];
   if (bar) bar.style.width = (q && q.t0 !== null ? Math.min(100, (S.t - q.t0) / trainTime(q.kind, q) * 100) : 0) + '%';
 }
+let settleCardKeyX = p => '', settleCardCells = (p, b, cells) => {}, settleCardTick = p => {};   // v106 hooks
 function renderSettleCard() {
   const p = S.selProv, b = S.buildings.get(p), up = S.upgrades.get(p);
-  const key = 'settle|' + p + '|' + b.stage + '|' + !!up + '|' + RES.map(k => S.stock[k]).join(',') + '|' + rewallsAt(p).length + '|' + warsOf(ME).length + '|' + S.rewallJobs.has(p);
+  const key = 'settle|' + p + '|' + b.stage + '|' + !!up + '|' + RES.map(k => S.stock[k]).join(',') + '|' + rewallsAt(p).length + '|' + warsOf(ME).length + '|' + S.rewallJobs.has(p) + '|' + settleCardKeyX(p);
   if (key !== cmdKey) {
     cmdKey = key;
     $q('#cmdTabs').innerHTML = `<span class="cmd-tab" aria-selected="true"><img alt="" src="${settlementThumb(b.cc ? 2 : b.stage)}">${stageName(b)}</span>`;
     const cells = new Array(16).fill('<div class="cmd-cell"></div>');
     if (b.stage === 0) { const info = cmdInfo(up ? 'cancelup' : 'upgrade'); cells[0] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="${up ? 'cancelup' : 'upgrade'}" aria-label="${info.name}"${cmdBg('build:outpost')}><img alt="" src="${info.icon}">${up ? '<i class="cmd-prog"><s></s></i>' : ''}</button>`; }
-    if (b.stage >= 1 && (b.stage === 1 || rewallsAt(p).length)) { const info = cmdInfo('rewalls'); cells[0] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="rewalls" aria-label="${info.name}"><img alt="" src="${info.icon}"></button>`; }
+    if (b.stage >= 1) { const info = cmdInfo('rewalls'); cells[0] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="rewalls" aria-label="${info.name}"><img alt="" src="${info.icon}"></button>`; }
     if (b.stage === 1 && b.owner === ME) { const info = cmdInfo('dismantle'); cells[3] = `<button type="button" class="cmd-btn${info.why ? ' off' : ''}" data-cmd="dismantle" aria-label="${info.name}"><img alt="" src="${info.icon}"></button>`; }   // v96: dismantle the fort
-    $q('#cmdGrid').innerHTML = b.stage === 0 || cells[0].includes('rewalls') ? cells.join('') : '<div class="cmd-empty"></div>';
+    settleCardCells(p, b, cells);   // v106: Develop further (and anything else added later)
+    $q('#cmdGrid').innerHTML = cells.join('');
     if (cmdHover) showCmdTip(cmdHover);
   }
-  const bar = $q('#cmdGrid .cmd-prog s'); if (bar && up) bar.style.width = Math.min(100, (S.t - up.t0) / FORT_UPGRADE.time * 100) + '%';
+  settleCardTick(p);
+  const bar = $q('#cmdGrid [data-cmd="upgrade"] .cmd-prog s, #cmdGrid [data-cmd="cancelup"] .cmd-prog s'); if (bar && up) bar.style.width = Math.min(100, (S.t - up.t0) / FORT_UPGRADE.time * 100) + '%';
   if (cmdHover === 'cancelup') showCmdTip(cmdHover);
 }
 // a Forge or Mage Tower is selected: its card offers the next upgrade

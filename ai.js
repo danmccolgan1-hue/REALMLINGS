@@ -135,7 +135,7 @@ const aiForts = N => [...S.buildings.values()].filter(b => b.owner === N.id && b
 const aiFortLimit = N => FORT_LIMIT[['forts', 'forts2', 'forts3'].filter(id => aiHas(N, id)).length] + 2 * aiRep(N, 'rep-forts');   // v102: +2 per level
 const aiFortCount = N => aiForts(N) + N.ups.size;
 const aiOutposts = N => [...S.buildings].filter(([p, b]) => b.owner === N.id && b.stage === 0 && !N.ups.has(p)).length;
-const aiOutpostLimit = N => perFort(N.id) * fortsHeldBy(N.id);
+const aiOutpostLimit = N => perFort(N.id) * fortsHeldBy(N.id) + devLimitBonus(N.id);
 const aiPendingOutposts = (N, self) => S.units.filter(u => u.owner === N.id && u !== self && ((u.build && u.build.type === 'outpost') || (u.aiJob && u.aiJob.type === 'outpost'))).length;
 const aiProvCount = N => provsOf(N.id).length;
 

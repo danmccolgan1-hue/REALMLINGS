@@ -70,7 +70,12 @@ const LEADERS = {
   zariel:  { race: 'wood', sex: 'f', title: 'Ranger', name: 'Zariel', start: 'ranger', like: 'scouts', emb: 'bow',
     bonus: 'Archers deal +2 damage.' }
 };
-for (const [id, L] of Object.entries(LEADERS)) { L.id = id; L.full = L.title + ' ' + L.name; }
+for (const [id, L] of Object.entries(LEADERS)) {
+  L.id = id; L.full = L.title + ' ' + L.name;
+  // the magic leaders: +1 Magic research from every tower (any level), +4 mana regeneration, +200 of each resource at the start
+  if (L.start === 'mage') L.bonus += ` Every ${L.race === 'swamp' ? 'Warlock Tower' : L.race === 'wood' ? 'Grove' : 'Mage Tower'} (at any level) gives 1 more Magic research. +4 mana regeneration on top of the towers’.`;
+}
+const isMageLeader = o => { const L = leaderOf(o); return !!L && L.start === 'mage'; };
 const leadersOf = race => Object.values(LEADERS).filter(L => L.race === race);
 const leaderOf = o => { const id = o === ME ? NATION.leader : NATIONS[o] && NATIONS[o].leader; return (id && LEADERS[id]) || null; };
 const leads = (o, id) => { const L = leaderOf(o); return !!L && L.id === id; };
@@ -84,7 +89,7 @@ const SCHOOL_WORD = { life: 'Herbomancy', death: 'Necromancy', arcane: 'Arcane',
 function leaderStartText(L) {
   const r = L.race;
   switch (L.start) {
-    case 'mage': return `Starts with a ${towerWord(r)} and a ${mageWord(r)}, but no soldiers (and the ${towerWord(r)} technology not researched).`;
+    case 'mage': return `Starts with a ${towerWord(r)}, a ${mageWord(r)} and 200 more gold, wood and food, but no soldiers (and the ${towerWord(r)} technology not researched).`;
     case 'stable': return 'Starts with a Stable (technology researched) and 2 Riders as its only soldiers.';
     case 'shield': return 'Starts with a Barracks and 6 Footmen carrying Round Shields (researched).';
     case 'forge': return 'Starts with a Forge (technology researched).';
@@ -398,7 +403,7 @@ function applyLeaderStart(o) {
   const L = leaderOf(o), cap = capOf(o); if (!L || cap < 0) return;
   const race = L.race;
   switch (L.start) {
-    case 'mage': addStartExtra(cap, 'magetower'); setStartArmy(o, { [MAGE]: 1 }); break;
+    case 'mage': { addStartExtra(cap, 'magetower'); setStartArmy(o, { [MAGE]: 1 }); const st = o === ME ? S.stock : NATIONS[o].stock; for (const k of RES) st[k] = (st[k] || 0) + 200; break; }
     case 'stable': addStartExtra(cap, 'stable'); addStartTech(o, 'stable'); setStartArmy(o, { 'd-rider': 2 }); break;
     case 'shield': addStartExtra(cap, 'barracks'); addStartTech(o, 's-round'); setStartArmy(o, { [leaderDesign(o, { name: 'Shield Footman', type: 'inf', weapon: 'shortsword', shield: 'round', armor: 'leather1', race: 'realm' })]: 6 }); break;
     case 'forge': addStartExtra(cap, 'forge'); addStartTech(o, 'forge'); break;
@@ -969,6 +974,11 @@ $q('#nflags').addEventListener('contextmenu', e => {
   if (leads(a.owner, 'havva') && a.skin > 0) a.skin *= 1.2;
   if (leads(a.owner, 'nihaarg') && a.curse > 0) a.curse += 0.1;
 }; }
+// magic leaders: +1 Magic research per tower, +4 mana regeneration
+const towersIn = p => extrasIn(p).filter(e => e.type === 'magetower').length;
+{ const pr = provResearch; provResearch = function (p) { const r = pr(p); if (isMageLeader(ME) && r && (S.buildings.get(p) || {}).owner === ME) r.mag += towersIn(p); return r; }; }
+{ const ar = aiProvResearch; aiProvResearch = function (N, p) { const r = ar(N, p); if (isMageLeader(N.id) && r && (S.buildings.get(p) || {}).owner === N.id) r.mag += towersIn(p); return r; }; }
+{ const mr = manaRegen; manaRegen = function (o) { return mr(o) + (isMageLeader(o) ? 4 : 0); }; }
 // Harvest: +5% per level (Havva)
 const harvestLv = () => lvl('harvest') || 0;
 { const hp = harvestPct; harvestPct = () => { const p = hp(); return p && leads(ME, 'havva') ? p + 0.05 * harvestLv() : p; }; }
@@ -1404,4 +1414,4 @@ function retrofitWars() {
 }; }
 renderLeaderPick();
 
-window.__v105 = { LEADERS, leaderOf, opinion, opinionParts, dipRequest, answerRequest, dxAct, doBribe, aiBribe, aiCanFlirt, aiCanGift, exhaustionOf, hasAccess, applyLeaderStart, ensureWoodlines, portraitOf, newsAdd, finishSpy, DIPL, state: () => S.dipl, leaderPick, testWar: (a, b) => { const w = newWar(a, b, null); for (const j of alliesOf(b)) if (j !== a && !atWar(a, j)) newWar(a, j, w.id); return w; }, lostValue, crimeSlots, tradeCount, bribeWhy, bribeWhyFor, allyWhy: (a, b) => allyWhy(a, b), renderLeaderPick, pureDamage };
+window.__v105 = { magRate: () => techRate('mag'), regen: o => manaRegen(o), aiMag: o => aiTechRate(NATIONS[o], 'mag'), LEADERS, leaderOf, opinion, opinionParts, dipRequest, answerRequest, dxAct, doBribe, aiBribe, aiCanFlirt, aiCanGift, exhaustionOf, hasAccess, applyLeaderStart, ensureWoodlines, portraitOf, newsAdd, finishSpy, DIPL, state: () => S.dipl, leaderPick, testWar: (a, b) => { const w = newWar(a, b, null); for (const j of alliesOf(b)) if (j !== a && !atWar(a, j)) newWar(a, j, w.id); return w; }, lostValue, crimeSlots, tradeCount, bribeWhy, bribeWhyFor, allyWhy: (a, b) => allyWhy(a, b), renderLeaderPick, pureDamage };

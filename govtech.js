@@ -88,7 +88,8 @@ function raiseWall(p, q, owner, home) {
     G.crossings = G.crossings.filter(x => Math.hypot(x.x - mx, x.y - my) > 1);
   });
   openNbr[p] = openNbr[p].filter(n => n.q !== q); openNbr[q] = openNbr[q].filter(n => n.q !== p);
-  S.roads.delete(linkKey(p, q)); S.gateOwn.set(linkKey(p, q), { home, owner }); S.brokenWalls.delete(linkKey(p, q)); wallsVer++;
+  if (!(nationOf(p) === owner && nationOf(q) === owner)) S.roads.delete(linkKey(p, q));   // v106: a road between two provinces of the wall's own nation goes through the gate
+  S.gateOwn.set(linkKey(p, q), { home, owner }); S.brokenWalls.delete(linkKey(p, q)); wallsVer++;
   if (S.wallCrack) world.edges.forEach((e, i) => { if ((e.a === p && e.b === q) || (e.a === q && e.b === p)) delete S.wallCrack[i]; });   // v96: a rebuilt wall is whole
   cacheDirty = true; fogDirty = true; hoverPath = undefined;
   // anyone marching through that border finds another way
@@ -302,9 +303,10 @@ const outpostCount = () => [...S.buildings].filter(([p, b]) => b.owner === ME &&
 // v96: each fort allows 4 outposts, +2 with Efficient Administration, +1 per Expand Administration (Fort Charters III no longer lifts the limit)
 const perFort = (o = ME) => OUTPOSTS_PER_FORT + (techOf(o, 'effadmin') ? 2 : 0) + 2 * repOf(o, 'rep-admin');   // v102: Expand Administration +2 per level
 const fortsHeldBy = (o = ME) => [...S.buildings.values()].filter(b => b.owner === o && b.stage >= 1).length;   // v98: upgrades still under way don't count yet
-const outpostLimit = () => perFort(ME) * fortsHeldBy(ME);
+let devLimitBonus = o => 0;   // v106: developed forts and capitals hold more provinces (v106.js)
+const outpostLimit = () => perFort(ME) * fortsHeldBy(ME) + devLimitBonus(ME);
 // every province you may hold: each fort (the capital counts) and the outposts it allows
-const provLimit = (o = ME) => fortsHeldBy(o) * (1 + perFort(o));
+const provLimit = (o = ME) => fortsHeldBy(o) * (1 + perFort(o)) + devLimitBonus(o);
 const pendingOutposts = () => S.units.filter(u => u.owner === ME && ((u.build && u.build.type === 'outpost') || (u.pending && u.pending.type === 'outpost'))).length;
 function outpostWhy() {
   const lim = outpostLimit(); if (lim === Infinity) return null;

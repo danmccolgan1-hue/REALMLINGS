@@ -25,7 +25,7 @@ const WAR = {
 // v95: how many provinces a peace deal may take: 2 for every fort the winner holds, at least 1
 const fortsHeld = o => { let n = 0; for (const b of S.buildings.values()) if (b.owner === o && b.stage === 1) n++; return n; };
 const maxTake0 = o => Math.max(1, 2 * fortsHeld(o));
-const maxTake = o => o === ME ? Math.min(maxTake0(o), sustainRoom()) : maxTake0(o);   // v102: no more than the player can hold
+const maxTake = o => maxTake0(o);   // v106: a war may win more land than the forts hold (each province over the limit costs upkeep)
 // v95: a nation that surrendered can't declare any war until this runs out
 const warLockLeft = o => Math.max(0, ((S.warLock && S.warLock[o]) || 0) - S.t);
 // the AI nations, by owner id (filled in by the lobby when a game starts)
@@ -276,7 +276,6 @@ function peaceCheck(w, kind, provs) {
   if (kind === 'provs') {
     if (s < WAR.provs) return `Needs +${WAR.provs} warscore`;
     if (!provs || !provs.length) return 'Pick at least one province';
-    if (provs.length > sustainRoom()) return sustainRoom() ? `You can only hold ${sustainRoom()} more province${sustainRoom() > 1 ? 's' : ''}: build forts to hold more` : 'You can’t hold any more provinces: build forts first';   // v102
     { const un = provs.filter(p => !scoutedBy(ME, p)); if (un.length) return `${un.map(provName).join(', ')} ${un.length > 1 ? 'haven’t' : 'hasn’t'} been explored by a scout or an army`; }   // v102
     if (provs.length > demandMax(s)) return `At most ${demandMax(s)} province${demandMax(s) > 1 ? 's' : ''} at ${s} warscore (1 at 50, +1 for every 5 more)`;
     if (provs.some(p => nationOf(p) !== foe)) return 'Only their provinces can be demanded';
@@ -570,7 +569,7 @@ function borderFort(a, b) {
 // v96 peace terms: provinces by warscore (1 at 50, +1 for every 5 more; at 100 the whole country may be annexed)
 // at +100 the winner may take up to its full cap: 2 per fort it holds (maxTake), if that is more than the 11 the warscore steps give
 const demandMax0 = (s, o = ME) => s >= WAR.total ? Math.max(1 + Math.floor((WAR.total - WAR.provs) / 5), maxTake0(o)) : s >= WAR.provs ? 1 + Math.floor((s - WAR.provs) / 5) : 0;
-const demandMax = (s, o = ME) => o === ME ? Math.min(demandMax0(s, o), sustainRoom()) : demandMax0(s, o);   // v102: no more than the player can hold
+const demandMax = (s, o = ME) => demandMax0(s, o);   // v106: no longer capped by the province limit
 const annexable = (winner, loser) => provsOf(loser).every(p => takeable(p, winner));
 function formAlliance(a, b, vs) {
   S.allies.push({ a, b, vs, since: S.t });
@@ -736,7 +735,7 @@ function dipNationHTML(o, w) {
   const cap = capitalOf(o), pickable = dipPickable(o, w).sort((a, b) => provName(a).localeCompare(provName(b)));   // v102: alphabetical, explored by a scout or an army
   const mt = maxTake(ME), theirMt = maxTake(o);
   const dm = demandMax(s), dmTxt = dm, reach = pickReach(o);
-  const pick = dipTerm === 'provs' ? `<div class="dp-pick"><div class="dp-pick-h">Choose up to ${dm} <span>${S.dipPick.size}/${dmTxt}</span><button type="button" class="dp-pk" data-dp="pickall">All</button><button type="button" class="dp-pk" data-dp="picknone">None</button></div>` + (pickable.length ? pickable.map(p => { const b = S.buildings.get(p), on = S.dipPick.has(p), far = !reach.has(p), full = !on && (S.dipPick.size >= dm || far); return `<label class="dp-prov${on ? ' on' : ''}${far ? ' far' : ''}" data-prov="${p}"${far ? ' title="Can’t be reached from your capital through your land or the provinces picked so far"' : ''}><input type="checkbox" value="${p}"${on ? ' checked' : ''}${full ? ' disabled' : ''}><i style="background:${TER[G.provs[p].terrain].base}"></i><span>${provName(p)}</span><small>${STAGE_WORD[b.stage]}${S.occ.get(p) === ME ? ' · occupied' : ''}</small></label>`; }).join('') : '<small>None of their provinces you have explored (with a scout or an army) can be taken.</small>') + (sustainRoom() < demandMax0(s) ? `<small class="dp-room">${sustainRoom() ? `You can only hold ${sustainRoom()} more province${sustainRoom() > 1 ? 's' : ''}` : 'You can’t hold any more provinces'} (${provsOf(ME).length}/${provLimit(ME)}): build forts to hold more.</small>` : '') + '</div>' : '';
+  const pick = dipTerm === 'provs' ? `<div class="dp-pick"><div class="dp-pick-h">Choose up to ${dm} <span>${S.dipPick.size}/${dmTxt}</span><button type="button" class="dp-pk" data-dp="pickall">All</button><button type="button" class="dp-pk" data-dp="picknone">None</button></div>` + (pickable.length ? pickable.map(p => { const b = S.buildings.get(p), on = S.dipPick.has(p), far = !reach.has(p), full = !on && (S.dipPick.size >= dm || far); return `<label class="dp-prov${on ? ' on' : ''}${far ? ' far' : ''}" data-prov="${p}"${far ? ' title="Can’t be reached from your capital through your land or the provinces picked so far"' : ''}><input type="checkbox" value="${p}"${on ? ' checked' : ''}${full ? ' disabled' : ''}><i style="background:${TER[G.provs[p].terrain].base}"></i><span>${provName(p)}</span><small>${STAGE_WORD[b.stage]}${S.occ.get(p) === ME ? ' · occupied' : ''}</small></label>`; }).join('') : '<small>None of their provinces you have explored (with a scout or an army) can be taken.</small>') + (S.dipPick.size > sustainRoom() ? `<small class="dp-room">These picks put you ${S.dipPick.size - sustainRoom()} over your province limit (${provsOf(ME).length}/${provLimit(ME)}): each province over costs 5 gold, 5 wood and 5 food upkeep.</small>` : '') + '</div>' : '';
   const why = peaceCheck(w, dipTerm, dipTerm === 'provs' ? [...S.dipPick] : null);
   return head +
     `<p class="dp-p">${w.by === ME ? 'You declared this war' : 'They declared this war'}${w.parent ? ' (through an alliance)' : ''}, ${fmtTime(S.t - w.since)} ago.</p>` +
